@@ -7,11 +7,11 @@ on:
 
 jobs:
   mvn:
-    uses: netcracker/qubership-core-infra/.github/workflows/run-maven-with-sonar.yaml@v1.0.2
+    uses: Netcracker/qubership-core-infra/.github/workflows/run-maven-with-sonar.yaml@v1.0.2
     with:
       event-name: ${{ github.event_name }}
       actor: ${{ github.actor }}
-      sonar-project-key: ${{ vars.SONAR_PROJECT_KEY }}
+      sonar-project-key: "qubership-core-bulk-release"
     secrets:
       maven-token: ${{ secrets.GITHUB_TOKEN }}
       sonar-token: ${{ secrets.SONAR_TOKEN }}
