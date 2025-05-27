@@ -705,7 +705,6 @@ public class ReleaseRunner {
             git.push()
                     .setProgressMonitor(new TextProgressMonitor(new PrintWriter(new OutputStreamWriter(outputStream, UTF_8))))
                     .setCredentialsProvider(config.getCredentialsProvider())
-                    .setRemote("origin")
                     .setPushAll()
                     .setPushTags()
                     .call();
