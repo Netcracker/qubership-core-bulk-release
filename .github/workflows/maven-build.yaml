@@ -11,5 +11,3 @@ jobs:
     with:
       event-name: ${{ github.event_name }}
       actor: ${{ github.actor }}
-    secrets:
-      maven-token: ${{ secrets.GITHUB_TOKEN }}
