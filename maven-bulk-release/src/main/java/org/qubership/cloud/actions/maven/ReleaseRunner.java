@@ -297,7 +297,7 @@ public class ReleaseRunner {
                     .setBranch("HEAD")
                     .setCloneAllBranches(false)
                     .setTagOption(TagOpt.FETCH_TAGS)
-                    .setProgressMonitor(new TextProgressMonitor(new PrintWriter(new OutputStreamWriter(System.out, UTF_8))))
+//                    .setProgressMonitor(new TextProgressMonitor(new PrintWriter(new OutputStreamWriter(System.out, UTF_8))))
                     .call();
                  org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
                 StoredConfig gitConfig = rep.getConfig();
@@ -686,13 +686,13 @@ public class ReleaseRunner {
     RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
         try (outputStream) {
             RepositoryInfo repository = release.getRepository();
-            pushChanges(config, repository, release);
+            pushChanges(config, repository, release, outputStream);
             releaseDeploy(repository, config, release, outputStream);
             return release;
         }
     }
 
-    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release) {
+    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
         String releaseVersion = release.getReleaseVersion();
         try (Git git = Git.open(repositoryDirPath.toFile())) {
@@ -703,7 +703,7 @@ public class ReleaseRunner {
                 throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
             }
             git.push()
-                    .setProgressMonitor(new TextProgressMonitor(new PrintWriter(new OutputStreamWriter(System.out, UTF_8))))
+                    .setProgressMonitor(new TextProgressMonitor(new PrintWriter(new OutputStreamWriter(outputStream, UTF_8))))
                     .setCredentialsProvider(config.getCredentialsProvider())
                     .setRemote("origin")
                     .setPushAll()
@@ -712,7 +712,7 @@ public class ReleaseRunner {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        log.info("Pushed to git tag: {}", releaseVersion);
+        log.info("Pushed to git: tag: {}", releaseVersion);
         release.setPushedToGit(true);
     }
 
