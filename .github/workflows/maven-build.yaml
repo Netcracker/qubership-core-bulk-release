@@ -11,7 +11,5 @@ jobs:
     with:
       event-name: ${{ github.event_name }}
       actor: ${{ github.actor }}
-      sonar-project-key: "qubership-core-bulk-release"
     secrets:
       maven-token: ${{ secrets.GITHUB_TOKEN }}
-      sonar-token: ${{ secrets.SONAR_TOKEN }}
