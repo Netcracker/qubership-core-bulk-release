@@ -149,6 +149,7 @@ public class ReleaseRunner {
     }
 
     Map<Integer, List<RepositoryInfo>> buildDependencyGraph(Config config) {
+        log.info("Building dependency graph");
         String baseDir = config.getBaseDir();
         Set<String> repositories = config.getRepositories();
         Predicate<GA> dependenciesFilter = config.getDependenciesFilter();
@@ -271,6 +272,7 @@ public class ReleaseRunner {
 
 
     void gitCheckout(Config config, Repository repository) {
+        log.info("Checking out repository: {}", repository.getUrl());
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repository.getDir());
         boolean repositoryDirExists = Files.exists(repositoryDirPath);
         try {
