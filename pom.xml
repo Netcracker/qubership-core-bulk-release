@@ -7,7 +7,7 @@
     <artifactId>qubership-core-bulk-release</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    
+
     <licenses>
         <license>
             <name>Apache-2.0</name>
@@ -15,7 +15,6 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
-  
 
     <properties>
         <java.version>21</java.version>
