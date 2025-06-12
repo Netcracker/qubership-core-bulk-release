@@ -8,10 +8,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @CommandLine.Command(description = "maven bulk release cli")
@@ -33,21 +33,19 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--baseDir"}, required = true, description = "base directory to write result to")
     private String baseDir;
 
-    @CommandLine.Option(names = {"--groupsPatterns"}, required = true, split = "\\s*,\\s*",
-            description = "comma seperated list of maven groupId pattern to use in dependency lookup")
-    private Set<Pattern> groupsPatterns;
-
     @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
-            description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released")
-    private Set<String> repositories;
+            description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
+            converter = RepositoryConfigConverter.class)
+    private Set<RepositoryConfig> repositories;
 
     @CommandLine.Option(names = {"--repositoriesToReleaseFrom"}, split = "\\s*,\\s*",
-            description = "comma seperated list of git urls which were changed and need to be released. Repositories which use them directly or indirectly will be released as well")
-    private Set<String> repositoriesToReleaseFrom = Set.of();
+            description = "comma seperated list of git urls which were changed and need to be released. Repositories which use them directly or indirectly will be released as well",
+            converter = RepositoryConfigConverter.class)
+    private Set<RepositoryConfig> repositoriesToReleaseFrom = Set.of();
 
-    @CommandLine.Option(names = {"--gavs"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--gavs"}, split = "\\s*,\\s*",
             description = "comma seperated list of GAVs to update dependencies from pom.xml files to")
-    private Set<String> gavs;
+    private Set<String> gavs = new HashSet<>();
 
     @CommandLine.Option(names = {"--skipTests"}, arity = "0", defaultValue = "false", description = "skip tests run by release:prepare mvn command")
     private boolean skipTests;
@@ -79,6 +77,9 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--mavenPassword"}, description = "maven password to use to login to remote repository")
     private String mavenPassword;
 
+    @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
+    private String mavenLocalRepoPath = "${user.home}/.m2/repository";
+
     @CommandLine.Option(names = {"--summaryFile"}, description = "File path to save summary to")
     private String summaryFile;
 
@@ -101,34 +102,41 @@ public class MavenBulkReleaseCli implements Runnable {
     @Override
     public void run() {
         try {
-            if (groupsPatterns.stream()
-                    .filter(r -> !r.pattern().isBlank())
-                    .toList()
-                    .isEmpty()) {
-                throw new IllegalArgumentException("--groupsPatterns property cannot be empty");
-            }
             if (repositories.stream()
-                    .filter(r -> !r.isBlank())
+                    .filter(Objects::nonNull)
                     .toList().isEmpty()) {
                 throw new IllegalArgumentException("--repositories property cannot be empty");
             }
-            Predicate<GA> dependenciesFilter = ga -> groupsPatterns.stream().anyMatch(pattern -> pattern.matcher(ga.getGroupId()).matches());
 
-            GitConfig gitConfig = GitConfig.builder().url(gitURL).username(gitUsername).email(gitEmail).password(gitPassword).build();
+            GitConfig gitConfig = GitConfig.builder()
+                    .url(gitURL)
+                    .username(gitUsername)
+                    .email(gitEmail)
+                    .password(gitPassword)
+                    .build();
+
+            MavenConfig mavenConfig = MavenConfig.builder()
+                    .user(mavenUser)
+                    .password(mavenPassword)
+                    .altDeploymentRepository(mavenAltDeploymentRepository)
+                    .localRepositoryPath(mavenLocalRepoPath)
+                    .build();
+
             gavs = this.gavs.stream().filter(gav -> !gav.isBlank()).collect(Collectors.toSet());
-            repositoriesToReleaseFrom = repositoriesToReleaseFrom.stream().filter(r -> !r.isBlank()).collect(Collectors.toSet());
 
-            Config config = Config.builder(baseDir, gitConfig, repositories, dependenciesFilter)
+            repositoriesToReleaseFrom = repositoriesToReleaseFrom.stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            Config config = Config.builder(baseDir, gitConfig, mavenConfig, repositories)
                     .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
                     .versionIncrementType(versionIncrementType)
-                    .mavenAltDeploymentRepository(mavenAltDeploymentRepository)
                     .javaVersionToJavaHomeEnv(javaVersionToJavaHomeEnv)
-                    .mavenUser(mavenUser)
-                    .mavenPassword(mavenPassword)
                     .gavs(gavs)
                     .skipTests(skipTests)
                     .dryRun(dryRun)
                     .build();
+
             Result result = new ReleaseRunner().release(config);
             if (summaryFile != null && !summaryFile.isBlank()) {
                 // write summary

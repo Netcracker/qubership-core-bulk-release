@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class GAV extends GA {
-    static Pattern gavPattern = Pattern.compile("(.*):(.*):(.*)");
+    static Pattern gavPattern = Pattern.compile("^(.*):(.*):(.*)$");
     String version;
 
     public GAV(String gav) {

@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.*;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -30,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -65,7 +63,7 @@ public class ReleaseRunner {
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(Repository::getUrl).toList()));
-            int threads = reposInfoList.size();
+            int threads = config.isRunSequentially() ? 1 : reposInfoList.size();
             AtomicInteger activeProcessCount = new AtomicInteger(0);
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
@@ -107,7 +105,7 @@ public class ReleaseRunner {
 
         if (!config.isDryRun()) {
             dependencyGraph.forEach((level, repos) -> {
-                int threads = repos.size();
+                int threads = config.isRunSequentially() ? 1 : repos.size();
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(Repository::getUrl).toList()));
                 AtomicInteger activeProcessCount = new AtomicInteger(0);
@@ -151,14 +149,28 @@ public class ReleaseRunner {
     Map<Integer, List<RepositoryInfo>> buildDependencyGraph(Config config) {
         log.info("Building dependency graph");
         String baseDir = config.getBaseDir();
-        Set<String> repositories = config.getRepositories();
-        Predicate<GA> dependenciesFilter = config.getDependenciesFilter();
-        try (ExecutorService executorService = Executors.newFixedThreadPool(8)) {
+        Set<RepositoryConfig> repositories = config.getRepositories();
+        int threads = config.isRunSequentially() ? 1 : 4;
+        config.getRepositoriesToReleaseFrom().forEach(repositoryToReleaseFrom -> repositories.stream()
+                .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
+                .findFirst()
+                .ifPresent(repository -> {
+                    String repositoryBranch = repository.getBranch();
+                    String repositoryToReleaseFromBranch = repositoryToReleaseFrom.getBranch();
+                    if (!Objects.equals(repositoryBranch, repositoryToReleaseFromBranch)) {
+                        if (!Objects.equals(repositoryToReleaseFromBranch, RepositoryConfig.HEAD)) {
+                            repository.setBranch(repositoryToReleaseFromBranch);
+                        } else {
+                            repositoryToReleaseFrom.setBranch(repositoryBranch);
+                        }
+                    }
+                }));
+        try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
             List<RepositoryInfo> repositoryInfoList = repositories.stream().map(RepositoryInfo::new)
                     .map(repositoryInfo -> executorService.submit(() -> {
                         gitCheckout(config, repositoryInfo);
                         List<PomHolder> poms = getPoms(baseDir, repositoryInfo);
-                        resolveDependencies(repositoryInfo, poms, dependenciesFilter);
+                        resolveDependencies(repositoryInfo, poms);
                         return repositoryInfo;
                     })).toList()
                     .stream()
@@ -172,9 +184,16 @@ public class ReleaseRunner {
                             throw new RuntimeException(e);
                         }
                     }).toList();
+            // create a set of repositories modules GAs
+            Set<GA> repositoriesModulesGAs = repositoryInfoList.stream().flatMap(r -> r.getModules().stream()).collect(Collectors.toSet());
+
             // set repository dependencies
             for (RepositoryInfo repositoryInfo : repositoryInfoList.stream().filter(ri -> !ri.getModuleDependencies().isEmpty()).toList()) {
                 Set<GA> moduleDependencies = repositoryInfo.getModuleDependencies().stream()
+                        // allow only GA which is an actual module of some repositories
+                        .filter(dependency -> repositoriesModulesGAs.stream().anyMatch(ga ->
+                                Objects.equals(ga.getGroupId(), dependency.getGroupId()) &&
+                                Objects.equals(ga.getArtifactId(), dependency.getArtifactId())))
                         .map(gav -> new GA(gav.getGroupId(), gav.getArtifactId()))
                         .collect(Collectors.toSet());
                 repositoryInfo.getRepoDependencies().addAll(moduleDependencies.stream()
@@ -183,15 +202,14 @@ public class ReleaseRunner {
                         .collect(Collectors.toSet()));
             }
 
-            List<RepositoryInfo> repositoryInfos = Optional.ofNullable(config.getRepositoriesToReleaseFrom())
-                    .map(r -> r.isEmpty() ? null : r)
-                    .map(repositoriesToReleaseFrom -> repositoryInfoList.stream()
-                            // filter repositories which are not affected by 'released from' repositories
-                            .filter(ri -> repositoriesToReleaseFrom.contains(ri.getUrl()) || repositoriesToReleaseFrom.stream()
-                                    .anyMatch(riFrom -> ri.getRepoDependenciesFlatSet().stream()
-                                            .map(Repository::getUrl).collect(Collectors.toSet()).contains(riFrom)))
-                            .toList())
-                    .orElse(repositoryInfoList);
+            Set<RepositoryConfig> repositoriesToReleaseFrom = config.getRepositoriesToReleaseFrom();
+            // filter repositories which are not affected by 'released from' repositories
+            List<RepositoryInfo> repositoryInfos = repositoriesToReleaseFrom.isEmpty() ? repositoryInfoList : repositoryInfoList.stream()
+                    .filter(ri ->
+                            repositoriesToReleaseFrom.stream().map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(ri.getUrl()) ||
+                            repositoriesToReleaseFrom.stream().anyMatch(riFrom -> ri.getRepoDependenciesFlatSet().stream()
+                                    .map(Repository::getUrl).collect(Collectors.toSet()).contains(riFrom.getUrl())))
+                    .toList();
 
             Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
 
@@ -270,46 +288,46 @@ public class ReleaseRunner {
         }
     }
 
-
-    void gitCheckout(Config config, Repository repository) {
-        log.info("Checking out repository: {}", repository.getUrl());
+    void gitCheckout(Config config, RepositoryInfo repository) {
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repository.getDir());
         boolean repositoryDirExists = Files.exists(repositoryDirPath);
         try {
-            if (!repositoryDirExists) {
+            Git git;
+            if (repositoryDirExists) {
+                git = Git.open(repositoryDirPath.toFile());
+            } else {
+                log.info("Checking out {} from {}", repository.getUrl(), repository.getBranch());
                 Files.createDirectories(repositoryDirPath);
-            }
-            try (Stream<Path> pathStream = Files.walk(repositoryDirPath)) {
-                pathStream.sorted(Comparator.comparingInt(p -> p.toString()
-                                .replaceAll("[^/.]", "")
-                                .replace(".", "/").length()).reversed())
-                        .forEach(file -> {
-                            try {
-                                Files.delete(file);
-                            } catch (Exception e) {
-                                throw new RuntimeException(e);
-                            }
-                        });
-            }
-            try (Git git = Git.cloneRepository()
-                    .setCredentialsProvider(config.getCredentialsProvider())
-                    .setURI(repository.getUrl())
-                    .setDirectory(repositoryDirPath.toFile())
-                    .setDepth(1)
-                    .setBranch("HEAD")
-                    .setCloneAllBranches(false)
-                    .setTagOption(TagOpt.FETCH_TAGS)
+                git = Git.cloneRepository()
+                        .setCredentialsProvider(config.getCredentialsProvider())
+                        .setURI(repository.getUrl())
+                        .setDirectory(repositoryDirPath.toFile())
+                        .setDepth(1)
+                        .setBranch(repository.getBranch())
+                        .setCloneAllBranches(false)
+                        .setTagOption(TagOpt.FETCH_TAGS)
 //                    .setProgressMonitor(new TextProgressMonitor(new PrintWriter(new OutputStreamWriter(System.out, UTF_8))))
-                    .call();
-                 org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
+                        .call();
+            }
+//            try (Stream<Path> pathStream = Files.walk(repositoryDirPath)) {
+//                pathStream.sorted(Comparator.comparingInt(p -> p.toString()
+//                                .replaceAll("[^/.]", "")
+//                                .replace(".", "/").length()).reversed())
+//                        .forEach(file -> {
+//                            try {
+//                                Files.delete(file);
+//                            } catch (Exception e) {
+//                                throw new RuntimeException(e);
+//                            }
+//                        });
+//            }
+            try (git; org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
                 StoredConfig gitConfig = rep.getConfig();
                 gitConfig.setString("user", null, "name", config.getGitConfig().getUsername());
                 gitConfig.setString("user", null, "email", config.getGitConfig().getEmail());
                 gitConfig.setString("credential", null, "helper", "store");
                 gitConfig.save();
                 log.debug("Saved git config:\n{}", gitConfig.toText());
-            } catch (GitAPIException e) {
-                throw new RuntimeException(e);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -329,7 +347,8 @@ public class ReleaseRunner {
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (Arrays.asList(file.toString().split("/")).contains("pom.xml")) {
+                    List<String> pathList = Arrays.asList(file.toString().split("/"));
+                    if (pathList.contains("pom.xml") && !pathList.contains("target")) {
                         String content = Files.readString(file);
                         PomHolder pomHolder = new PomHolder(content, file);
                         poms.add(pomHolder);
@@ -364,7 +383,7 @@ public class ReleaseRunner {
                 .toList();
     }
 
-    void resolveDependencies(RepositoryInfo repositoryInfo, List<PomHolder> poms, Predicate<GA> dependenciesFilter) {
+    void resolveDependencies(RepositoryInfo repositoryInfo, List<PomHolder> poms) {
         repositoryInfo.getModules().clear();
         repositoryInfo.getModuleDependencies().clear();
         try {
@@ -389,10 +408,7 @@ public class ReleaseRunner {
                     String version = pomHolder.autoResolvePropReference(dependency.getVersion());
                     if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
                         GAV dependencyGAV = new GAV(groupId, artifactId, version);
-                        GA dependencyGA = new GA(groupId, artifactId);
-                        if (dependenciesFilter.test(dependencyGA) && !repositoryInfo.getModules().contains(dependencyGA)) {
-                            repositoryInfo.getModuleDependencies().add(dependencyGAV);
-                        }
+                        repositoryInfo.getModuleDependencies().add(dependencyGAV);
                     }
                 }
             }
@@ -406,13 +422,32 @@ public class ReleaseRunner {
             String baseDir = config.getBaseDir();
             List<PomHolder> poms = getPoms(baseDir, repository);
             updateDependencies(baseDir, repository, poms, dependencies);
-            String releaseVersion = calculateReleaseVersion(repository, poms, config.getVersionIncrementType());
+            String releaseVersion = calculateReleaseVersion(repository, poms, config);
             String javaVersion = calculateJavaVersion(poms);
             return releasePrepare(repository, config, releaseVersion, javaVersion, outputStream);
         }
     }
 
-    String calculateReleaseVersion(RepositoryInfo repository, List<PomHolder> poms, VersionIncrementType versionIncrementType) {
+    String calculateReleaseVersion(RepositoryInfo repository, List<PomHolder> poms, Config config) throws Exception {
+        Path releasePropsPath = Path.of(config.getBaseDir(), repository.getDir(), "release.properties");
+        if (Files.exists(releasePropsPath)) {
+            String content = Files.readString(releasePropsPath);
+            if (content.contains("completedPhase=end-release")) {
+                Pattern pattern = Pattern.compile("^project.rel[^:]+:[^=]+=(?<version>.+)$");
+                // preparation was already performed, get a version from the file
+                Set<String> versions = Arrays.stream(content.split("\n"))
+                        .map(String::trim)
+                        .filter(line -> !line.isBlank() && line.startsWith("project.rel."))
+                        .map(pattern::matcher)
+                        .filter(Matcher::matches)
+                        .map(m -> m.group("version"))
+                        .collect(Collectors.toSet());
+                if (versions.size() != 1) {
+                    throw new IllegalStateException("Multiple/no release versions found for maven project: " + versions);
+                }
+                return versions.iterator().next();
+            }
+        }
         Set<String> pomVersions = poms.stream().map(PomHolder::getVersion).collect(Collectors.toSet());
         if (pomVersions.size() != 1) {
             throw new IllegalArgumentException(String.format("pom.xml files from repository: %s have different versions: %s",
@@ -427,7 +462,7 @@ public class ReleaseRunner {
         int major = Integer.parseInt(matcher.group("major"));
         int minor = Integer.parseInt(matcher.group("minor"));
         int patch = Integer.parseInt(matcher.group("patch"));
-        switch (versionIncrementType) {
+        switch (config.getVersionIncrementType()) {
             case MAJOR -> {
                 major++;
                 minor = 0;
@@ -503,12 +538,10 @@ public class ReleaseRunner {
     }
 
     void updateDependencies(String baseDir, RepositoryInfo repositoryInfo, List<PomHolder> poms, Collection<GAV> dependencies) {
-        updateDepVersionsNew(repositoryInfo, poms, dependencies);
+        updateDepVersions(repositoryInfo, poms, dependencies);
         // check all versions were updated
-        Predicate<GA> filter = ga -> dependencies.stream()
-                .anyMatch(gav -> gav.getGroupId().equals(ga.getGroupId()) && gav.getArtifactId().equals(ga.getArtifactId()));
         List<PomHolder> updatedPoms = getPoms(baseDir, repositoryInfo);
-        resolveDependencies(repositoryInfo, updatedPoms, filter);
+        resolveDependencies(repositoryInfo, updatedPoms);
         Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
         Set<GAV> missedDependencies = updatedModuleDependencies.stream()
                 .filter(gav -> {
@@ -539,53 +572,49 @@ public class ReleaseRunner {
         return new GA(artifactId, groupId);
     };
 
-    void updateDepVersionsNew(RepositoryInfo repositoryInfo, List<PomHolder> poms, Collection<GAV> dependencies) {
+    void updateDepVersions(RepositoryInfo repositoryInfo, List<PomHolder> poms, Collection<GAV> dependencies) {
         Map<String, List<GAV>> propertiesToDependencies = new HashMap<>();
-        Map<String, Set<PomHolder>> propertiesToPropertiesNodes = new HashMap<>();
-        BiConsumer<PomHolder, Dependency> depFunction = (holder, dependency) -> {
-            String groupId = dependency.getGroupId();
+        Map<String, Set<PomHolder>> propertiesToPoms = new HashMap<>();
+        BiConsumer<PomHolder, GAV> gavFunction = (holder, gav) -> {
+            String groupId = gav.getGroupId();
             if (groupId == null) {
                 return;
             }
-            String artifactId = dependency.getArtifactId();
-            String version = dependency.getVersion();
+            String artifactId = gav.getArtifactId();
+            String version = gav.getVersion();
             GA dependencyGA = new GA(groupId, artifactId);
             GAV newGav = dependencies.stream()
                     // exclude our's own modules
-                    .filter(gav -> repositoryInfo.getModules().stream()
-                            .noneMatch(ga -> Objects.equals(ga.getGroupId(), gav.getGroupId()) &&
-                                             Objects.equals(ga.getArtifactId(), gav.getArtifactId())))
-                    .filter(gav -> Objects.equals(gav.getGroupId(), dependencyGA.getGroupId()) &&
-                                   Objects.equals(gav.getArtifactId(), dependencyGA.getArtifactId()))
+                    .filter(dep -> repositoryInfo.getModules().stream()
+                            .noneMatch(ga -> Objects.equals(ga.getGroupId(), dep.getGroupId()) &&
+                                             Objects.equals(ga.getArtifactId(), dep.getArtifactId())))
+                    .filter(dep -> dependencyGA.getGroupId().matches(dep.getGroupId()) &&
+                                   dependencyGA.getArtifactId().matches(dep.getArtifactId()))
                     .findFirst().orElse(null);
             if (version != null && newGav != null) {
+                newGav = new GAV(dependencyGA.getGroupId(), dependencyGA.getArtifactId(), newGav.getVersion());
                 Matcher matcher = propertyPattern.matcher(version);
                 if (matcher.matches()) {
                     String propertyName = matcher.group(1);
                     List<GAV> dependenciesList = propertiesToDependencies.computeIfAbsent(propertyName, k -> new ArrayList<>());
-                    dependenciesList.add(newGav);
+                    if (!dependenciesList.contains(newGav)) dependenciesList.add(newGav);
                 } else {
                     // update a hard-coded version right away
-                    holder.updateVersionInDependency(newGav);
+                    holder.updateVersionInGAV(newGav);
                 }
             }
         };
-        Consumer<PomHolder> propFunction = (holder) -> holder.getProperties()
-                .forEach((propertyName, propertyValue) -> {
-                    if (propertiesToDependencies.containsKey(propertyName)) {
-                        propertiesToPropertiesNodes.computeIfAbsent(propertyName, k -> new HashSet<>()).add(holder);
-                    }
-                });
+        Consumer<PomHolder> propFunction = (holder) -> holder.getProperties().forEach((propertyName, propertyValue) -> {
+            if (propertiesToDependencies.containsKey(propertyName)) {
+                propertiesToPoms.computeIfAbsent(propertyName, k -> new HashSet<>()).add(holder);
+            }
+        });
         poms.forEach(ph -> {
-            Optional.ofNullable(ph.getModel().getDependencyManagement())
-                    .map(DependencyManagement::getDependencies)
-                    .ifPresent(d -> d.forEach(dep -> depFunction.accept(ph, dep)));
-            Optional.ofNullable(ph.getModel().getDependencies())
-                    .ifPresent(d -> d.forEach(dep -> depFunction.accept(ph, dep)));
+            ph.getGavs().forEach(gav -> gavFunction.accept(ph, gav));
             propFunction.accept(ph);
         });
-        if (!propertiesToPropertiesNodes.isEmpty()) {
-            propertiesToPropertiesNodes.forEach((propertyName, propertyNodes) -> {
+        if (!propertiesToPoms.isEmpty()) {
+            propertiesToPoms.forEach((propertyName, propertyNodes) -> {
                 // make sure that property is referencing the same version for all found dependencies
                 List<GAV> propGavs = propertiesToDependencies.get(propertyName);
                 Map<String, Set<GAV>> versionToGavs = propGavs.stream().collect(Collectors.toMap(GAV::getVersion, Set::of,
@@ -610,16 +639,11 @@ public class ReleaseRunner {
 
     void commitUpdatedDependenciesIfAny(String baseDir, RepositoryInfo repository) {
         Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
-        try {
-            try (Git git = Git.open(repositoryDirPath.toFile())) {
-                List<DiffEntry> diff = git.diff().call();
-                if (diff.stream().anyMatch(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY &&
-                                                Arrays.asList(d.getNewPath().split("/")).contains("pom.xml"))) {
-                    git.add().setUpdate(true).call();
-                    git.commit().setMessage("updating dependencies before release").call();
-                }
-            } catch (GitAPIException e) {
-                throw new RuntimeException(e);
+        try (Git git = Git.open(repositoryDirPath.toFile())) {
+            List<DiffEntry> diff = git.diff().call();
+            if (diff.stream().anyMatch(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY)) {
+                git.add().setUpdate(true).call();
+                git.commit().setMessage("updating dependencies before release").call();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -630,20 +654,22 @@ public class ReleaseRunner {
                                      String javaVersion, OutputStream outputStream) throws Exception {
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
         List<String> arguments = new ArrayList<>();
-        if (config.isSkipTests()) {
-            arguments.add("skipTests");
+        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
+        if (repositoryInfo.isSkipTests() || config.isSkipTests()) {
+            arguments.add("-DskipTests=true");
         } else {
-            arguments.add("surefire.rerunFailingTestsCount=2");
+            arguments.add("-Dsurefire.rerunFailingTestsCount=1");
         }
         String tag = releaseVersion;
         List<String> cmd = List.of("mvn", "-B", "release:prepare",
-                "-Dresume=false",
+                "-Dresume=true",
                 "-DautoVersionSubmodules=true",
                 "-DreleaseVersion=" + releaseVersion,
                 "-DpushChanges=false",
                 "-Dtag=" + tag,
+                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
                 warpPropertyInQuotes("-DtagNameFormat=@{project.version}"),
-                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments.stream().map(arg -> "-D" + arg).toList()))),
+                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments))),
                 warpPropertyInQuotes("-DpreparationGoals=clean install"));
 
         ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
@@ -721,12 +747,14 @@ public class ReleaseRunner {
                        RepositoryRelease release, OutputStream outputStream) throws Exception {
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
         List<String> arguments = new ArrayList<>();
-        arguments.add("skipTests");
-        if (config.getMavenAltDeploymentRepository() != null) {
-            arguments.add("altDeploymentRepository=" + config.getMavenAltDeploymentRepository());
+        arguments.add("-DskipTests");
+        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
+        if (config.getMavenConfig().getAltDeploymentRepository() != null) {
+            arguments.add("-DaltDeploymentRepository=" + config.getMavenConfig().getAltDeploymentRepository());
         }
-        String argsString = String.join(" ", arguments.stream().map(arg -> "-D" + arg).toList());
+        String argsString = String.join(" ", arguments);
         List<String> cmd = Stream.of("mvn", "-B", "release:perform",
+                        "-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath(),
                         "-DlocalCheckout=true",
                         "-DautoVersionSubmodules=true",
                         warpPropertyInQuotes(String.format("-Darguments=%s", argsString)))
@@ -737,9 +765,9 @@ public class ReleaseRunner {
         Optional.ofNullable(release.getJavaVersion()).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
                 .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
         // maven envs
-        if (config.getMavenUser() != null && config.getMavenPassword() != null) {
-            processBuilder.environment().put("MAVEN_USER", config.getMavenUser());
-            processBuilder.environment().put("MAVEN_TOKEN", config.getMavenPassword());
+        if (config.getMavenConfig().getUser() != null && config.getMavenConfig().getPassword() != null) {
+            processBuilder.environment().put("MAVEN_USER", config.getMavenConfig().getUser());
+            processBuilder.environment().put("MAVEN_TOKEN", config.getMavenConfig().getPassword());
         }
         Process process = processBuilder.start();
         process.getInputStream().transferTo(outputStream);

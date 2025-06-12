@@ -9,31 +9,25 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 import java.io.OutputStream;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @Data
 @ToString(exclude = "mavenPassword")
 public class Config {
     final String baseDir;
     final GitConfig gitConfig;
+    MavenConfig mavenConfig;
     @JsonIgnore
     final CredentialsProvider credentialsProvider;
     // all repositories
-    final Set<String> repositories;
-    final Predicate<GA> dependenciesFilter;
+    final Set<RepositoryConfig> repositories;
+    // particular repository(ies) to start release from (the rest of the tree will be calculated automatically)
+    Set<RepositoryConfig> repositoriesToReleaseFrom = new LinkedHashSet<>();
     Collection<String> gavs;
     VersionIncrementType versionIncrementType = VersionIncrementType.PATCH;
     Map<String, String> javaVersionToJavaHomeEnv;
-    // particular repository(ies) to start release from (the rest of the tree will be calculated automatically)
-    Set<String> repositoriesToReleaseFrom = new LinkedHashSet<>();
-    String mavenUser;
-    @JsonIgnore
-    String mavenPassword;
-    String mavenAltDeploymentRepository;
     boolean skipTests;
     boolean dryRun;
+    boolean runSequentially;
     @JsonIgnore
     OutputStream summaryOutputStream;
 
@@ -41,47 +35,43 @@ public class Config {
     private Config(String baseDir,
                    GitConfig gitConfig,
                    CredentialsProvider credentialsProvider,
-                   Set<String> repositories,
-                   Predicate<GA> dependenciesFilter,
+                   Set<RepositoryConfig> repositories,
+                   Set<RepositoryConfig> repositoriesToReleaseFrom,
                    Collection<String> gavs,
                    VersionIncrementType versionIncrementType,
                    Map<String, String> javaVersionToJavaHomeEnv,
-                   Set<String> repositoriesToReleaseFrom,
-                   String mavenUser,
-                   String mavenPassword,
-                   String mavenAltDeploymentRepository,
+                   MavenConfig mavenConfig,
                    boolean skipTests,
                    boolean dryRun,
+                   boolean runSequentially,
                    OutputStream summaryOutputStream) {
         this.baseDir = baseDir;
         this.gitConfig = gitConfig;
         this.credentialsProvider = credentialsProvider;
-        this.dependenciesFilter = dependenciesFilter;
         this.gavs = gavs;
         this.javaVersionToJavaHomeEnv = javaVersionToJavaHomeEnv;
-        this.mavenAltDeploymentRepository = mavenAltDeploymentRepository;
-        this.mavenPassword = mavenPassword;
-        this.mavenUser = mavenUser;
-        this.repositories = repositories.stream().map(normalizeGitUrl).collect(Collectors.toSet());
-        this.repositoriesToReleaseFrom = repositoriesToReleaseFrom.stream().map(normalizeGitUrl).collect(Collectors.toSet());
+        this.mavenConfig = mavenConfig;
+        this.repositories = repositories;
+        this.repositoriesToReleaseFrom = repositoriesToReleaseFrom;
         this.skipTests = skipTests;
         this.dryRun = dryRun;
+        this.runSequentially = runSequentially;
         this.versionIncrementType = versionIncrementType;
         this.summaryOutputStream = summaryOutputStream;
     }
 
     public static ConfigBuilder builder(String baseDir,
                                         GitConfig gitConfig,
-                                        Set<String> repositories,
-                                        Predicate<GA> dependenciesFilter) {
+                                        MavenConfig mavenConfig,
+                                        Set<RepositoryConfig> repositories) {
         CredentialsProvider credentialsProvider = new UsernamePasswordCredentialsProvider(gitConfig.getUsername(), gitConfig.getPassword());
         CredentialsProvider.setDefault(credentialsProvider);
         return new ConfigBuilder()
                 .baseDir(baseDir)
                 .gitConfig(gitConfig)
                 .credentialsProvider(credentialsProvider)
+                .mavenConfig(mavenConfig)
                 .repositories(repositories)
-                .dependenciesFilter(dependenciesFilter)
                 // set by default NOP OutputStream
                 .summaryOutputStream(new OutputStream() {
                     @Override
@@ -98,9 +88,8 @@ public class Config {
         return javaVersionToJavaHomeEnv == null ? Collections.emptyMap() : javaVersionToJavaHomeEnv;
     }
 
-    public Set<String> getRepositoriesToReleaseFrom() {
+    public Set<RepositoryConfig> getRepositoriesToReleaseFrom() {
         return repositoriesToReleaseFrom == null ? Collections.emptySet() : repositoriesToReleaseFrom;
     }
 
-    Function<String, String> normalizeGitUrl = (url) -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
 }

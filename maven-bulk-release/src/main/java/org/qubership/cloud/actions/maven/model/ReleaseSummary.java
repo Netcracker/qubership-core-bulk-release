@@ -18,7 +18,11 @@ public class ReleaseSummary {
                             String.format("%s/tree/%s", r.getRepository().getUrl(), r.getTag()) :
                             r.getRepository().getUrl();
                     String gavs = r.getGavs().stream().map(GAV::toString).collect(Collectors.joining("\n"));
-                    String link = String.format("[%s](%s)", r.getRepository().getUrl(), tagUrl);
+                    String urlName = r.getRepository().getUrl();
+                    if (!RepositoryConfig.HEAD.equals(r.getRepository().getBranch())) {
+                        urlName += String.format(" [%s]", r.getRepository().getBranch());
+                    }
+                    String link = String.format("[%s](%s)", urlName, tagUrl);
                     return String.format(repositoryPart, link, gavs);
                 }).toList());
         return String.format("""
