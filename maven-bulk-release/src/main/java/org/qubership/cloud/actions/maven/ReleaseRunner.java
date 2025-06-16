@@ -18,8 +18,10 @@ import org.qubership.cloud.actions.maven.model.*;
 import org.qubership.cloud.actions.maven.model.Repository;
 
 import java.io.*;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -63,7 +65,7 @@ public class ReleaseRunner {
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(Repository::getUrl).toList()));
-            int threads = config.isRunSequentially() ? 1 : reposInfoList.size();
+            int threads = config.isRunSequentially() ? 1 : 4;
             AtomicInteger activeProcessCount = new AtomicInteger(0);
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
@@ -105,7 +107,7 @@ public class ReleaseRunner {
 
         if (!config.isDryRun()) {
             dependencyGraph.forEach((level, repos) -> {
-                int threads = config.isRunSequentially() ? 1 : repos.size();
+                int threads = config.isRunSequentially() ? 1 : 4;
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(Repository::getUrl).toList()));
                 AtomicInteger activeProcessCount = new AtomicInteger(0);
@@ -169,7 +171,7 @@ public class ReleaseRunner {
             List<RepositoryInfo> repositoryInfoList = repositories.stream().map(RepositoryInfo::new)
                     .map(repositoryInfo -> executorService.submit(() -> {
                         gitCheckout(config, repositoryInfo);
-                        List<PomHolder> poms = getPoms(baseDir, repositoryInfo);
+                        List<PomHolder> poms = PomHolder.parsePoms(Path.of(baseDir, repositoryInfo.getDir()));
                         resolveDependencies(repositoryInfo, poms);
                         return repositoryInfo;
                     })).toList()
@@ -334,55 +336,6 @@ public class ReleaseRunner {
         }
     }
 
-    List<PomHolder> getPoms(String baseDir, RepositoryInfo repositoryInfo) {
-        Path repositoryDirPath = Paths.get(baseDir, repositoryInfo.getDir());
-        List<PomHolder> poms = new ArrayList<>();
-        try {
-            Files.walkFileTree(repositoryDirPath, new FileVisitor<>() {
-
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    List<String> pathList = Arrays.asList(file.toString().split("/"));
-                    if (pathList.contains("pom.xml") && !pathList.contains("target")) {
-                        String content = Files.readString(file);
-                        PomHolder pomHolder = new PomHolder(content, file);
-                        poms.add(pomHolder);
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return poms.stream().peek(pom -> {
-                    Parent parent = pom.getModel().getParent();
-                    if (parent != null) {
-                        String groupId = parent.getGroupId();
-                        String artifactId = parent.getArtifactId();
-                        poms.stream().filter(ph -> Objects.equals(ph.getGroupId(), groupId) && Objects.equals(ph.getArtifactId(), artifactId))
-                                .findFirst().ifPresent(pom::setParent);
-                    }
-                })
-                // start with leaf poms
-                .sorted(Comparator.<PomHolder>comparingInt(p -> p.getParentsFlatList().size()).reversed())
-                .toList();
-    }
-
     void resolveDependencies(RepositoryInfo repositoryInfo, List<PomHolder> poms) {
         repositoryInfo.getModules().clear();
         repositoryInfo.getModuleDependencies().clear();
@@ -420,7 +373,7 @@ public class ReleaseRunner {
     RepositoryRelease releasePrepare(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream outputStream) throws Exception {
         try (outputStream) {
             String baseDir = config.getBaseDir();
-            List<PomHolder> poms = getPoms(baseDir, repository);
+            List<PomHolder> poms = PomHolder.parsePoms(Path.of(baseDir, repository.getDir()));
             updateDependencies(baseDir, repository, poms, dependencies);
             String releaseVersion = calculateReleaseVersion(repository, poms, config);
             String javaVersion = calculateJavaVersion(poms);
@@ -540,7 +493,7 @@ public class ReleaseRunner {
     void updateDependencies(String baseDir, RepositoryInfo repositoryInfo, List<PomHolder> poms, Collection<GAV> dependencies) {
         updateDepVersions(repositoryInfo, poms, dependencies);
         // check all versions were updated
-        List<PomHolder> updatedPoms = getPoms(baseDir, repositoryInfo);
+        List<PomHolder> updatedPoms = PomHolder.parsePoms(Path.of(baseDir, repositoryInfo.getDir()));
         resolveDependencies(repositoryInfo, updatedPoms);
         Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
         Set<GAV> missedDependencies = updatedModuleDependencies.stream()

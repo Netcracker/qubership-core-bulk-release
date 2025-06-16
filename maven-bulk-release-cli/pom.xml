@@ -23,7 +23,7 @@
         <dependency>
             <groupId>org.qubership.cloud</groupId>
             <artifactId>maven-bulk-release</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>info.picocli</groupId>

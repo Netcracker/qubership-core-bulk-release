@@ -3,10 +3,16 @@ package org.qubership.cloud.actions.maven.model;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.Parent;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.Function;
@@ -193,6 +199,57 @@ public class PomHolder {
             }
         }
         return gavs;
+    }
+
+    public static PomHolder parsePom(Path pomPath) throws IOException {
+        String content = Files.readString(pomPath);
+        return new PomHolder(content, pomPath);
+    }
+
+    public static List<PomHolder> parsePoms(Path repositoryDir) {
+        List<PomHolder> poms = new ArrayList<>();
+        try {
+            Files.walkFileTree(repositoryDir, new FileVisitor<>() {
+
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    List<String> pathList = Arrays.asList(file.toString().split("/"));
+                    if (pathList.contains("pom.xml") && !pathList.contains("target")) {
+                        poms.add(parsePom(file));
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return poms.stream().peek(pom -> {
+                    Parent parent = pom.getModel().getParent();
+                    if (parent != null) {
+                        String groupId = parent.getGroupId();
+                        String artifactId = parent.getArtifactId();
+                        poms.stream().filter(ph -> Objects.equals(ph.getGroupId(), groupId) && Objects.equals(ph.getArtifactId(), artifactId))
+                                .findFirst().ifPresent(pom::setParent);
+                    }
+                })
+                // start with leaf poms
+                .sorted(Comparator.<PomHolder>comparingInt(p -> p.getParentsFlatList().size()).reversed())
+                .toList();
     }
 
     @Override
