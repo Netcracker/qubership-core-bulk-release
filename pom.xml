@@ -23,6 +23,7 @@
     <modules>
         <module>maven-bulk-release</module>
         <module>maven-bulk-release-cli</module>
+        <module>maven-effective-dependencies-cli</module>
     </modules>
 
     <build>

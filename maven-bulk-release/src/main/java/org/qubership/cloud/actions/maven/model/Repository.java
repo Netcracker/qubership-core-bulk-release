@@ -2,7 +2,6 @@ package org.qubership.cloud.actions.maven.model;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -10,8 +9,6 @@ import java.util.stream.Collectors;
 @Getter
 @EqualsAndHashCode(callSuper = true)
 public class Repository extends RepositoryConfig {
-    @Setter
-    String dir;
 
     public Repository(String url) {
         super(url);
@@ -19,11 +16,6 @@ public class Repository extends RepositoryConfig {
 
     public Repository(String url, Map<String, String> params) {
         super(url, params);
-    }
-
-    public Repository(String url, Map<String, String> params, String dir) {
-        super(url, params);
-        this.dir = dir;
     }
 
     @Override

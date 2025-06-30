@@ -3,12 +3,14 @@ package org.qubership.cloud.actions.maven.model;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class GAV extends GA {
+public class GAV extends GA implements Comparable<GAV> {
+
     static Pattern gavPattern = Pattern.compile("^(.*):(.*):(.*)$");
     String version;
 
@@ -30,4 +32,10 @@ public class GAV extends GA {
     public String toString() {
         return String.format("%s:%s:%s", groupId, artifactId, version);
     }
+
+    @Override
+    public int compareTo(GAV o) {
+        return Comparator.comparing(GA::getGroupId).thenComparing(GA::getArtifactId).compare(this, o);
+    }
+
 }

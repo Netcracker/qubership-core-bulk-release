@@ -33,7 +33,7 @@ public class PomHolder {
     static Function<List<Pattern>, Pattern> gavPatternFunction = patterns ->
             Pattern.compile("(?s)" + patterns.stream().map(Pattern::pattern)
                     // whitespaces and XML comments
-                    .collect(Collectors.joining("\\s*(<!--(.*?)-->)?\\s*")));
+                    .collect(Collectors.joining("\\s*(<!--(.*?)-->)?(<scope>.+?</scope>)?(<classifier>.+?</classifier>)?\\s*")));
 
     static List<Pattern> gavCombinations = List.of(
             gavPatternFunction.apply(List.of(groupIdPattern, artifactIdPattern, versionPattern)),
@@ -74,11 +74,11 @@ public class PomHolder {
     }
 
     public String getGroupId() {
-        return Optional.ofNullable(model.getGroupId()).orElseGet(() -> model.getParent().getGroupId());
+        return autoResolvePropReference(Optional.ofNullable(model.getGroupId()).orElseGet(() -> model.getParent().getGroupId()));
     }
 
     public String getArtifactId() {
-        return model.getArtifactId();
+        return autoResolvePropReference(model.getArtifactId());
     }
 
     public String getVersion() {
@@ -151,7 +151,7 @@ public class PomHolder {
                 String oldVersion = propMatcher.group(1);
                 String oldVersionTag = propMatcher.group();
                 pomContent = pomContent.replace(properties, properties.replace(oldVersionTag, newVersionTag));
-                log.info("Updated property: {} [{} -> {}] in {}:{}", name, oldVersion, version, this.getGroupId(), this.getArtifactId());
+                if (!Objects.equals(oldVersion, version)) log.info("Updated property: {} [{} -> {}] in {}:{}", name, oldVersion, version, this.getGroupId(), this.getArtifactId());
             }
         }
         setPom(pomContent);
@@ -173,7 +173,7 @@ public class PomHolder {
                     version = version.trim();
                     if (groupId.equals(gav.getGroupId()) && artifactId.equals(gav.getArtifactId())) {
                         pomContent = pomContent.replace(dependency, dependency.replace(version, gav.getVersion()));
-                        log.info("Updated gav: {}:{} [{} -> {}] in {}:{}", groupId, artifactId, version, gav.getVersion(), this.getGroupId(), this.getArtifactId());
+                        if (!Objects.equals(gav.getVersion(), version)) log.info("Updated gav: {}:{} [{} -> {}] in {}:{}", groupId, artifactId, version, gav.getVersion(), this.getGroupId(), this.getArtifactId());
                     }
                 }
             }

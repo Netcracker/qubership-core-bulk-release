@@ -15,11 +15,14 @@ import java.util.stream.Collectors;
 public class RepositoryConfig {
     public static final String HEAD = "HEAD";
     public static Pattern pattern = Pattern.compile("^(?<url>https://[^\\[]+)(\\[(?<params>.*)])?$");
+    public static Pattern repositoryUrlPattern = Pattern.compile("https://[^/]+/(.+)");
 
     String url;
-    String branch = HEAD;
+    String dir;
+    String from = HEAD;
+    String to = HEAD;
     boolean skipTests = false;
-    VersionIncrementType versionIncrementType = VersionIncrementType.PATCH;
+    VersionIncrementType versionIncrementType;
 
     public RepositoryConfig(String url) {
         this(url, Map.of());
@@ -27,8 +30,12 @@ public class RepositoryConfig {
 
     public RepositoryConfig(String url, Map<String, String> params) {
         this.url = normalizeGitUrl.apply(url);
+        Matcher matcher = repositoryUrlPattern.matcher(url);
+        if (!matcher.matches()) throw new IllegalArgumentException("Invalid repository url: " + url);
+        this.dir = matcher.group(1);
         params = new LinkedHashMap<>(params);
-        Optional.ofNullable(params.remove("branch")).ifPresent(branch -> this.branch = branch);
+        Optional.ofNullable(params.remove("from")).ifPresent(from -> this.from = from);
+        Optional.ofNullable(params.remove("to")).ifPresent(to -> this.to = to);
         Optional.ofNullable(params.remove("skipTests")).ifPresent(skipTests -> this.skipTests = Boolean.parseBoolean(skipTests));
         Optional.ofNullable(params.remove("versionIncrementType")).ifPresent(versionIncrementType ->
                 this.versionIncrementType = VersionIncrementType.valueOf(versionIncrementType.toUpperCase()));
@@ -39,13 +46,18 @@ public class RepositoryConfig {
 
     @Override
     public String toString() {
-        return String.format("%s [%s]", url, branch);
+        return String.format("%s [%s]", url, from);
     }
 
     public Map<String, String> params() {
-        return Map.of("branch", branch,
-                "skipTests", String.valueOf(skipTests),
-                "versionIncrementType", versionIncrementType.toString());
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("from", from);
+        params.put("to", to);
+        params.put("skipTests", String.valueOf(skipTests));
+        if (versionIncrementType != null) {
+            params.put("versionIncrementType", versionIncrementType.toString());
+        }
+        return params;
     }
 
     public static Function<String, String> normalizeGitUrl = url -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
