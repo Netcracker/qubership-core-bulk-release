@@ -41,7 +41,7 @@ public class RenovateConfigConverterTest {
         Assertions.assertEquals("""
                 module.exports = {
                   username: 'renovate',
-                  gitAuthor: 'renovate@test.com',
+                  gitAuthor: 'renovate@test.xom',
                   platform: 'github',
                   dryRun: 'full',
                   repositories: [
@@ -51,15 +51,21 @@ public class RenovateConfigConverterTest {
                   ],
                   packageRules: [
                       {
-                        matchPackageNames: ['org.qubership:qubership-core-release-test-maven-lib-1'],
+                        matchPackageNames: [
+                          'org.qubership:qubership-core-release-test-maven-lib-1'
+                        ],
                         allowedVersions: "~1.2.3"
                       },
                       {
-                        matchPackageNames: ['org.qubership:qubership-core-release-test-maven-lib-2'],
+                        matchPackageNames: [
+                          'org.qubership:qubership-core-release-test-maven-lib-2'
+                        ],
                         allowedVersions: "~2.3.4"
                       },
                       {
-                        matchPackageNames: ['org.qubership:qubership-core-release-test-maven-lib-3'],
+                        matchPackageNames: [
+                          'org.qubership:qubership-core-release-test-maven-lib-3'
+                        ],
                         allowedVersions: "~3.4.5"
                       }
                   ],
