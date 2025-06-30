@@ -63,10 +63,7 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     private String gavsOutputFile;
 
     public static void main(String... args) {
-        CommandLine commandLine = new CommandLine(new MavenEffectiveDependenciesCli());
-        commandLine.registerConverter(VersionIncrementType.class, v -> VersionIncrementType.valueOf(v.toUpperCase()));
-        int exitCode = commandLine.execute(args);
-        System.exit(exitCode);
+        System.exit(new CommandLine(new MavenEffectiveDependenciesCli()).execute(args));
     }
 
     @Override

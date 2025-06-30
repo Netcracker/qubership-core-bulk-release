@@ -1,0 +1,283 @@
+package org.qubership.cloud.actions.renovate;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.qubership.cloud.actions.renovate.model.RenovateConfig;
+import org.qubership.cloud.actions.renovate.model.RenovatePackageRule;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
+public class RenovateConfigConverterTest {
+
+    @Test
+    public void testConvert() {
+        RenovateConfig config = new RenovateConfig();
+        config.setUsername("renovate");
+        config.setGitAuthor("renovate@test.xom");
+        config.setPlatform("github");
+        config.setDryRun("full");
+        config.setRepositories(List.of(
+                "https://github.com/Netcracker/qubership-core-release-test-maven-lib-1",
+                "https://github.com/Netcracker/qubership-core-release-test-maven-lib-2",
+                "https://github.com/Netcracker/qubership-core-release-test-maven-lib-3"
+        ));
+        config.setPackageRules(List.of(
+                new RenovatePackageRule() {{
+                    setMatchPackageNames(List.of("org.qubership:qubership-core-release-test-maven-lib-1"));
+                    setAllowedVersions("~1.2.3");
+                }},
+                new RenovatePackageRule() {{
+                    setMatchPackageNames(List.of("org.qubership:qubership-core-release-test-maven-lib-2"));
+                    setAllowedVersions("~2.3.4");
+                }},
+                new RenovatePackageRule() {{
+                    setMatchPackageNames(List.of("org.qubership:qubership-core-release-test-maven-lib-3"));
+                    setAllowedVersions("~3.4.5");
+                }}
+        ));
+        String result = RenovateConfigToJsConverter.convert(config, 2);
+        Assertions.assertEquals("""
+                module.exports = {
+                  username: 'renovate',
+                  gitAuthor: 'renovate@test.com',
+                  platform: 'github',
+                  dryRun: 'full',
+                  repositories: [
+                    'https://github.com/Netcracker/qubership-core-release-test-maven-lib-1',
+                    'https://github.com/Netcracker/qubership-core-release-test-maven-lib-2',
+                    'https://github.com/Netcracker/qubership-core-release-test-maven-lib-3'
+                  ],
+                  packageRules: [
+                      {
+                        matchPackageNames: ['org.qubership:qubership-core-release-test-maven-lib-1'],
+                        allowedVersions: "~1.2.3"
+                      },
+                      {
+                        matchPackageNames: ['org.qubership:qubership-core-release-test-maven-lib-2'],
+                        allowedVersions: "~2.3.4"
+                      },
+                      {
+                        matchPackageNames: ['org.qubership:qubership-core-release-test-maven-lib-3'],
+                        allowedVersions: "~3.4.5"
+                      }
+                  ],
+                };""", result);
+    }
+
+    @Test
+    public void testCli() throws Exception {
+        Path tempFile = Files.createTempFile("renovate-config", ".js");
+        tempFile.toFile().deleteOnExit();
+
+        String[] args = new String[]{
+                "--username=renovate",
+                "--gitAuthor=renovate@test.com",
+                "--platform=github",
+                "--dryRun=full",
+                "--renovateConfigOutputFile=" + tempFile,
+                "--repositories=" + """
+                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-1,
+                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-2,
+                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-3""".replaceAll("\n", ""),
+                "--gavs=" + """
+                        com.fasterxml.jackson:jackson-bom:2.18.4.1
+                        com.fasterxml.jackson.core:jackson-annotations:2.18.4
+                        com.fasterxml.jackson.core:jackson-core:2.18.4.1
+                        com.fasterxml.jackson.core:jackson-databind:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-avro:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-csv:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-ion:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-properties:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-protobuf:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-toml:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.18.4
+                        com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-eclipse-collections:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-guava:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-hibernate4:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-hibernate5:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-hibernate5-jakarta:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-hibernate6:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-hppc:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-jakarta-jsonp:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-jaxrs:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-joda:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-joda-money:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-jsr353:2.18.4
+                        com.fasterxml.jackson.datatype:jackson-datatype-pcollections:2.18.4
+                        com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.4
+                        com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-cbor-provider:2.18.4
+                        com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.4
+                        com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-smile-provider:2.18.4
+                        com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-xml-provider:2.18.4
+                        com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-yaml-provider:2.18.4
+                        com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.18.4
+                        com.fasterxml.jackson.jaxrs:jackson-jaxrs-cbor-provider:2.18.4
+                        com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.18.4
+                        com.fasterxml.jackson.jaxrs:jackson-jaxrs-smile-provider:2.18.4
+                        com.fasterxml.jackson.jaxrs:jackson-jaxrs-xml-provider:2.18.4
+                        com.fasterxml.jackson.jaxrs:jackson-jaxrs-yaml-provider:2.18.4
+                        com.fasterxml.jackson.jr:jackson-jr-all:2.18.4
+                        com.fasterxml.jackson.jr:jackson-jr-annotation-support:2.18.4
+                        com.fasterxml.jackson.jr:jackson-jr-extension-javatime:2.18.4
+                        com.fasterxml.jackson.jr:jackson-jr-objects:2.18.4
+                        com.fasterxml.jackson.jr:jackson-jr-retrofit2:2.18.4
+                        com.fasterxml.jackson.jr:jackson-jr-stree:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-afterburner:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-android-record:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-blackbird:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-guice:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-guice7:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-jsonSchema:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-jsonSchema-jakarta:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-kotlin:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-mrbean:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-no-ctor-deser:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-osgi:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-parameter-names:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-paranamer:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-scala_2.11:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-scala_2.12:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-scala_2.13:2.18.4
+                        com.fasterxml.jackson.module:jackson-module-scala_3:2.18.4""".replaceAll("\n", ",")
+        };
+        RenovateConfigCli.run(args);
+        String result = Files.readString(tempFile);
+
+        Assertions.assertEquals("""
+                module.exports = {
+                  username: 'renovate',
+                  gitAuthor: 'renovate@test.com',
+                  platform: 'github',
+                  dryRun: 'full',
+                  repositories: [
+                    'https://github.com/Netcracker/qubership-core-release-test-maven-lib-1',
+                    'https://github.com/Netcracker/qubership-core-release-test-maven-lib-2',
+                    'https://github.com/Netcracker/qubership-core-release-test-maven-lib-3'
+                  ],
+                  packageRules: [
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.jr:jackson-jr-all',
+                          'com.fasterxml.jackson.jr:jackson-jr-annotation-support',
+                          'com.fasterxml.jackson.jr:jackson-jr-extension-javatime',
+                          'com.fasterxml.jackson.jr:jackson-jr-objects',
+                          'com.fasterxml.jackson.jr:jackson-jr-retrofit2',
+                          'com.fasterxml.jackson.jr:jackson-jr-stree'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson:jackson-bom'
+                        ],
+                        allowedVersions: "~2.18.4.1"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.datatype:jackson-datatype-eclipse-collections',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-guava',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-hibernate4',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5-jakarta',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-hibernate6',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-hppc',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-jakarta-jsonp',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-jaxrs',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-jdk8',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-joda',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-joda-money',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-json-org',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-jsr310',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-jsr353',
+                          'com.fasterxml.jackson.datatype:jackson-datatype-pcollections'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base',
+                          'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-cbor-provider',
+                          'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider',
+                          'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-smile-provider',
+                          'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-xml-provider',
+                          'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-yaml-provider'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.module:jackson-module-afterburner',
+                          'com.fasterxml.jackson.module:jackson-module-android-record',
+                          'com.fasterxml.jackson.module:jackson-module-blackbird',
+                          'com.fasterxml.jackson.module:jackson-module-guice',
+                          'com.fasterxml.jackson.module:jackson-module-guice7',
+                          'com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations',
+                          'com.fasterxml.jackson.module:jackson-module-jaxb-annotations',
+                          'com.fasterxml.jackson.module:jackson-module-jsonSchema',
+                          'com.fasterxml.jackson.module:jackson-module-jsonSchema-jakarta',
+                          'com.fasterxml.jackson.module:jackson-module-kotlin',
+                          'com.fasterxml.jackson.module:jackson-module-mrbean',
+                          'com.fasterxml.jackson.module:jackson-module-no-ctor-deser',
+                          'com.fasterxml.jackson.module:jackson-module-osgi',
+                          'com.fasterxml.jackson.module:jackson-module-parameter-names',
+                          'com.fasterxml.jackson.module:jackson-module-paranamer',
+                          'com.fasterxml.jackson.module:jackson-module-scala_2.11',
+                          'com.fasterxml.jackson.module:jackson-module-scala_2.12',
+                          'com.fasterxml.jackson.module:jackson-module-scala_2.13',
+                          'com.fasterxml.jackson.module:jackson-module-scala_3'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.core:jackson-annotations',
+                          'com.fasterxml.jackson.core:jackson-databind'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.core:jackson-core'
+                        ],
+                        allowedVersions: "~2.18.4.1"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.jaxrs:jackson-jaxrs-base',
+                          'com.fasterxml.jackson.jaxrs:jackson-jaxrs-cbor-provider',
+                          'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider',
+                          'com.fasterxml.jackson.jaxrs:jackson-jaxrs-smile-provider',
+                          'com.fasterxml.jackson.jaxrs:jackson-jaxrs-xml-provider',
+                          'com.fasterxml.jackson.jaxrs:jackson-jaxrs-yaml-provider'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      },
+                      {
+                        matchPackageNames: [
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-avro',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-csv',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-ion',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-properties',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-protobuf',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-smile',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-toml',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-xml',
+                          'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+                        ],
+                        allowedVersions: "~2.18.4"
+                      }
+                  ],
+                };""", result);
+    }
+}
