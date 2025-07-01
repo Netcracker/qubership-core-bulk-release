@@ -183,13 +183,13 @@ public class RenovateConfigConverterTest {
                           'com.fasterxml.jackson.jr:jackson-jr-retrofit2',
                           'com.fasterxml.jackson.jr:jackson-jr-stree'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
                           'com.fasterxml.jackson:jackson-bom'
                         ],
-                        allowedVersions: "~2.18.4.1"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
@@ -210,7 +210,7 @@ public class RenovateConfigConverterTest {
                           'com.fasterxml.jackson.datatype:jackson-datatype-jsr353',
                           'com.fasterxml.jackson.datatype:jackson-datatype-pcollections'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
@@ -221,7 +221,7 @@ public class RenovateConfigConverterTest {
                           'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-xml-provider',
                           'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-yaml-provider'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
@@ -245,20 +245,20 @@ public class RenovateConfigConverterTest {
                           'com.fasterxml.jackson.module:jackson-module-scala_2.13',
                           'com.fasterxml.jackson.module:jackson-module-scala_3'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
                           'com.fasterxml.jackson.core:jackson-annotations',
                           'com.fasterxml.jackson.core:jackson-databind'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
                           'com.fasterxml.jackson.core:jackson-core'
                         ],
-                        allowedVersions: "~2.18.4.1"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
@@ -269,7 +269,7 @@ public class RenovateConfigConverterTest {
                           'com.fasterxml.jackson.jaxrs:jackson-jaxrs-xml-provider',
                           'com.fasterxml.jackson.jaxrs:jackson-jaxrs-yaml-provider'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       },
                       {
                         matchPackageNames: [
@@ -284,7 +284,7 @@ public class RenovateConfigConverterTest {
                           'com.fasterxml.jackson.dataformat:jackson-dataformat-xml',
                           'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
                         ],
-                        allowedVersions: "~2.18.4"
+                        allowedVersions: "~2.18.0"
                       }
                   ],
                 };""", result);
