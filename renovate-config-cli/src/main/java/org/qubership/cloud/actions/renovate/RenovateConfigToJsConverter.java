@@ -1,7 +1,6 @@
 package org.qubership.cloud.actions.renovate;
 
 import org.qubership.cloud.actions.renovate.model.RenovateConfig;
-import org.qubership.cloud.actions.renovate.model.RenovateMaven;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,26 +21,23 @@ public class RenovateConfigToJsConverter {
                         String.join(",\n", value.stream().map(s -> tab.repeat(2) + "'" + s + "'").toList()),
                         tab)
                 ));
-        Optional.ofNullable(config.getMaven()).map(RenovateMaven::getRepositories).ifPresent(value -> sb.append(tab)
-                .append(String.format("maven: {\n%s\n%s},\n",
-                        String.format("%srepositories: [\n%s\n%s]",
-                                tab.repeat(2),
-                                String.join(",\n", value.stream().map(s -> {
-                                    StringBuilder sb1 = new StringBuilder(tab.repeat(3) + "{\n");
-                                    sb1.append(tab.repeat(4)).append("id: ").append("'").append(s.getId()).append("'").append("\n");
-                                    sb1.append(tab.repeat(4)).append("url: ").append("'").append(s.getUrl()).append("'").append("\n");
-                                    if (s.getUsername() != null) {
-                                        sb1.append(tab.repeat(4)).append("username: ").append("'").append(s.getUsername()).append("'");
-                                        if (s.getPassword() != null) sb1.append("\n");
-                                    }
-                                    if (s.getPassword() != null) {
-                                        sb1.append(tab.repeat(4)).append("password: ").append("'").append(s.getPassword()).append("'");
-                                    }
-                                    sb1.append("\n").append(tab.repeat(3)).append("}");
-                                    return sb1.toString();
-                                }).toList()),
-                                tab.repeat(2)),
-                        tab)
+        Optional.ofNullable(config.getHostRules()).ifPresent(value -> sb.append(tab)
+                .append(String.format("hostRules: [\n%s\n%s]",
+                        String.join(",\n", value.stream().map(s -> {
+                            StringBuilder sb1 = new StringBuilder(tab.repeat(3) + "{\n");
+                            sb1.append(tab.repeat(4)).append("hostType: ").append("'").append(s.getHostType()).append("'").append("\n");
+                            sb1.append(tab.repeat(4)).append("matchHost: ").append("'").append(s.getMatchHost()).append("'").append("\n");
+                            if (s.getUsername() != null) {
+                                sb1.append(tab.repeat(4)).append("username: ").append("'").append(s.getUsername()).append("'");
+                                if (s.getPassword() != null) sb1.append("\n");
+                            }
+                            if (s.getPassword() != null) {
+                                sb1.append(tab.repeat(4)).append("password: ").append("'").append(s.getPassword()).append("'");
+                            }
+                            sb1.append("\n").append(tab.repeat(3)).append("}");
+                            return sb1.toString();
+                        }).toList()),
+                        tab.repeat(2))
                 ));
         Optional.ofNullable(config.getPackageRules()).ifPresent(value -> sb.append(tab)
                 .append(String.format("packageRules: [%s\n%s],",
