@@ -190,7 +190,17 @@ public class RenovateConfigConverterTest {
                         username: 'process.env.MAVEN_USERNAME'
                         password: 'process.env.MAVEN_PASSWORD'
                       }
-                    ]  packageRules: [
+                    ],
+                  packageRules: [
+                      {
+                        matchDatasources: [
+                          'maven'
+                        ],
+                        registryUrls: [
+                          'https://repo1.maven.org/maven2/',
+                          'https://maven.pkg.github.com/Netcracker/**'
+                        ]
+                      },
                       {
                         matchPackageNames: [
                           'com.fasterxml.jackson.jr:jackson-jr-all',
