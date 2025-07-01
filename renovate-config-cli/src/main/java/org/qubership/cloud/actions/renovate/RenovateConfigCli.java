@@ -35,16 +35,16 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--tabSize"}, description = "tab length")
     private int tabSize = 2;
 
-    @CommandLine.Option(names = {"--gavs"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--gavs"}, required = true, split = ",",
             description = "comma seperated list of GAVs to be used for building renovate config",
             converter = GAVConverter.class)
     private Set<GAV> gavs;
 
-    @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--repositories"}, required = true, split = ",",
             description = "comma seperated list of repositories to be used for building renovate config")
     private List<String> repositories;
 
-    @CommandLine.Option(names = {"--mavenRepositories"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--mavenRepositories"}, required = true, split = ",",
             description = "comma seperated list of maven repositories to be used for building renovate config",
             converter = RenovateMavenRepositoryConverter.class)
     private List<RenovateMavenRepository> mavenRepositories;
