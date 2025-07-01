@@ -89,6 +89,10 @@ public class RenovateConfigConverterTest {
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-1,
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-2,
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-3""".replaceAll("\n", ""),
+                "--mavenRepositories=" + """
+                        id=central;url=https://repo1.maven.org/maven2/;username=env:MAVEN_USERNAME;password=env:MAVEN_PASSWORD,
+                        id=github;url=https://maven.pkg.github.com/Netcracker/**;username=env:MAVEN_USERNAME;password=env:MAVEN_PASSWORD"""
+                        .replaceAll("\n", ""),
                 "--gavs=" + """
                         com.fasterxml.jackson:jackson-bom:2.18.4.1
                         com.fasterxml.jackson.core:jackson-annotations:2.18.4
@@ -173,6 +177,22 @@ public class RenovateConfigConverterTest {
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-2',
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-3'
                   ],
+                  maven: {
+                    repositories: [
+                      {
+                        id: 'central'
+                        url: 'https://repo1.maven.org/maven2/'
+                        username: 'env:MAVEN_USERNAME'
+                        password: 'env:MAVEN_PASSWORD'
+                      },
+                      {
+                        id: 'github'
+                        url: 'https://maven.pkg.github.com/Netcracker/**'
+                        username: 'env:MAVEN_USERNAME'
+                        password: 'env:MAVEN_PASSWORD'
+                      }
+                    ]
+                  },
                   packageRules: [
                       {
                         matchPackageNames: [
