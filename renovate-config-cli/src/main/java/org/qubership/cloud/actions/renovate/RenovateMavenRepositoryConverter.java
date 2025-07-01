@@ -3,13 +3,16 @@ package org.qubership.cloud.actions.renovate;
 import org.qubership.cloud.actions.renovate.model.RenovateMavenRepository;
 import picocli.CommandLine;
 
-public class RenovateMavenRepositoryConverter implements CommandLine.ITypeConverter<RenovateMavenRepository> {
+import java.util.Arrays;
+import java.util.List;
+
+public class RenovateMavenRepositoryConverter implements CommandLine.ITypeConverter<List<RenovateMavenRepository>> {
 
     @Override
-    public RenovateMavenRepository convert(String value) throws CommandLine.TypeConversionException {
+    public List<RenovateMavenRepository> convert(String value) throws CommandLine.TypeConversionException {
         if (value == null || value.isBlank()) return null;
-        try{
-            return new RenovateMavenRepository(value);
+        try {
+            return Arrays.stream(value.split(",")).map(RenovateMavenRepository::new).toList();
         } catch (IllegalArgumentException e) {
             throw new CommandLine.TypeConversionException(e.getMessage());
         }

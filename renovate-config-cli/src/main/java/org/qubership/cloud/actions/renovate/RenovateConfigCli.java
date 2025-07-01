@@ -44,7 +44,7 @@ public class RenovateConfigCli implements Runnable {
             description = "comma seperated list of repositories to be used for building renovate config")
     private List<String> repositories;
 
-    @CommandLine.Option(names = {"--mavenRepositories"}, required = true, split = ",",
+    @CommandLine.Option(names = {"--mavenRepositories"}, required = true,
             description = "comma seperated list of maven repositories to be used for building renovate config",
             converter = RenovateMavenRepositoryConverter.class)
     private List<RenovateMavenRepository> mavenRepositories;
