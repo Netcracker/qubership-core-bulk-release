@@ -179,16 +179,16 @@ public class RenovateConfigConverterTest {
                   ],
                   hostRules: [
                       {
-                        hostType: 'maven'
-                        matchHost: 'https://repo1.maven.org/maven2/'
-                        username: 'process.env.MAVEN_USERNAME'
-                        password: 'process.env.MAVEN_PASSWORD'
+                        hostType: 'maven',
+                        matchHost: 'https://repo1.maven.org/maven2/',
+                        username: process.env.MAVEN_USERNAME,
+                        password: process.env.MAVEN_PASSWORD
                       },
                       {
-                        hostType: 'maven'
-                        matchHost: 'https://maven.pkg.github.com/Netcracker/**'
-                        username: 'process.env.MAVEN_USERNAME'
-                        password: 'process.env.MAVEN_PASSWORD'
+                        hostType: 'maven',
+                        matchHost: 'https://maven.pkg.github.com/Netcracker/**',
+                        username: process.env.MAVEN_USERNAME,
+                        password: process.env.MAVEN_PASSWORD
                       }
                     ],
                   packageRules: [

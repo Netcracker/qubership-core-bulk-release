@@ -26,14 +26,22 @@ public class RenovateConfigToJsConverter {
                 .append(String.format("hostRules: [\n%s\n%s],\n",
                         String.join(",\n", value.stream().map(s -> {
                             StringBuilder sb1 = new StringBuilder(tab.repeat(3) + "{\n");
-                            sb1.append(tab.repeat(4)).append("hostType: ").append("'").append(s.getHostType()).append("'").append("\n");
-                            sb1.append(tab.repeat(4)).append("matchHost: ").append("'").append(s.getMatchHost()).append("'").append("\n");
+                            sb1.append(tab.repeat(4)).append("hostType: ").append("'").append(s.getHostType()).append("'").append(",").append("\n");
+                            sb1.append(tab.repeat(4)).append("matchHost: ").append("'").append(s.getMatchHost()).append("'").append(",").append("\n");
                             if (s.getUsername() != null) {
-                                sb1.append(tab.repeat(4)).append("username: ").append("'").append(s.getUsername()).append("'");
-                                if (s.getPassword() != null) sb1.append("\n");
+                                if (s.getUsername().startsWith("process.")) {
+                                    sb1.append(tab.repeat(4)).append("username: ").append(s.getUsername());
+                                } else {
+                                    sb1.append(tab.repeat(4)).append("username: ").append("'").append(s.getUsername()).append("'");
+                                }
+                                if (s.getPassword() != null) sb1.append(",").append("\n");
                             }
                             if (s.getPassword() != null) {
-                                sb1.append(tab.repeat(4)).append("password: ").append("'").append(s.getPassword()).append("'");
+                                if (s.getPassword().startsWith("process.")) {
+                                    sb1.append(tab.repeat(4)).append("password: ").append(s.getPassword());
+                                } else {
+                                    sb1.append(tab.repeat(4)).append("password: ").append("'").append(s.getPassword()).append("'");
+                                }
                             }
                             sb1.append("\n").append(tab.repeat(3)).append("}");
                             return sb1.toString();
