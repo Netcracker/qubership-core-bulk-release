@@ -10,6 +10,7 @@ public class RenovateConfig {
     String gitAuthor;
     String platform;
     String dryRun;
+    boolean onboarding;
     List<String> repositories;
     List<RenovatePackageRule> packageRules;
 }

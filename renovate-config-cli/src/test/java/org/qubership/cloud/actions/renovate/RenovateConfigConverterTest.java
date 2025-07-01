@@ -18,6 +18,7 @@ public class RenovateConfigConverterTest {
         config.setGitAuthor("renovate@test.xom");
         config.setPlatform("github");
         config.setDryRun("full");
+        config.setOnboarding(true);
         config.setRepositories(List.of(
                 "https://github.com/Netcracker/qubership-core-release-test-maven-lib-1",
                 "https://github.com/Netcracker/qubership-core-release-test-maven-lib-2",
@@ -44,6 +45,7 @@ public class RenovateConfigConverterTest {
                   gitAuthor: 'renovate@test.xom',
                   platform: 'github',
                   dryRun: 'full',
+                  onboarding: true,
                   repositories: [
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-1',
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-2',
@@ -165,6 +167,7 @@ public class RenovateConfigConverterTest {
                   gitAuthor: 'renovate@test.com',
                   platform: 'github',
                   dryRun: 'full',
+                  onboarding: false,
                   repositories: [
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-1',
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-2',
