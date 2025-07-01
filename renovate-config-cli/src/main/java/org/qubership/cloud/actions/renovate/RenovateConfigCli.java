@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @CommandLine.Command(description = "maven effective dependencies cli")
 @Slf4j
@@ -73,7 +74,7 @@ public class RenovateConfigCli implements Runnable {
             config.setOnboarding(onboarding);
             config.setRepositories(repositories);
             // group by the same groupId and version
-            config.setPackageRules(gavs.stream()
+            List<RenovatePackageRule> packageRules = gavs.stream()
                     .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
                     .collect(Collectors.toMap(GA::getGroupId, gav -> {
                                 LinkedHashMap<String, Set<String>> versionToArtifactIds = new LinkedHashMap<>();
@@ -104,10 +105,20 @@ public class RenovateConfigCli implements Runnable {
                                     return rule;
                                 });
                     })
-                    .toList());
+                    .toList();
+            config.setPackageRules(packageRules);
             if (dryRun != null) config.setDryRun(dryRun.name());
             if (hostRules != null && !hostRules.isEmpty()) {
+                List<String> mavenHosts = hostRules.stream()
+                        .filter(h -> "maven".equals(h.getHostType()))
+                        .map(RenovateHostRule::getMatchHost).toList();
+                RenovatePackageRule mavenPackageRule = new RenovatePackageRule();
+                mavenPackageRule.setMatchDatasources(List.of("maven"));
+                mavenPackageRule.setRegistryUrls(mavenHosts);
+                List<RenovatePackageRule> mavenPackageRules = List.of(mavenPackageRule);
+
                 config.setHostRules(hostRules);
+                config.setPackageRules(Stream.concat(mavenPackageRules.stream(), packageRules.stream()).toList());
             }
             String result = RenovateConfigToJsConverter.convert(config, tabSize);
 

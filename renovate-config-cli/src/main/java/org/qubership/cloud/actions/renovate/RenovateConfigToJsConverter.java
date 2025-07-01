@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.renovate;
 
 import org.qubership.cloud.actions.renovate.model.RenovateConfig;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,7 +23,7 @@ public class RenovateConfigToJsConverter {
                         tab)
                 ));
         Optional.ofNullable(config.getHostRules()).ifPresent(value -> sb.append(tab)
-                .append(String.format("hostRules: [\n%s\n%s]",
+                .append(String.format("hostRules: [\n%s\n%s],\n",
                         String.join(",\n", value.stream().map(s -> {
                             StringBuilder sb1 = new StringBuilder(tab.repeat(3) + "{\n");
                             sb1.append(tab.repeat(4)).append("hostType: ").append("'").append(s.getHostType()).append("'").append("\n");
@@ -42,12 +43,25 @@ public class RenovateConfigToJsConverter {
         Optional.ofNullable(config.getPackageRules()).ifPresent(value -> sb.append(tab)
                 .append(String.format("packageRules: [%s\n%s],",
                         String.join(",", value.stream().map(p -> {
-                            List<String> packageLines = List.of(
-                                    String.format("matchPackageNames: [\n%s\n%s]",
-                                            String.join(",\n", p.getMatchPackageNames().stream().map(s -> tab.repeat(5) + "'" + s + "'").toList()),
-                                            tab.repeat(4)),
-                                    String.format("allowedVersions: \"%s\"", p.getAllowedVersions())
-                            );
+                            List<String> packageLines = new ArrayList<>();
+                            if (p.getMatchDatasources() != null) {
+                                packageLines.add(String.format("matchDatasources: [\n%s\n%s]",
+                                        String.join(",\n", p.getMatchDatasources().stream().map(s -> tab.repeat(5) + "'" + s + "'").toList()),
+                                        tab.repeat(4)));
+                            }
+                            if (p.getMatchPackageNames() != null) {
+                                packageLines.add(String.format("matchPackageNames: [\n%s\n%s]",
+                                        String.join(",\n", p.getMatchPackageNames().stream().map(s -> tab.repeat(5) + "'" + s + "'").toList()),
+                                        tab.repeat(4)));
+                            }
+                            if (p.getRegistryUrls() != null) {
+                                packageLines.add(String.format("registryUrls: [\n%s\n%s]",
+                                        String.join(",\n", p.getRegistryUrls().stream().map(s -> tab.repeat(5) + "'" + s + "'").toList()),
+                                        tab.repeat(4)));
+                            }
+                            if (p.getAllowedVersions() != null) {
+                                packageLines.add(String.format("allowedVersions: \"%s\"", p.getAllowedVersions()));
+                            }
                             return "\n" + tab.repeat(3) + "{\n" +
                                    String.join(",\n", packageLines.stream().map(s -> tab.repeat(4) + s).toList()) +
                                    "\n" + tab.repeat(3) + "}";
