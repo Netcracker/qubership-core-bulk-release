@@ -3,6 +3,8 @@ package org.qubership.cloud.actions.renovate;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GA;
 import org.qubership.cloud.actions.maven.model.GAV;
+import org.qubership.cloud.actions.maven.model.MavenVersion;
+import org.qubership.cloud.actions.maven.model.VersionIncrementType;
 import org.qubership.cloud.actions.renovate.model.RenovateConfig;
 import org.qubership.cloud.actions.renovate.model.RenovateDryRun;
 import org.qubership.cloud.actions.renovate.model.RenovatePackageRule;
@@ -28,6 +30,9 @@ public class RenovateConfigCli implements Runnable {
 
     @CommandLine.Option(names = {"--dryRun"}, description = "dry run", converter = DryRunConverter.class)
     private RenovateDryRun dryRun;
+
+    @CommandLine.Option(names = {"--onboarding"}, description = "onboarding")
+    private boolean onboarding = false;
 
     @CommandLine.Option(names = {"--tabSize"}, description = "tab length")
     private int tabSize = 2;
@@ -59,6 +64,7 @@ public class RenovateConfigCli implements Runnable {
             config.setUsername(username);
             config.setGitAuthor(gitAuthor);
             config.setPlatform(platform);
+            config.setOnboarding(onboarding);
             config.setRepositories(repositories);
             // group by the same groupId and version
             config.setPackageRules(gavs.stream()
@@ -86,7 +92,9 @@ public class RenovateConfigCli implements Runnable {
                                             .map(artifactId -> groupId + ":" + artifactId)
                                             .sorted()
                                             .toList());
-                                    rule.setAllowedVersions("~" + version);
+                                    MavenVersion mavenVersion = new MavenVersion(version);
+                                    mavenVersion.update(VersionIncrementType.PATCH, 0);
+                                    rule.setAllowedVersions("~" + mavenVersion);
                                     return rule;
                                 });
                     })

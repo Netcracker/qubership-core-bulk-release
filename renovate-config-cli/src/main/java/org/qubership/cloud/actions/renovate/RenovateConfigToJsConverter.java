@@ -15,6 +15,7 @@ public class RenovateConfigToJsConverter {
         Optional.ofNullable(config.getGitAuthor()).ifPresent(value -> sb.append(tab).append(String.format("gitAuthor: '%s',\n", value)));
         Optional.ofNullable(config.getPlatform()).ifPresent(value -> sb.append(tab).append(String.format("platform: '%s',\n", value)));
         Optional.ofNullable(config.getDryRun()).ifPresent(value -> sb.append(tab).append(String.format("dryRun: '%s',\n", value)));
+        Optional.ofNullable(config.isOnboarding()).ifPresent(value -> sb.append(tab).append(String.format("onboarding: %s,\n", value)));
         Optional.ofNullable(config.getRepositories()).ifPresent(value -> sb.append(tab)
                 .append(String.format("repositories: [\n%s\n%s],\n",
                         String.join(",\n", value.stream().map(s -> tab.repeat(2) + "'" + s + "'").toList()),
