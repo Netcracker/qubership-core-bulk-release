@@ -5,7 +5,10 @@ import org.qubership.cloud.actions.maven.model.GA;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.maven.model.MavenVersion;
 import org.qubership.cloud.actions.maven.model.VersionIncrementType;
-import org.qubership.cloud.actions.renovate.model.*;
+import org.qubership.cloud.actions.renovate.model.RenovateConfig;
+import org.qubership.cloud.actions.renovate.model.RenovateDryRun;
+import org.qubership.cloud.actions.renovate.model.RenovateHostRule;
+import org.qubership.cloud.actions.renovate.model.RenovatePackageRule;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -44,10 +47,10 @@ public class RenovateConfigCli implements Runnable {
             description = "comma seperated list of repositories to be used for building renovate config")
     private List<String> repositories;
 
-    @CommandLine.Option(names = {"--mavenRepositories"}, required = true,
-            description = "comma seperated list of maven repositories to be used for building renovate config",
+    @CommandLine.Option(names = {"--hostRules"}, split = ",",
+            description = "comma seperated list of hostRules to be used for building renovate config",
             converter = RenovateMavenRepositoryConverter.class)
-    private List<RenovateMavenRepository> mavenRepositories;
+    private List<RenovateHostRule> hostRules;
 
     @CommandLine.Option(names = {"--renovateConfigOutputFile"}, required = true, description = "File path to save result to")
     private String renovateConfigOutputFile;
@@ -103,10 +106,8 @@ public class RenovateConfigCli implements Runnable {
                     })
                     .toList());
             if (dryRun != null) config.setDryRun(dryRun.name());
-            if (mavenRepositories != null && !mavenRepositories.isEmpty()) {
-                RenovateMaven maven = new RenovateMaven();
-                maven.setRepositories(mavenRepositories);
-                config.setMaven(maven);
+            if (hostRules != null && !hostRules.isEmpty()) {
+                config.setHostRules(hostRules);
             }
             String result = RenovateConfigToJsConverter.convert(config, tabSize);
 

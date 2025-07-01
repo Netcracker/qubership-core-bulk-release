@@ -12,6 +12,6 @@ public class RenovateConfig {
     String dryRun;
     boolean onboarding;
     List<String> repositories;
-    RenovateMaven maven;
+    List<RenovateHostRule> hostRules;
     List<RenovatePackageRule> packageRules;
 }

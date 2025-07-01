@@ -89,9 +89,9 @@ public class RenovateConfigConverterTest {
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-1,
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-2,
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-3""".replaceAll("\n", ""),
-                "--mavenRepositories=" + """
-                        central[url=https://repo1.maven.org/maven2/;username=env:MAVEN_USERNAME;password=env:MAVEN_PASSWORD],
-                        github[url=https://maven.pkg.github.com/Netcracker/**;username=env:MAVEN_USERNAME;password=env:MAVEN_PASSWORD]"""
+                "--hostRules=" + """
+                        maven[matchHost=https://repo1.maven.org/maven2/;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
+                        maven[matchHost=https://maven.pkg.github.com/Netcracker/**;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD]"""
                         .replace("\n", ""),
                 "--gavs=" + """
                         com.fasterxml.jackson:jackson-bom:2.18.4.1
@@ -177,23 +177,20 @@ public class RenovateConfigConverterTest {
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-2',
                     'https://github.com/Netcracker/qubership-core-release-test-maven-lib-3'
                   ],
-                  maven: {
-                    repositories: [
+                  hostRules: [
                       {
-                        id: 'central'
-                        url: 'https://repo1.maven.org/maven2/'
-                        username: 'env:MAVEN_USERNAME'
-                        password: 'env:MAVEN_PASSWORD'
+                        hostType: 'maven'
+                        matchHost: 'https://repo1.maven.org/maven2/'
+                        username: 'process.env.MAVEN_USERNAME'
+                        password: 'process.env.MAVEN_PASSWORD'
                       },
                       {
-                        id: 'github'
-                        url: 'https://maven.pkg.github.com/Netcracker/**'
-                        username: 'env:MAVEN_USERNAME'
-                        password: 'env:MAVEN_PASSWORD'
+                        hostType: 'maven'
+                        matchHost: 'https://maven.pkg.github.com/Netcracker/**'
+                        username: 'process.env.MAVEN_USERNAME'
+                        password: 'process.env.MAVEN_PASSWORD'
                       }
-                    ]
-                  },
-                  packageRules: [
+                    ]  packageRules: [
                       {
                         matchPackageNames: [
                           'com.fasterxml.jackson.jr:jackson-jr-all',
