@@ -283,8 +283,8 @@ public class ReleaseRunner {
     void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
         String releaseVersion = release.getReleaseVersion();
-        try (Git git = Git.open(repositoryDirPath.toFile());
-             PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8))) {
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
+        try (Git git = Git.open(repositoryDirPath.toFile())) {
             Optional<Ref> tagOpt = git.tagList().call().stream()
                     .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
                     .findFirst();
@@ -299,6 +299,9 @@ public class ReleaseRunner {
                     .call();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            // do not close because we want
+            printWriter.flush();
         }
         log.info("Pushed to git: tag: {}", releaseVersion);
         release.setPushedToGit(true);
