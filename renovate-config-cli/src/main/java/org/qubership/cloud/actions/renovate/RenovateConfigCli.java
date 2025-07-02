@@ -39,10 +39,12 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--tabSize"}, description = "tab length")
     private int tabSize = 2;
 
-    @CommandLine.Option(names = {"--gavs"}, required = true, split = ",",
-            description = "comma seperated list of GAVs to be used for building renovate config",
-            converter = GAVConverter.class)
-    private Set<GAV> gavs;
+    @CommandLine.Option(names = {"--gavs"}, split = ",",
+            description = "comma seperated list of GAVs to be used for building renovate config", converter = GAVConverter.class)
+    private Set<GAV> gavs = new HashSet<>();
+
+    @CommandLine.Option(names = {"--gavsFile"}, description = "file of GAVs seperated by new-line to be used for building renovate config")
+    private String gavsFile;
 
     @CommandLine.Option(names = {"--repositories"}, required = true, split = ",",
             description = "comma seperated list of repositories to be used for building renovate config")
@@ -74,6 +76,9 @@ public class RenovateConfigCli implements Runnable {
             config.setOnboarding(onboarding);
             config.setRepositories(repositories);
             // group by the same groupId and version
+            if (gavsFile != null) {
+                Files.readAllLines(Path.of(gavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(gavs::add);
+            }
             List<RenovatePackageRule> packageRules = gavs.stream()
                     .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
                     .collect(Collectors.toMap(GA::getGroupId, gav -> {
