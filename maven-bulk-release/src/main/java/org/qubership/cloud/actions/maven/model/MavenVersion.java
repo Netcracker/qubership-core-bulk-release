@@ -58,8 +58,9 @@ public class MavenVersion {
                     case PATCH -> {
                         this.patch = value;
                         patch = String.valueOf(value);
-                        if (suffix != null && suffix.matches("^\\.\\d+$")) {
-                            // remove number suffix
+//                        if (suffix != null && suffix.matches("^\\.\\d+$")) {
+                        if (suffix != null) {
+                            // remove suffix
                             this.suffix = null;
                             suffix = null;
                         }
