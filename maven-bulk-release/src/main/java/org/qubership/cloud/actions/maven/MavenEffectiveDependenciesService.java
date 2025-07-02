@@ -81,7 +81,7 @@ public class MavenEffectiveDependenciesService {
         // find repositories dependencies which are not declared in spring/quarkus BOMs but which dependencies do
 
         RepositoryInfo repositoryInfo = graph.values().stream().flatMap(List::stream).findFirst().orElseThrow(() -> new IllegalArgumentException("No repositories found"));
-        PomHolder pomHolder = PomHolder.parsePoms(Path.of(repositoryInfo.getBaseDir(), repositoryInfo.getDir())).getFirst();
+        PomHolder pomHolder = PomHolder.parsePom(Path.of(repositoryInfo.getBaseDir(), repositoryInfo.getDir(), "pom.xml"));
 
         String mavenLocalRepoPath = resolveMavenLocalRepoPath(pomHolder, mavenConfig);
 
@@ -92,11 +92,17 @@ public class MavenEffectiveDependenciesService {
                 .map(entry -> {
                     GA ga = entry.getKey();
                     Set<String> versions = entry.getValue();
-                    String maxVersion = versions.stream().max(Comparator.comparing(Semver::coerce))
+                    MavenVersion maxVersion = versions.stream().map(MavenVersion::new)
+                            .max(Comparator.comparing(MavenVersion::getMajor)
+                                    .thenComparing(MavenVersion::getMinor)
+                                    .thenComparing(MavenVersion::getPatch))
                             .orElseThrow(() -> new IllegalArgumentException("No repository version found for: " + ga));
                     // to this moment all version must be present in the local maven repo, so it's safe to search them there
-                    Path path = builArtifactLocalMavenRepoPath(mavenLocalRepoPath, ga.getGroupId(), ga.getArtifactId(), maxVersion);
-                    GAV maxGav = new GAV(ga.getGroupId(), ga.getArtifactId(), maxVersion);
+                    Path path = builArtifactLocalMavenRepoPath(mavenLocalRepoPath, ga.getGroupId(), ga.getArtifactId(), maxVersion.toString());
+                    GAV maxGav = new GAV(ga.getGroupId(), ga.getArtifactId(), maxVersion.toString());
+                    if (Objects.equals(maxVersion.getSuffix(), "-SNAPSHOT")) {
+                        return null;
+                    }
                     if (!Files.exists(path)) {
                         getDependency(pomHolder, maxGav, mavenConfig);
                     }
@@ -154,9 +160,9 @@ public class MavenEffectiveDependenciesService {
 
                                 Set<String> versions = Optional.ofNullable(repositoriesGAVs.get(ga)).orElse(Collections.emptySet());
                                 groupIdConflict.setRepositories(versions.stream().collect(Collectors.toMap(v -> v, v -> {
-                                            LinkedHashMap<String, ArtifactInfo> artifactInfoMap = new LinkedHashMap<>();
-                                            ArtifactInfo artifactInfo = artifactInfoMap.computeIfAbsent(ga.getArtifactId(), key -> new ArtifactInfo());
-                                            artifactInfo.setConsumers(consumers(new GAV(ga.getGroupId(), ga.getArtifactId(), v), 0, graph));
+                                    LinkedHashMap<String, ArtifactInfo> artifactInfoMap = new LinkedHashMap<>();
+                                    ArtifactInfo artifactInfo = artifactInfoMap.computeIfAbsent(ga.getArtifactId(), key -> new ArtifactInfo());
+                                    artifactInfo.setConsumers(consumers(new GAV(ga.getGroupId(), ga.getArtifactId(), v), 0, graph));
                                     return artifactInfoMap;
                                 })));
                                 return empty;
@@ -544,6 +550,27 @@ public class MavenEffectiveDependenciesService {
             return new String(process.getInputStream().readAllBytes());
         } catch (Exception e) {
             throw new RuntimeException("Failed to resolve local maven repository", e);
+        }
+    }
+
+    void cleanInstall(PomHolder pom, MavenConfig mavenConfig) {
+        try {
+            Path parentPath = pom.getPath().getParent();
+            List<String> cmd = List.of("mvn", "-B", "clean", "install", "-DskipTests",
+                    wrapPropertyInQuotes("-Dmaven.repo.local=" + mavenConfig.getLocalRepositoryPath())
+            );
+            ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(parentPath.toFile());
+            log.info("Dir: {}\nCmd: '{}' started", pom.getPath(), String.join(" ", cmd));
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            process.getInputStream().transferTo(System.out);
+            process.waitFor();
+            log.info("Dir: {}\nCmd: '{}' ended with code: {}", pom.getPath(), String.join(" ", cmd), process.exitValue());
+            if (process.exitValue() != 0) {
+                throw new RuntimeException("Failed to execute cmd:\n" + new String(process.getInputStream().readAllBytes()));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to clean install maven repository", e);
         }
     }
 
