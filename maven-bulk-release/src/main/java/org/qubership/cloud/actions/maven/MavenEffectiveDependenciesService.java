@@ -104,7 +104,12 @@ public class MavenEffectiveDependenciesService {
                         return null;
                     }
                     if (!Files.exists(path)) {
-                        getDependency(pomHolder, maxGav, mavenConfig);
+                        try {
+                            getDependency(pomHolder, maxGav, mavenConfig);
+                        } catch (Exception e) {
+                            log.warn("Unable to find artifact {} in maven. Ignoring dependency. {}", maxGav, e);
+                            return null;
+                        }
                     }
                     try {
                         Set<GAV> gaDependencies = resolvePomEffectiveDependencies(path, mavenConfig);
@@ -220,7 +225,12 @@ public class MavenEffectiveDependenciesService {
                         Path path = builArtifactLocalMavenRepoPath(mavenLocalRepoPath, transitiveGAV.getGroupId(), transitiveGAV.getArtifactId(), nextVersion);
                         GAV nextGAV = new GAV(transitiveGAV.getGroupId(), transitiveGAV.getArtifactId(), nextVersion);
                         if (!Files.exists(path)) {
-                            getDependency(pomHolder, nextGAV, mavenConfig);
+                            try {
+                                getDependency(pomHolder, nextGAV, mavenConfig);
+                            } catch (Exception e) {
+                                log.warn("Unable to find artifact for nextGAV {} in maven. Ignoring dependency. {}", nextGAV, e);
+                                return transitiveGAV;
+                            }
                         }
                         Set<GAV> gaDependencies = resolvePomEffectiveDependencies(path, mavenConfig);
                         Set<GAV> potenatioalGAVonflictingGAVs = gaDependencies.stream()
