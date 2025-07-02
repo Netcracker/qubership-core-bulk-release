@@ -74,5 +74,17 @@ public class MavenVersionTest {
         Assertions.assertEquals("1.2.5", mavenVersion.toString());
         Assertions.assertNull(mavenVersion.getSuffix());
     }
+    @Test
+    public void testRemoveNumberTextSuffixOnPatchChange() {
+        String version = "1.2.3.Final";
+        MavenVersion mavenVersion = new MavenVersion(version);
+        Assertions.assertEquals(".Final", mavenVersion.getSuffix());
+        mavenVersion.update(VersionIncrementType.PATCH, 5);
+        Assertions.assertEquals(1, mavenVersion.getMajor());
+        Assertions.assertEquals(2, mavenVersion.getMinor());
+        Assertions.assertEquals(5, mavenVersion.getPatch());
+        Assertions.assertEquals("1.2.5", mavenVersion.toString());
+        Assertions.assertNull(mavenVersion.getSuffix());
+    }
 
 }
