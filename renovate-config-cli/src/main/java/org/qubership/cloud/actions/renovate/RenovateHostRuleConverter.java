@@ -3,7 +3,7 @@ package org.qubership.cloud.actions.renovate;
 import org.qubership.cloud.actions.renovate.model.RenovateHostRule;
 import picocli.CommandLine;
 
-public class RenovateMavenRepositoryConverter implements CommandLine.ITypeConverter<RenovateHostRule> {
+public class RenovateHostRuleConverter implements CommandLine.ITypeConverter<RenovateHostRule> {
 
     @Override
     public RenovateHostRule convert(String value) throws CommandLine.TypeConversionException {

@@ -50,9 +50,14 @@ public class RenovateConfigCli implements Runnable {
             description = "comma seperated list of repositories to be used for building renovate config")
     private List<String> repositories;
 
+    @CommandLine.Option(names = {"--packageRules"}, split = ",",
+            description = "comma seperated list of default packageRules to be included for building renovate config",
+            converter = RenovatePackageRuleConverter.class)
+    private List<RenovatePackageRule> defaultPackageRules = new ArrayList<>();
+
     @CommandLine.Option(names = {"--hostRules"}, split = ",",
             description = "comma seperated list of hostRules to be used for building renovate config",
-            converter = RenovateMavenRepositoryConverter.class)
+            converter = RenovateHostRuleConverter.class)
     private List<RenovateHostRule> hostRules;
 
     @CommandLine.Option(names = {"--renovateConfigOutputFile"}, required = true, description = "File path to save result to")
@@ -79,7 +84,8 @@ public class RenovateConfigCli implements Runnable {
             if (gavsFile != null) {
                 Files.readAllLines(Path.of(gavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(gavs::add);
             }
-            List<RenovatePackageRule> packageRules = gavs.stream()
+            List<RenovatePackageRule> packageRules = new ArrayList<>(defaultPackageRules);
+            packageRules.addAll(gavs.stream()
                     .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
                     .collect(Collectors.toMap(GA::getGroupId, gav -> {
                                 LinkedHashMap<String, Set<String>> versionToArtifactIds = new LinkedHashMap<>();
@@ -110,7 +116,7 @@ public class RenovateConfigCli implements Runnable {
                                     return rule;
                                 });
                     })
-                    .toList();
+                    .toList());
             config.setPackageRules(packageRules);
             if (dryRun != null) config.setDryRun(dryRun.name());
             if (hostRules != null && !hostRules.isEmpty()) {
@@ -125,8 +131,7 @@ public class RenovateConfigCli implements Runnable {
                 config.setHostRules(hostRules);
                 config.setPackageRules(Stream.concat(mavenPackageRules.stream(), packageRules.stream()).toList());
             }
-            String result = RenovateConfigToJsConverter.convert(config, tabSize);
-
+            String result = RenovateConfigToJsConverter.convert(config);
             if (renovateConfigOutputFile != null && !renovateConfigOutputFile.isBlank()) {
                 // write the result
                 try {
