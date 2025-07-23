@@ -179,9 +179,7 @@ public class RenovateConfigConverterTest {
                   }, {
                     matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],
-                    matchPackageNames : [ ],
                     matchUpdateTypes : [ "minor", "patch" ],
-                    registryUrls : [ ],
                     groupName : "Default Maven",
                     automerge : false
                   }, {

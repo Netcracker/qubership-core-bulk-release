@@ -4,7 +4,6 @@ import lombok.Data;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,6 +47,8 @@ public class RenovatePackageRule {
     }
 
     static List<String> toList(Matcher matcher, String group) {
-        return Arrays.stream(Optional.ofNullable(matcher.group(group)).map(v -> v.split("&")).orElse(new String[0])).toList();
+        String v = matcher.group(group);
+        if (v == null) return null;
+        return Arrays.stream(v.split("&")).toList();
     }
 }
