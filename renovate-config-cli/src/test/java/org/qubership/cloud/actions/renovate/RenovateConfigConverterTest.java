@@ -180,8 +180,7 @@ public class RenovateConfigConverterTest {
                     matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],
                     matchUpdateTypes : [ "minor", "patch" ],
-                    groupName : "Default Maven",
-                    automerge : false
+                    groupName : "Default Maven"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.jr:jackson-jr-all", "com.fasterxml.jackson.jr:jackson-jr-annotation-support", "com.fasterxml.jackson.jr:jackson-jr-extension-javatime", "com.fasterxml.jackson.jr:jackson-jr-objects", "com.fasterxml.jackson.jr:jackson-jr-retrofit2", "com.fasterxml.jackson.jr:jackson-jr-stree" ],
                     allowedVersions : "~2.18.0"

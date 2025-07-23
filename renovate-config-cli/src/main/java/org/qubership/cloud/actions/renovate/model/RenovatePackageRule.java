@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,7 +44,7 @@ public class RenovatePackageRule {
         this.registryUrls = toList(matcher, "registryUrls");
         this.allowedVersions = matcher.group("allowedVersions");
         this.groupName = matcher.group("groupName");
-        this.automerge = Boolean.parseBoolean(matcher.group("automerge"));
+        this.automerge = Optional.ofNullable(matcher.group("automerge")).map(Boolean::parseBoolean).orElse(null);
     }
 
     static List<String> toList(Matcher matcher, String group) {
