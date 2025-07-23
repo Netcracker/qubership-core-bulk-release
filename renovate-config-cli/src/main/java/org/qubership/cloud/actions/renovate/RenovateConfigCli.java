@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GA;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.maven.model.MavenVersion;
-import org.qubership.cloud.actions.maven.model.VersionIncrementType;
 import org.qubership.cloud.actions.renovate.model.RenovateConfig;
 import org.qubership.cloud.actions.renovate.model.RenovateDryRun;
 import org.qubership.cloud.actions.renovate.model.RenovateHostRule;
@@ -111,8 +110,9 @@ public class RenovateConfigCli implements Runnable {
                                             .sorted()
                                             .toList());
                                     MavenVersion mavenVersion = new MavenVersion(version);
-                                    mavenVersion.update(VersionIncrementType.PATCH, 0);
-                                    rule.setAllowedVersions("~" + mavenVersion);
+//                                    mavenVersion.update(VersionIncrementType.PATCH, 0);
+//                                    rule.setAllowedVersions("~" + mavenVersion);
+                                    rule.setAllowedVersions(mavenVersion.toString());
                                     return rule;
                                 });
                     })
