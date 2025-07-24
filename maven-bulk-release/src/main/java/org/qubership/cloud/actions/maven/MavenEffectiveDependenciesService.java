@@ -18,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -67,10 +66,7 @@ public class MavenEffectiveDependenciesService {
                 .collect(Collectors.toMap(
                         gav -> new GA(gav.getGroupId(), gav.getArtifactId()),
                         gav -> {
-                            Semver semver = Semver.coerce(gav.getVersion());
-                            if (semver == null) {
-                                throw new RuntimeException(String.format("gav: '%s' version is non-semver", gav));
-                            }
+                            MavenVersion semver = new MavenVersion(gav.getVersion());
                             return Set.of(gav.getVersion());
                         },
                         (l1, l2) -> Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toSet())));
@@ -78,80 +74,18 @@ public class MavenEffectiveDependenciesService {
         Map<String, Conflict> majorConflictingGroups = new LinkedHashMap<>();
         Map<String, Conflict> minorConflictingGroups = new LinkedHashMap<>();
 
-        // find repositories dependencies which are not declared in spring/quarkus BOMs but which dependencies do
-
-        RepositoryInfo repositoryInfo = graph.values().stream().flatMap(List::stream).findFirst().orElseThrow(() -> new IllegalArgumentException("No repositories found"));
-        PomHolder pomHolder = PomHolder.parsePom(Path.of(repositoryInfo.getBaseDir(), repositoryInfo.getDir(), "pom.xml"));
-
-        String mavenLocalRepoPath = resolveMavenLocalRepoPath(pomHolder, mavenConfig);
-
-        Map<GAV, Set<GAV>> transitiveRepositoryGAVs = repositoriesGAVs.entrySet().stream()
-                .filter(entry -> !bothFrameworksGAs.contains(entry.getKey()))
-                .filter(entry -> !netcrackerGAs.contains(entry.getKey()))
-                .filter(entry -> !entry.getKey().getGroupId().contains("netcracker"))
-                .map(entry -> {
-                    GA ga = entry.getKey();
-                    Set<String> versions = entry.getValue();
-                    MavenVersion maxVersion = versions.stream().map(MavenVersion::new)
-                            .max(Comparator.comparing(MavenVersion::getMajor)
-                                    .thenComparing(MavenVersion::getMinor)
-                                    .thenComparing(MavenVersion::getPatch))
-                            .orElseThrow(() -> new IllegalArgumentException("No repository version found for: " + ga));
-                    // to this moment all version must be present in the local maven repo, so it's safe to search them there
-                    Path path = builArtifactLocalMavenRepoPath(mavenLocalRepoPath, ga.getGroupId(), ga.getArtifactId(), maxVersion.toString());
-                    GAV maxGav = new GAV(ga.getGroupId(), ga.getArtifactId(), maxVersion.toString());
-                    if (Objects.equals(maxVersion.getSuffix(), "-SNAPSHOT")) {
-                        return null;
-                    }
-                    if (!Files.exists(path)) {
-                        try {
-                            getDependency(pomHolder, maxGav, mavenConfig);
-                        } catch (Exception e) {
-                            log.warn("Unable to find artifact {} in maven. Ignoring dependency. {}", maxGav, e);
-                            return null;
-                        }
-                    }
-                    try {
-                        Set<GAV> gaDependencies = resolvePomEffectiveDependencies(path, mavenConfig);
-                        // find dependencies we are planning to upgrade
-                        Set<GAV> gavsToBeUpgraded = gaDependencies.stream()
-                                // exclude org.apache.maven.plugins
-                                .filter(gav -> !"org.apache.maven.plugins".equals(gav.getGroupId()))
-                                .filter(gav -> bothFrameworksGAs.contains(new GA(gav.getGroupId(), gav.getArtifactId())))
-                                .collect(Collectors.toSet());
-                        if (!gavsToBeUpgraded.isEmpty()) {
-                            // we need to find compatible version of current ga so its dependencies GAVs will match GAVs brought by spring/quarkus
-                            return new AbstractMap.SimpleEntry<>(maxGav, gavsToBeUpgraded);
-                        } else {
-                            return null;
-                        }
-                    } catch (Exception e) {
-                        // failed to resolve effective pom, ignore
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toMap(
-                        AbstractMap.SimpleEntry::getKey,
-                        AbstractMap.SimpleEntry::getValue
-                ));
-
-
         List<GAV> gavs = bothFrameworksGAs.stream()
-                .filter(ga -> repositoriesGAVs.containsKey(ga) ||
-                              transitiveRepositoryGAVs.values().stream().flatMap(Set::stream)
-                                      .anyMatch(gav -> Objects.equals(gav.getGroupId(), ga.getGroupId()) && gav.getArtifactId().equals(ga.getArtifactId())))
+                .filter(repositoriesGAVs::containsKey)
                 .collect(Collectors.toMap(ga -> ga, ga -> {
                     String version1 = type1GAVs.get(ga);
                     String version2 = type2GAVs.get(ga);
-
-                    Semver type1Version = Semver.coerce(version1);
-                    Semver type2Version = Semver.coerce(version2);
-                    if (type1Version == null) {
+                    if (version1 == null) {
                         return new GAV(ga.getGroupId(), ga.getArtifactId(), version2);
-                    } else if (type2Version == null) {
+                    } else if (version2 == null) {
                         return new GAV(ga.getGroupId(), ga.getArtifactId(), version1);
                     } else {
+                        MavenVersion type1Version = new MavenVersion(version1);
+                        MavenVersion type2Version = new MavenVersion(version2);
                         int type1Major = type1Version.getMajor();
                         int type2Major = type2Version.getMajor();
                         int type1Minor = type1Version.getMinor();
@@ -183,77 +117,10 @@ public class MavenEffectiveDependenciesService {
                                 return artifactInfoMap;
                             })));
                         }
-                        String version = type1Version.isGreaterThan(type2Version) ? version1 : version2;
+                        String version = type1Version.compareTo(type2Version) > 0 ? version1 : version2;
                         return new GAV(ga.getGroupId(), ga.getArtifactId(), version);
                     }
-                })).values().stream().filter(gav -> gav != empty).distinct().collect(Collectors.toList());
-
-
-        // need to find compatible GAVs for transitive deps
-        List<GAV> upgradedTransitiveGAVs = transitiveRepositoryGAVs.entrySet()
-                .stream()
-                .map(entry -> {
-                    GAV transitiveGAV = entry.getKey();
-                    Set<GAV> dependentGAVs = entry.getValue();
-                    // need to find such version for transitiveGAV so that its conflictingDependentGAVs be max close to gavs
-                    MavenMetadata gaMetadata = getGAMetadata(transitiveGAV);
-                    if (gaMetadata == null) {
-                        return transitiveGAV;
-                    }
-                    List<String> versions = gaMetadata.getVersioning().getVersions();
-                    String currentVersion = transitiveGAV.getVersion();
-                    MavenVersion currentVer = new MavenVersion(currentVersion);
-                    int currentVersionIndex = versions.indexOf(currentVersion);
-                    if (currentVersionIndex == -1) {
-                        throw new IllegalArgumentException("No current version found for: " + transitiveGAV);
-                    }
-                    List<String> nextVersions = currentVersionIndex < versions.size() ? versions.subList(currentVersionIndex, versions.size()) : List.of();
-                    Pattern qualifierVersionAllowedPattern = Pattern.compile("(.Final)|(\\.\\d+)|(.*path.*)");
-                    int currentVerMajor = currentVer.getMajor();
-                    nextVersions = nextVersions.stream()
-                            // filter out rc alpha etc
-                            .filter(version -> {
-                                MavenVersion ver = new MavenVersion(version);
-                                if (ver.getMajor() > currentVerMajor) {
-                                    return false;
-                                }
-                                String suffix = ver.getSuffix();
-                                return suffix == null || qualifierVersionAllowedPattern.matcher(suffix).matches();
-                            })
-                            .toList();
-                    for (String nextVersion : nextVersions) {
-                        Path path = builArtifactLocalMavenRepoPath(mavenLocalRepoPath, transitiveGAV.getGroupId(), transitiveGAV.getArtifactId(), nextVersion);
-                        GAV nextGAV = new GAV(transitiveGAV.getGroupId(), transitiveGAV.getArtifactId(), nextVersion);
-                        if (!Files.exists(path)) {
-                            try {
-                                getDependency(pomHolder, nextGAV, mavenConfig);
-                            } catch (Exception e) {
-                                log.warn("Unable to find artifact for nextGAV {} in maven. Ignoring dependency. {}", nextGAV, e);
-                                return transitiveGAV;
-                            }
-                        }
-                        Set<GAV> gaDependencies = resolvePomEffectiveDependencies(path, mavenConfig);
-                        Set<GAV> potenatioalGAVonflictingGAVs = gaDependencies.stream()
-                                .filter(depGAV -> {
-                                    GAV resolved = gavs.stream().filter(gav ->
-                                            Objects.equals(gav.getGroupId(), depGAV.getGroupId()) &&
-                                            Objects.equals(gav.getArtifactId(), depGAV.getArtifactId())).findFirst().orElse(null);
-                                    if (resolved == null) return false;
-                                    if (depGAV.getVersion() == null || !MavenVersion.isValid(depGAV.getVersion()))
-                                        return false;
-                                    MavenVersion resolvedVersion = new MavenVersion(resolved.getVersion());
-                                    MavenVersion depVersion = new MavenVersion(depGAV.getVersion());
-                                    return depVersion.getMajor() != resolvedVersion.getMajor() ||
-                                           depVersion.getMinor() < resolvedVersion.getMinor();
-                                }).collect(Collectors.toSet());
-                        transitiveGAV = nextGAV;
-                        if (potenatioalGAVonflictingGAVs.isEmpty()) {
-                            break;
-                        }
-                    }
-                    return transitiveGAV;
-                }).toList();
-        gavs.addAll(upgradedTransitiveGAVs);
+                })).values().stream().filter(gav -> gav != empty).distinct().toList();
         return new EffectiveDependenciesDiff(gavs.stream().sorted().toList(), majorConflictingGroups, minorConflictingGroups);
     }
 

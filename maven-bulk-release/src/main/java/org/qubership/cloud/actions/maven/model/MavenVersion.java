@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.maven.model;
 
 import lombok.Data;
 
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -10,7 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Data
-public class MavenVersion {
+public class MavenVersion implements Comparable<MavenVersion>{
 
     static Pattern versionPattern = Pattern.compile("^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<suffix>.+)?$");
 
@@ -77,5 +78,10 @@ public class MavenVersion {
 
     public static boolean isValid(String version) {
         return versionPattern.matcher(version).matches();
+    }
+
+    @Override
+    public int compareTo(MavenVersion o) {
+        return Comparator.comparing(MavenVersion::getMajor).thenComparing(MavenVersion::getMinor).thenComparing(MavenVersion::getPatch).compare(this, o);
     }
 }
