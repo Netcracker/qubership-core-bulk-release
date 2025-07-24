@@ -79,7 +79,8 @@ public class RenovateConfigConverterTest {
                 "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=minor&patch;groupName=Default Maven]",
                 "--hostRules=" + """
                         maven[matchHost=https://repo1.maven.org/maven2/;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
-                        maven[matchHost=https://maven.pkg.github.com/Netcracker/**;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD]"""
+                        maven[matchHost=https://maven.pkg.github.com/Netcracker/**;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
+                        maven[matchHost=https://artifactorycn.netcracker.com/pd.saas-release.mvn.group]"""
                         .replace("\n", ""),
                 "--gavs=" + """
                         com.fasterxml.jackson:jackson-bom:2.18.4.1
@@ -172,10 +173,13 @@ public class RenovateConfigConverterTest {
                     matchHost : "https://maven.pkg.github.com/Netcracker/**",
                     username : process.env.MAVEN_USERNAME,
                     password : process.env.MAVEN_PASSWORD
+                  }, {
+                    hostType : "maven",
+                    matchHost : "https://artifactorycn.netcracker.com/pd.saas-release.mvn.group"
                   } ],
                   packageRules : [ {
                     matchDatasources : [ "maven" ],
-                    registryUrls : [ "https://repo1.maven.org/maven2/", "https://maven.pkg.github.com/Netcracker/**" ]
+                    registryUrls : [ "https://repo1.maven.org/maven2/", "https://maven.pkg.github.com/Netcracker/**", "https://artifactorycn.netcracker.com/pd.saas-release.mvn.group" ]
                   }, {
                     matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],

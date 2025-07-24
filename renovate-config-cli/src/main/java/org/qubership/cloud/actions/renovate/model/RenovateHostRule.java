@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 @Data
 public class RenovateHostRule {
-    public static Pattern pattern = Pattern.compile("^(?<hostType>.+?)\\[matchHost=(?<matchHost>.+?);username=(?<username>.+?);password=(?<password>.+?)]$");
+    public static Pattern pattern = Pattern.compile("^(?<hostType>.+?)\\[matchHost=(?<matchHost>.+?);?(username=(?<username>.+?);?)?(password=(?<password>.+?))?]$");
 
     String hostType;
     String matchHost;
