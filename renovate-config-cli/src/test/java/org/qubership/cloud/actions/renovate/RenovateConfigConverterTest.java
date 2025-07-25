@@ -46,6 +46,9 @@ public class RenovateConfigConverterTest {
                   platform : "github",
                   dryRun : "full",
                   onboarding : true,
+                  prConcurrentLimit : 20,
+                  prHourlyLimit : 5,
+                  branchConcurrentLimit : 5,
                   repositories : [ "https://github.com/Netcracker/qubership-core-release-test-maven-lib-1", "https://github.com/Netcracker/qubership-core-release-test-maven-lib-2", "https://github.com/Netcracker/qubership-core-release-test-maven-lib-3" ],
                   packageRules : [ {
                     matchPackageNames : [ "org.qubership:qubership-core-release-test-maven-lib-1" ],
@@ -169,6 +172,9 @@ public class RenovateConfigConverterTest {
                   commitMessagePrefix : "RENOVATE-0000",
                   dryRun : "full",
                   onboarding : false,
+                  prConcurrentLimit : 20,
+                  prHourlyLimit : 5,
+                  branchConcurrentLimit : 20,
                   repositories : [ "https://github.com/Netcracker/qubership-core-release-test-maven-lib-1", "https://github.com/Netcracker/qubership-core-release-test-maven-lib-2", "https://github.com/Netcracker/qubership-core-release-test-maven-lib-3" ],
                   hostRules : [ {
                     hostType : "maven",

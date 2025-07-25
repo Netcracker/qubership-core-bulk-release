@@ -13,6 +13,9 @@ public class RenovateConfig {
     String commitMessagePrefix;
     String dryRun;
     boolean onboarding;
+    int prConcurrentLimit = 20;
+    int prHourlyLimit = 5;
+    int branchConcurrentLimit = 5;
     List<String> repositories;
     List<RenovateHostRule> hostRules;
     List<RenovatePackageRule> packageRules;
