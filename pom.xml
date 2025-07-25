@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.qubership.cloud</groupId>
     <artifactId>qubership-core-bulk-release</artifactId>
-    <version>1.1.18-SNAPSHOT</version>
+    <version>1.1.18</version>
     <packaging>pom</packaging>
 
     <licenses>
@@ -60,7 +60,7 @@
         <developerConnection>scm:git:https://github.com/Netcracker/qubership-core-bulk-release.git
         </developerConnection>
         <url>https://github.com/Netcracker/qubership-core-bulk-release</url>
-        <tag>HEAD</tag>
+        <tag>1.1.18</tag>
     </scm>
 
     <repositories>
