@@ -38,6 +38,9 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--commitMessage"}, description = "commit message")
     private String commitMessage;
 
+    @CommandLine.Option(names = {"--commitMessagePrefix"}, description = "commit message prefix")
+    private String commitMessagePrefix;
+
     @CommandLine.Option(names = {"--gavs"}, split = ",",
             description = "comma seperated list of GAVs to be used for building renovate config", converter = GAVConverter.class)
     private Set<GAV> gavs = new HashSet<>();
@@ -78,6 +81,7 @@ public class RenovateConfigCli implements Runnable {
             config.setGitAuthor(gitAuthor);
             config.setPlatform(platform);
             config.setCommitMessage(commitMessage);
+            config.setCommitMessagePrefix(commitMessagePrefix);
             config.setOnboarding(onboarding);
             config.setRepositories(repositories);
             // group by the same groupId and version
