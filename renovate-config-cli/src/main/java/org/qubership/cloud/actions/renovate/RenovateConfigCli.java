@@ -35,6 +35,15 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--onboarding"}, description = "onboarding")
     private boolean onboarding = false;
 
+    @CommandLine.Option(names = {"--branchConcurrentLimit"}, description = "branchConcurrentLimit")
+    private int branchConcurrentLimit = 20;
+
+    @CommandLine.Option(names = {"--prConcurrentLimit"}, description = "prConcurrentLimit")
+    private int prConcurrentLimit = 20;
+
+    @CommandLine.Option(names = {"--prHourlyLimit"}, description = "prConcurrentLimit")
+    private int prHourlyLimit = 5;
+
     @CommandLine.Option(names = {"--commitMessage"}, description = "commit message")
     private String commitMessage;
 
@@ -82,6 +91,9 @@ public class RenovateConfigCli implements Runnable {
             config.setPlatform(platform);
             config.setCommitMessage(commitMessage);
             config.setCommitMessagePrefix(commitMessagePrefix);
+            config.setPrHourlyLimit(prHourlyLimit);
+            config.setPrConcurrentLimit(prConcurrentLimit);
+            config.setBranchConcurrentLimit(branchConcurrentLimit);
             config.setOnboarding(onboarding);
             config.setRepositories(repositories);
             // group by the same groupId and version
