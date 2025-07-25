@@ -14,6 +14,7 @@ public class RenovatePackageRule {
     public static Pattern pattern = Pattern.compile("^\\[(matchManagers=(?<matchManagers>.+?);?)?" +
                                                     "(matchDatasources=(?<matchDatasources>.+?);?)?" +
                                                     "(matchPackageNames=(?<matchPackageNames>.+?);?)?" +
+                                                    "(matchPackagePatterns=(?<matchPackagePatterns>.+?);?)?" +
                                                     "(matchUpdateTypes=(?<matchUpdateTypes>.+?);?)?" +
                                                     "(registryUrls=(?<registryUrls>.+?);?)?" +
                                                     "(allowedVersions=(?<allowedVersions>.+?);?)?" +
@@ -23,6 +24,7 @@ public class RenovatePackageRule {
     List<String> matchManagers;
     List<String> matchDatasources;
     List<String> matchPackageNames;
+    List<String> matchPackagePatterns;
     List<String> matchUpdateTypes;
     List<String> registryUrls;
     String allowedVersions;
@@ -40,6 +42,7 @@ public class RenovatePackageRule {
         this.matchManagers = toList(matcher, "matchManagers");
         this.matchDatasources = toList(matcher, "matchDatasources");
         this.matchPackageNames = toList(matcher, "matchPackageNames");
+        this.matchPackagePatterns = toList(matcher, "matchPackagePatterns");
         this.matchUpdateTypes = toList(matcher, "matchUpdateTypes");
         this.registryUrls = toList(matcher, "registryUrls");
         this.allowedVersions = matcher.group("allowedVersions");
