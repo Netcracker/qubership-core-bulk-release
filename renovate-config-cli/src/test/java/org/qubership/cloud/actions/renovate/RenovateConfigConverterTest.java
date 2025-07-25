@@ -69,6 +69,7 @@ public class RenovateConfigConverterTest {
                 "--username=renovate",
                 "--gitAuthor=renovate@test.com",
                 "--platform=github",
+                "--commitMessage=RENOVATE-0000",
                 "--dryRun=full",
                 "--renovateConfigOutputFile=" + tempFile,
                 "--repositories=" + """
@@ -160,6 +161,7 @@ public class RenovateConfigConverterTest {
                   username : "renovate",
                   gitAuthor : "renovate@test.com",
                   platform : "github",
+                  commitMessage : "RENOVATE-0000",
                   dryRun : "full",
                   onboarding : false,
                   repositories : [ "https://github.com/Netcracker/qubership-core-release-test-maven-lib-1", "https://github.com/Netcracker/qubership-core-release-test-maven-lib-2", "https://github.com/Netcracker/qubership-core-release-test-maven-lib-3" ],

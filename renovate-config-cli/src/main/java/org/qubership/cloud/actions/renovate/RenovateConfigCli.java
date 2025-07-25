@@ -35,8 +35,8 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--onboarding"}, description = "onboarding")
     private boolean onboarding = false;
 
-    @CommandLine.Option(names = {"--tabSize"}, description = "tab length")
-    private int tabSize = 2;
+    @CommandLine.Option(names = {"--commitMessage"}, description = "commit message")
+    private String commitMessage;
 
     @CommandLine.Option(names = {"--gavs"}, split = ",",
             description = "comma seperated list of GAVs to be used for building renovate config", converter = GAVConverter.class)
@@ -77,6 +77,7 @@ public class RenovateConfigCli implements Runnable {
             config.setUsername(username);
             config.setGitAuthor(gitAuthor);
             config.setPlatform(platform);
+            config.setCommitMessage(commitMessage);
             config.setOnboarding(onboarding);
             config.setRepositories(repositories);
             // group by the same groupId and version

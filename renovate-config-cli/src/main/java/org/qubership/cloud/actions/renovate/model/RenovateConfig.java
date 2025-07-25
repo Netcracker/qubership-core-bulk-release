@@ -9,6 +9,7 @@ public class RenovateConfig {
     String username;
     String gitAuthor;
     String platform;
+    String commitMessage;
     String dryRun;
     boolean onboarding;
     List<String> repositories;
