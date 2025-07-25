@@ -191,31 +191,40 @@ public class RenovateConfigConverterTest {
                     groupName : "Default Maven"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.jr:jackson-jr-all", "com.fasterxml.jackson.jr:jackson-jr-annotation-support", "com.fasterxml.jackson.jr:jackson-jr-extension-javatime", "com.fasterxml.jackson.jr:jackson-jr-objects", "com.fasterxml.jackson.jr:jackson-jr-retrofit2", "com.fasterxml.jackson.jr:jackson-jr-stree" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.jr"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson:jackson-bom" ],
-                    allowedVersions : "2.18.4.1"
+                    allowedVersions : "2.18.4.1",
+                    groupName : "com.fasterxml.jackson"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.datatype:jackson-datatype-eclipse-collections", "com.fasterxml.jackson.datatype:jackson-datatype-guava", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate4", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate5", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate5-jakarta", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate6", "com.fasterxml.jackson.datatype:jackson-datatype-hppc", "com.fasterxml.jackson.datatype:jackson-datatype-jakarta-jsonp", "com.fasterxml.jackson.datatype:jackson-datatype-jaxrs", "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", "com.fasterxml.jackson.datatype:jackson-datatype-joda", "com.fasterxml.jackson.datatype:jackson-datatype-joda-money", "com.fasterxml.jackson.datatype:jackson-datatype-json-org", "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", "com.fasterxml.jackson.datatype:jackson-datatype-jsr353", "com.fasterxml.jackson.datatype:jackson-datatype-pcollections" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.datatype"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-cbor-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-smile-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-xml-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-yaml-provider" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.jakarta.rs"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.module:jackson-module-afterburner", "com.fasterxml.jackson.module:jackson-module-android-record", "com.fasterxml.jackson.module:jackson-module-blackbird", "com.fasterxml.jackson.module:jackson-module-guice", "com.fasterxml.jackson.module:jackson-module-guice7", "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations", "com.fasterxml.jackson.module:jackson-module-jaxb-annotations", "com.fasterxml.jackson.module:jackson-module-jsonSchema", "com.fasterxml.jackson.module:jackson-module-jsonSchema-jakarta", "com.fasterxml.jackson.module:jackson-module-kotlin", "com.fasterxml.jackson.module:jackson-module-mrbean", "com.fasterxml.jackson.module:jackson-module-no-ctor-deser", "com.fasterxml.jackson.module:jackson-module-osgi", "com.fasterxml.jackson.module:jackson-module-parameter-names", "com.fasterxml.jackson.module:jackson-module-paranamer", "com.fasterxml.jackson.module:jackson-module-scala_2.11", "com.fasterxml.jackson.module:jackson-module-scala_2.12", "com.fasterxml.jackson.module:jackson-module-scala_2.13", "com.fasterxml.jackson.module:jackson-module-scala_3" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.module"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.core:jackson-annotations", "com.fasterxml.jackson.core:jackson-databind" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.core"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.core:jackson-core" ],
-                    allowedVersions : "2.18.4.1"
+                    allowedVersions : "2.18.4.1",
+                    groupName : "com.fasterxml.jackson.core"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.jaxrs:jackson-jaxrs-base", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-cbor-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-smile-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-xml-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-yaml-provider" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.jaxrs"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.dataformat:jackson-dataformat-avro", "com.fasterxml.jackson.dataformat:jackson-dataformat-cbor", "com.fasterxml.jackson.dataformat:jackson-dataformat-csv", "com.fasterxml.jackson.dataformat:jackson-dataformat-ion", "com.fasterxml.jackson.dataformat:jackson-dataformat-properties", "com.fasterxml.jackson.dataformat:jackson-dataformat-protobuf", "com.fasterxml.jackson.dataformat:jackson-dataformat-smile", "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" ],
-                    allowedVersions : "2.18.4"
+                    allowedVersions : "2.18.4",
+                    groupName : "com.fasterxml.jackson.dataformat"
                   } ]
                 };""", result);
     }

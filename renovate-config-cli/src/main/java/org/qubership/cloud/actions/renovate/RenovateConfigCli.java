@@ -118,6 +118,7 @@ public class RenovateConfigCli implements Runnable {
 //                                    mavenVersion.update(VersionIncrementType.PATCH, 0);
 //                                    rule.setAllowedVersions("~" + mavenVersion);
                                     rule.setAllowedVersions(mavenVersion.toString());
+                                    rule.setGroupName(groupId);
                                     return rule;
                                 });
                     })
