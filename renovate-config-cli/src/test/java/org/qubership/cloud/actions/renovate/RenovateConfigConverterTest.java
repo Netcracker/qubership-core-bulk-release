@@ -78,7 +78,8 @@ public class RenovateConfigConverterTest {
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-2,
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-3"""
                         .replaceAll("\n", ""),
-                "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=minor&patch;groupName=Default Maven]",
+                "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=minor&patch;groupName=Default Maven]," +
+                "[matchPackagePatterns=.*;allowedVersions=!/redhat|composite|groovyless|jboss|atlassian|preview/]",
                 "--hostRules=" + """
                         maven[matchHost=https://repo1.maven.org/maven2/;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
                         maven[matchHost=https://maven.pkg.github.com/Netcracker/**;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
@@ -189,6 +190,9 @@ public class RenovateConfigConverterTest {
                     matchDatasources : [ "maven" ],
                     matchUpdateTypes : [ "minor", "patch" ],
                     groupName : "Default Maven"
+                  }, {
+                    matchPackagePatterns : [ ".*" ],
+                    allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.jr:jackson-jr-all", "com.fasterxml.jackson.jr:jackson-jr-annotation-support", "com.fasterxml.jackson.jr:jackson-jr-extension-javatime", "com.fasterxml.jackson.jr:jackson-jr-objects", "com.fasterxml.jackson.jr:jackson-jr-retrofit2", "com.fasterxml.jackson.jr:jackson-jr-stree" ],
                     allowedVersions : "2.18.4",
