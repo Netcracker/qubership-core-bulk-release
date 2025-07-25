@@ -78,7 +78,9 @@ public class RenovateConfigConverterTest {
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-2,
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-3"""
                         .replaceAll("\n", ""),
-                "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=minor&patch;groupName=Default Maven]," +
+                "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=patch;groupName=Default Maven Patch]," +
+                "[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=minor;groupName=Default Maven Minor]," +
+                "[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=major;groupName=Default Maven Major]," +
                 "[matchPackagePatterns=.*;allowedVersions=!/redhat|composite|groovyless|jboss|atlassian|preview/]",
                 "--hostRules=" + """
                         maven[matchHost=https://repo1.maven.org/maven2/;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
@@ -188,8 +190,18 @@ public class RenovateConfigConverterTest {
                   }, {
                     matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],
-                    matchUpdateTypes : [ "minor", "patch" ],
-                    groupName : "Default Maven"
+                    matchUpdateTypes : [ "patch" ],
+                    groupName : "Default Maven Patch"
+                  }, {
+                    matchManagers : [ "maven" ],
+                    matchDatasources : [ "maven" ],
+                    matchUpdateTypes : [ "minor" ],
+                    groupName : "Default Maven Minor"
+                  }, {
+                    matchManagers : [ "maven" ],
+                    matchDatasources : [ "maven" ],
+                    matchUpdateTypes : [ "major" ],
+                    groupName : "Default Maven Major"
                   }, {
                     matchPackagePatterns : [ ".*" ],
                     allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
