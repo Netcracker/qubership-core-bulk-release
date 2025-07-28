@@ -65,10 +65,7 @@ public class MavenEffectiveDependenciesService {
                 .flatMap(repositoryInfo -> repositoryInfo.getModuleDependencies().stream())
                 .collect(Collectors.toMap(
                         gav -> new GA(gav.getGroupId(), gav.getArtifactId()),
-                        gav -> {
-                            MavenVersion semver = new MavenVersion(gav.getVersion());
-                            return Set.of(gav.getVersion());
-                        },
+                        gav -> Set.of(gav.getVersion()),
                         (l1, l2) -> Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toSet())));
 
         Map<String, Conflict> majorConflictingGroups = new LinkedHashMap<>();
