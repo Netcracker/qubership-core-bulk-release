@@ -94,7 +94,7 @@ public class RenovateConfigCli implements Runnable {
             config.setBranchConcurrentLimit(branchConcurrentLimit);
             config.setOnboarding(onboarding);
             config.setRepositories(repositories.stream().map(RepositoryConfig::getName).toList());
-            config.setBaseBranches(repositories.stream().map(RepositoryConfig::getBranch).filter(Objects::nonNull).toList());
+            config.setBaseBranchPatterns(repositories.stream().map(RepositoryConfig::getBranch).filter(Objects::nonNull).toList());
 
             // group by the same groupId and version
             if (gavsFile != null) {
