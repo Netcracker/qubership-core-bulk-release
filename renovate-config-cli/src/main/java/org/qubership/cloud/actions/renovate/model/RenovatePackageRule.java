@@ -16,10 +16,12 @@ public class RenovatePackageRule {
                                                     "(matchPackageNames=(?<matchPackageNames>.+?);?)?" +
                                                     "(matchPackagePatterns=(?<matchPackagePatterns>.+?);?)?" +
                                                     "(matchUpdateTypes=(?<matchUpdateTypes>.+?);?)?" +
+                                                    "(matchVersion=(?<matchVersion>.+?);?)?" +
                                                     "(registryUrls=(?<registryUrls>.+?);?)?" +
                                                     "(allowedVersions=(?<allowedVersions>.+?);?)?" +
                                                     "(groupName=(?<groupName>.+?);?)?" +
                                                     "(automerge=(?<automerge>.+?);?)?" +
+                                                    "(enabled=(?<enabled>.+?);?)?" +
                                                     "]$");
     List<String> matchManagers;
     List<String> matchDatasources;
@@ -28,8 +30,10 @@ public class RenovatePackageRule {
     List<String> matchUpdateTypes;
     List<String> registryUrls;
     String allowedVersions;
+    String matchVersion;
     String groupName;
     Boolean automerge;
+    Boolean enabled;
 
     public RenovatePackageRule() {
     }
@@ -45,9 +49,11 @@ public class RenovatePackageRule {
         this.matchPackagePatterns = toList(matcher, "matchPackagePatterns");
         this.matchUpdateTypes = toList(matcher, "matchUpdateTypes");
         this.registryUrls = toList(matcher, "registryUrls");
+        this.matchVersion = matcher.group("matchVersion");
         this.allowedVersions = matcher.group("allowedVersions");
         this.groupName = matcher.group("groupName");
         this.automerge = Optional.ofNullable(matcher.group("automerge")).map(Boolean::parseBoolean).orElse(null);
+        this.enabled = Optional.ofNullable(matcher.group("enabled")).map(Boolean::parseBoolean).orElse(null);
     }
 
     static List<String> toList(Matcher matcher, String group) {
