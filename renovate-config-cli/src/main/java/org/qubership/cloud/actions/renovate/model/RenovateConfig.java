@@ -20,4 +20,5 @@ public class RenovateConfig {
     List<String> repositories;
     List<RenovateHostRule> hostRules;
     List<RenovatePackageRule> packageRules;
+    List<String> labels;
 }
