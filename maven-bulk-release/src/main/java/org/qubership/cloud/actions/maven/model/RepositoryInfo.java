@@ -168,7 +168,7 @@ public class RepositoryInfo extends Repository {
                 Parent parent = project.getParent();
                 if (parent != null && !Objects.equals(parent.getGroupId(), pomHolder.getGroupId())) {
                     GAV parentGAV = new GAV(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
-                    this.getModuleDependencies().add(parentGAV);
+                    this.moduleDependencies.add(parentGAV);
                     this.perModuleDependencies.get(projectGA).add(parentGAV);
                 }
                 List<GAV> dependenciesNodes = Stream.concat(
@@ -206,7 +206,7 @@ public class RepositoryInfo extends Repository {
                     String version = pomHolder.autoResolvePropReference(dependency.getVersion());
                     if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
                         GAV dependencyGAV = new GAV(groupId, artifactId, version);
-                        this.getModuleDependencies().add(dependencyGAV);
+                        this.moduleDependencies.add(dependencyGAV);
                         this.perModuleDependencies.get(projectGA).add(dependencyGAV);
                     }
                 }
