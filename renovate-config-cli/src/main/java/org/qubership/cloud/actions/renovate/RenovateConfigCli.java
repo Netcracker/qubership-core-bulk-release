@@ -4,10 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GA;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.maven.model.MavenVersion;
-import org.qubership.cloud.actions.renovate.model.RenovateConfig;
-import org.qubership.cloud.actions.renovate.model.RenovateDryRun;
-import org.qubership.cloud.actions.renovate.model.RenovateHostRule;
-import org.qubership.cloud.actions.renovate.model.RenovatePackageRule;
+import org.qubership.cloud.actions.renovate.model.*;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -57,9 +54,10 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--gavsFile"}, description = "file of GAVs seperated by new-line to be used for building renovate config")
     private String gavsFile;
 
-    @CommandLine.Option(names = {"--repositories"}, required = true, split = ",",
-            description = "comma seperated list of repositories to be used for building renovate config")
-    private List<String> repositories;
+    @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
+            description = "comma seperated list of git urls to all repositories to be used for building renovate config",
+            converter = RepositoryConfigConverter.class)
+    private Set<RepositoryConfig> repositories;
 
     @CommandLine.Option(names = {"--packageRules"}, split = ",",
             description = "comma seperated list of default packageRules to be included for building renovate config",
@@ -95,7 +93,9 @@ public class RenovateConfigCli implements Runnable {
             config.setPrConcurrentLimit(prConcurrentLimit);
             config.setBranchConcurrentLimit(branchConcurrentLimit);
             config.setOnboarding(onboarding);
-            config.setRepositories(repositories);
+            config.setRepositories(repositories.stream().map(RepositoryConfig::getName).toList());
+            config.setBaseBranches(repositories.stream().map(RepositoryConfig::getBranch).filter(Objects::nonNull).toList());
+
             // group by the same groupId and version
             if (gavsFile != null) {
                 Files.readAllLines(Path.of(gavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(gavs::add);
