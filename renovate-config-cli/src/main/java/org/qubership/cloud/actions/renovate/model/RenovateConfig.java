@@ -10,7 +10,7 @@ public class RenovateConfig {
     String gitAuthor;
     String platform;
     String commitMessage;
-    List<String> baseBranches;
+    List<String> baseBranchPatterns;
     String commitMessagePrefix;
     String dryRun;
     boolean onboarding;

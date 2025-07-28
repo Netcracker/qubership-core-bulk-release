@@ -77,8 +77,8 @@ public class RenovateConfigConverterTest {
                 "--dryRun=full",
                 "--renovateConfigOutputFile=" + tempFile,
                 "--repositories=" + """
-                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[branch=release/support-1.x.x],
-                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[branch=release/support-2.x.x],
+                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[from=release/support-1.x.x],
+                        https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[from=release/support-2.x.x],
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-3"""
                         .replaceAll("\n", ""),
                 "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=patch;groupName=Default Maven Patch]," +
@@ -169,7 +169,7 @@ public class RenovateConfigConverterTest {
                   gitAuthor : "renovate@test.com",
                   platform : "github",
                   commitMessage : "RENOVATE-0000 update dependencies",
-                  baseBranches : [ "release/support-1.x.x", "release/support-2.x.x" ],
+                  baseBranchPatterns : [ "release/support-1.x.x", "release/support-2.x.x" ],
                   commitMessagePrefix : "RENOVATE-0000",
                   dryRun : "full",
                   onboarding : false,

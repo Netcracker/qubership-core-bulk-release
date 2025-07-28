@@ -30,7 +30,7 @@ public class RepositoryConfig {
                 .map(entry -> entry.split("="))
                 .filter(entry -> entry.length == 2)
                 .collect(Collectors.toMap(item -> item[0], item -> item[1]));
-        String branch = params.get("branch");
+        String branch = params.get("from");
         if (branch != null) {
             return new RepositoryConfig(name, branch);
         }
