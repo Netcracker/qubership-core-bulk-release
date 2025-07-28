@@ -69,6 +69,9 @@ public class RenovateConfigCli implements Runnable {
             converter = RenovateHostRuleConverter.class)
     private List<RenovateHostRule> hostRules;
 
+    @CommandLine.Option(names = {"--labels"}, split = ",", description = "comma seperated list of labels to be used for building renovate config")
+    private List<String> labels;
+
     @CommandLine.Option(names = {"--renovateConfigOutputFile"}, required = true, description = "File path to save result to")
     private String renovateConfigOutputFile;
 
@@ -136,6 +139,8 @@ public class RenovateConfigCli implements Runnable {
                     })
                     .toList());
             config.setPackageRules(packageRules);
+            config.setLabels(labels);
+
             if (dryRun != null) config.setDryRun(dryRun.name());
             if (hostRules != null && !hostRules.isEmpty()) {
                 List<String> mavenHosts = hostRules.stream()

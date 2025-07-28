@@ -75,6 +75,7 @@ public class RenovateConfigConverterTest {
                 "--commitMessage=RENOVATE-0000 update dependencies",
                 "--commitMessagePrefix=RENOVATE-0000",
                 "--dryRun=full",
+                "--labels=renovate",
                 "--renovateConfigOutputFile=" + tempFile,
                 "--repositories=" + """
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[from=release/support-1.x.x],
@@ -253,7 +254,8 @@ public class RenovateConfigConverterTest {
                     matchPackageNames : [ "com.fasterxml.jackson.dataformat:jackson-dataformat-avro", "com.fasterxml.jackson.dataformat:jackson-dataformat-cbor", "com.fasterxml.jackson.dataformat:jackson-dataformat-csv", "com.fasterxml.jackson.dataformat:jackson-dataformat-ion", "com.fasterxml.jackson.dataformat:jackson-dataformat-properties", "com.fasterxml.jackson.dataformat:jackson-dataformat-protobuf", "com.fasterxml.jackson.dataformat:jackson-dataformat-smile", "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" ],
                     allowedVersions : "2.18.4",
                     groupName : "com.fasterxml.jackson.dataformat"
-                  } ]
+                  } ],
+                  labels : [ "renovate" ]
                 };""", result);
     }
 }
