@@ -156,9 +156,8 @@ public class MavenEffectiveDependenciesService {
             RepositoryArtifactConsumer artifactConsumer = new RepositoryArtifactConsumer(repositoryInfo.getUrl());
             repositoryInfo.getPerModuleDependencies().forEach((moduleGA, moduleGAVs) -> {
                 if (moduleGAVs.stream().anyMatch(_gav -> {
-                    Semver _gavSemver = Semver.coerce(_gav.getVersion());
-                    if (_gavSemver == null) {
-                        throw new IllegalArgumentException("non-semver GAV version: " + _gav.getVersion());
+                    if (!MavenVersion.isValid(_gav.getVersion())) {
+                        throw new IllegalArgumentException(String.format("Module '%s' contains non-semver GAV version: '%s'", moduleGA, _gav.getVersion()));
                     }
                     return Objects.equals(_gav, gav);
                 })) {
