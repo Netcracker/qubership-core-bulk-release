@@ -16,7 +16,7 @@ public class RenovatePackageRule {
                                                     "(matchPackageNames=(?<matchPackageNames>.+?);?)?" +
                                                     "(matchPackagePatterns=(?<matchPackagePatterns>.+?);?)?" +
                                                     "(matchUpdateTypes=(?<matchUpdateTypes>.+?);?)?" +
-                                                    "(matchVersion=(?<matchVersion>.+?);?)?" +
+                                                    "(versioning=(?<versioning>.+?);?)?" +
                                                     "(registryUrls=(?<registryUrls>.+?);?)?" +
                                                     "(allowedVersions=(?<allowedVersions>.+?);?)?" +
                                                     "(groupName=(?<groupName>.+?);?)?" +
@@ -30,7 +30,7 @@ public class RenovatePackageRule {
     List<String> matchUpdateTypes;
     List<String> registryUrls;
     String allowedVersions;
-    String matchVersion;
+    String versioning;
     String groupName;
     Boolean automerge;
     Boolean enabled;
@@ -49,7 +49,7 @@ public class RenovatePackageRule {
         this.matchPackagePatterns = toList(matcher, "matchPackagePatterns");
         this.matchUpdateTypes = toList(matcher, "matchUpdateTypes");
         this.registryUrls = toList(matcher, "registryUrls");
-        this.matchVersion = matcher.group("matchVersion");
+        this.versioning = matcher.group("versioning");
         this.allowedVersions = matcher.group("allowedVersions");
         this.groupName = matcher.group("groupName");
         this.automerge = Optional.ofNullable(matcher.group("automerge")).map(Boolean::parseBoolean).orElse(null);
