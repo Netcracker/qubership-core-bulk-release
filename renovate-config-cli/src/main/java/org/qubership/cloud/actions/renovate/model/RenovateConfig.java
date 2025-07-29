@@ -16,6 +16,11 @@ public class RenovateConfig {
     String dryRun;
     String branchPrefix;
     String branchPrefixOld;
+    String prCreation;
+    Boolean printConfig;
+    Boolean platformAutomerge;
+    String rebaseWhen;
+    String recreateWhen;
     boolean onboarding;
     int prConcurrentLimit = 20;
     int prHourlyLimit = 5;
