@@ -3,37 +3,20 @@ package org.qubership.cloud.actions.renovate.model;
 import lombok.Data;
 
 import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Data
-public class RenovatePackageRule {
+public class RenovatePackageRule extends LinkedHashMap<String, Object> {
 
-    public static Pattern pattern = Pattern.compile("^\\[(matchManagers=(?<matchManagers>.+?);?)?" +
-                                                    "(matchDatasources=(?<matchDatasources>.+?);?)?" +
-                                                    "(matchPackageNames=(?<matchPackageNames>.+?);?)?" +
-                                                    "(matchPackagePatterns=(?<matchPackagePatterns>.+?);?)?" +
-                                                    "(matchUpdateTypes=(?<matchUpdateTypes>.+?);?)?" +
-                                                    "(versioning=(?<versioning>.+?);?)?" +
-                                                    "(registryUrls=(?<registryUrls>.+?);?)?" +
-                                                    "(allowedVersions=(?<allowedVersions>.+?);?)?" +
-                                                    "(groupName=(?<groupName>.+?);?)?" +
-                                                    "(automerge=(?<automerge>.+?);?)?" +
-                                                    "(enabled=(?<enabled>.+?);?)?" +
-                                                    "]$");
-    List<String> matchManagers;
-    List<String> matchDatasources;
-    List<String> matchPackageNames;
-    List<String> matchPackagePatterns;
-    List<String> matchUpdateTypes;
-    List<String> registryUrls;
-    String allowedVersions;
-    String versioning;
-    String groupName;
-    Boolean automerge;
-    Boolean enabled;
+    public static Pattern pattern = Pattern.compile("^\\[(?<params>.+)]$");
+    public static Pattern booleanPattern = Pattern.compile("^(true|false)$", Pattern.CASE_INSENSITIVE);
+    public static Pattern intPattern = Pattern.compile("^\\d+$");
+    public static Pattern listPattern = Pattern.compile("^\\[(.+)]$");
+
 
     public RenovatePackageRule() {
     }
@@ -43,22 +26,22 @@ public class RenovatePackageRule {
         if (!matcher.matches()) {
             throw new IllegalArgumentException(String.format("Invalid package rule: '%s'. Must match: '%s'", value, pattern));
         }
-        this.matchManagers = toList(matcher, "matchManagers");
-        this.matchDatasources = toList(matcher, "matchDatasources");
-        this.matchPackageNames = toList(matcher, "matchPackageNames");
-        this.matchPackagePatterns = toList(matcher, "matchPackagePatterns");
-        this.matchUpdateTypes = toList(matcher, "matchUpdateTypes");
-        this.registryUrls = toList(matcher, "registryUrls");
-        this.versioning = matcher.group("versioning");
-        this.allowedVersions = matcher.group("allowedVersions");
-        this.groupName = matcher.group("groupName");
-        this.automerge = Optional.ofNullable(matcher.group("automerge")).map(Boolean::parseBoolean).orElse(null);
-        this.enabled = Optional.ofNullable(matcher.group("enabled")).map(Boolean::parseBoolean).orElse(null);
-    }
-
-    static List<String> toList(Matcher matcher, String group) {
-        String v = matcher.group(group);
-        if (v == null) return null;
-        return Arrays.stream(v.split("&")).toList();
+        Map<String, Object> params = Arrays.stream(matcher.group("params").split(";"))
+                .map(v -> v.split("="))
+                .filter(a -> a.length == 2)
+                .collect(Collectors.toMap(a -> a[0], a -> {
+                    String v = a[1];
+                    Matcher m;
+                    if ((m = booleanPattern.matcher(v)).matches()) {
+                        return Boolean.parseBoolean(v);
+                    } else if ((m = intPattern.matcher(v)).matches()) {
+                        return Integer.parseInt(v);
+                    } else if ((m = listPattern.matcher(v)).matches()) {
+                        return Arrays.stream(m.group(1).split("&")).toList();
+                    } else {
+                        return v;
+                    }
+                }));
+        this.putAll(params);
     }
 }

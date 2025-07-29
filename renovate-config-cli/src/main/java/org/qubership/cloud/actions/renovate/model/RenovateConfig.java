@@ -11,8 +11,11 @@ public class RenovateConfig {
     String platform;
     String commitMessage;
     List<String> baseBranchPatterns;
+    List<String> globalExtends;
     String commitMessagePrefix;
     String dryRun;
+    String branchPrefix;
+    String branchPrefixOld;
     boolean onboarding;
     int prConcurrentLimit = 20;
     int prHourlyLimit = 5;

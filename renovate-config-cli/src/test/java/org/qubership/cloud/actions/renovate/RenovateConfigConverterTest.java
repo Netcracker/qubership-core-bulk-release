@@ -26,16 +26,16 @@ public class RenovateConfigConverterTest {
         ));
         config.setPackageRules(List.of(
                 new RenovatePackageRule() {{
-                    setMatchPackageNames(List.of("org.qubership:qubership-core-release-test-maven-lib-1"));
-                    setAllowedVersions("~1.2.3");
+                    put("matchPackageNames", List.of("org.qubership:qubership-core-release-test-maven-lib-1"));
+                    put("allowedVersions", "~1.2.3");
                 }},
                 new RenovatePackageRule() {{
-                    setMatchPackageNames(List.of("org.qubership:qubership-core-release-test-maven-lib-2"));
-                    setAllowedVersions("~2.3.4");
+                    put("matchPackageNames", List.of("org.qubership:qubership-core-release-test-maven-lib-2"));
+                    put("allowedVersions", "~2.3.4");
                 }},
                 new RenovatePackageRule() {{
-                    setMatchPackageNames(List.of("org.qubership:qubership-core-release-test-maven-lib-3"));
-                    setAllowedVersions("~3.4.5");
+                    put("matchPackageNames", List.of("org.qubership:qubership-core-release-test-maven-lib-3"));
+                    put("allowedVersions", "~3.4.5");
                 }}
         ));
         String result = RenovateConfigToJsConverter.convert(config);
@@ -76,17 +76,21 @@ public class RenovateConfigConverterTest {
                 "--commitMessagePrefix=RENOVATE-0000",
                 "--dryRun=full",
                 "--labels=renovate",
+                "--branchPrefix=renovate-support/",
+                "--branchPrefixOld=renovate/",
+                "--globalExtends=:ignoreModulesAndTests",
                 "--renovateConfigOutputFile=" + tempFile,
                 "--repositories=" + """
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[from=release/support-1.x.x],
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[from=release/support-2.x.x],
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-3"""
                         .replaceAll("\n", ""),
-                "--packageRules=[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=patch;groupName=Default Maven Patch]," +
-                "[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=minor;groupName=Default Maven Minor]," +
-                "[matchManagers=maven;matchDatasources=maven;matchUpdateTypes=major;groupName=Default Maven Major]," +
-                "[matchPackagePatterns=.*;allowedVersions=!/redhat|composite|groovyless|jboss|atlassian|preview/]," +
-                "[matchManagers=maven;versioning=regex:^(?<compatibility>.*)-v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)?-SNAPSHOT$;enabled=false]",
+                "--packageRules=" +
+                "[matchManagers=[maven];matchDatasources=[maven];matchUpdateTypes=[patch];groupName=Default Maven Patch]," +
+                "[matchManagers=[maven];matchDatasources=[maven];matchUpdateTypes=[minor];groupName=Default Maven Minor]," +
+                "[matchManagers=[maven];matchDatasources=[maven];matchUpdateTypes=[major];groupName=Default Maven Major]," +
+                "[matchPackagePatterns=[.*];allowedVersions=!/redhat|composite|groovyless|jboss|atlassian|preview/]," +
+                "[matchManagers=[maven];versioning=regex:^(?<compatibility>.*)-v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)?-SNAPSHOT$;enabled=false]",
                 "--hostRules=" + """
                         maven[matchHost=https://repo1.maven.org/maven2/;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
                         maven[matchHost=https://maven.pkg.github.com/Netcracker/**;username=process.env.MAVEN_USERNAME;password=process.env.MAVEN_PASSWORD],
@@ -172,8 +176,11 @@ public class RenovateConfigConverterTest {
                   platform : "github",
                   commitMessage : "RENOVATE-0000 update dependencies",
                   baseBranchPatterns : [ "release/support-1.x.x", "release/support-2.x.x" ],
+                  globalExtends : [ ":ignoreModulesAndTests" ],
                   commitMessagePrefix : "RENOVATE-0000",
                   dryRun : "full",
+                  branchPrefix : "renovate-support/",
+                  branchPrefixOld : "renovate/",
                   onboarding : false,
                   prConcurrentLimit : 20,
                   prHourlyLimit : 5,
@@ -197,26 +204,26 @@ public class RenovateConfigConverterTest {
                     matchDatasources : [ "maven" ],
                     registryUrls : [ "https://repo1.maven.org/maven2/", "https://maven.pkg.github.com/Netcracker/**", "https://artifactorycn.netcracker.com/pd.saas-release.mvn.group" ]
                   }, {
-                    matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],
-                    matchUpdateTypes : [ "patch" ],
-                    groupName : "Default Maven Patch"
+                    groupName : "Default Maven Patch",
+                    matchManagers : [ "maven" ],
+                    matchUpdateTypes : [ "patch" ]
                   }, {
-                    matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],
-                    matchUpdateTypes : [ "minor" ],
-                    groupName : "Default Maven Minor"
+                    groupName : "Default Maven Minor",
+                    matchManagers : [ "maven" ],
+                    matchUpdateTypes : [ "minor" ]
                   }, {
-                    matchManagers : [ "maven" ],
                     matchDatasources : [ "maven" ],
-                    matchUpdateTypes : [ "major" ],
-                    groupName : "Default Maven Major"
+                    groupName : "Default Maven Major",
+                    matchManagers : [ "maven" ],
+                    matchUpdateTypes : [ "major" ]
                   }, {
                     matchPackagePatterns : [ ".*" ],
                     allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
                   }, {
-                    matchManagers : [ "maven" ],
                     versioning : "regex:^(?<compatibility>.*)-v?(?<major>\\\\d+)\\\\.(?<minor>\\\\d+)\\\\.(?<patch>\\\\d+)?-SNAPSHOT$",
+                    matchManagers : [ "maven" ],
                     enabled : false
                   }, {
                     matchPackageNames : [ "com.fasterxml.jackson.jr:jackson-jr-all", "com.fasterxml.jackson.jr:jackson-jr-annotation-support", "com.fasterxml.jackson.jr:jackson-jr-extension-javatime", "com.fasterxml.jackson.jr:jackson-jr-objects", "com.fasterxml.jackson.jr:jackson-jr-retrofit2", "com.fasterxml.jackson.jr:jackson-jr-stree" ],
