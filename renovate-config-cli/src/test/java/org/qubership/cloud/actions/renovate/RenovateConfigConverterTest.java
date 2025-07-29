@@ -78,7 +78,7 @@ public class RenovateConfigConverterTest {
                 "--labels=renovate",
                 "--branchPrefix=renovate-support/",
                 "--branchPrefixOld=renovate/",
-                "--globalExtends=:ignoreModulesAndTests",
+                "--globalExtends=:ignoreModulesAndTests,:dependencyDashboard",
                 "--renovateConfigOutputFile=" + tempFile,
                 "--repositories=" + """
                         https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[from=release/support-1.x.x],
@@ -176,7 +176,7 @@ public class RenovateConfigConverterTest {
                   platform : "github",
                   commitMessage : "RENOVATE-0000 update dependencies",
                   baseBranchPatterns : [ "release/support-1.x.x", "release/support-2.x.x" ],
-                  globalExtends : [ ":ignoreModulesAndTests" ],
+                  globalExtends : [ ":ignoreModulesAndTests", ":dependencyDashboard" ],
                   commitMessagePrefix : "RENOVATE-0000",
                   dryRun : "full",
                   branchPrefix : "renovate-support/",

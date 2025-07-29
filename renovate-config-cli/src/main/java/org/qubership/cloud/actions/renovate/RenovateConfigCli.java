@@ -29,7 +29,7 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--dryRun"}, description = "dry run", converter = DryRunConverter.class)
     private RenovateDryRun dryRun;
 
-    @CommandLine.Option(names = {"--globalExtends"}, description = "globalExtends")
+    @CommandLine.Option(names = {"--globalExtends"}, description = "globalExtends", split = ",")
     private List<String> globalExtends;
 
     @CommandLine.Option(names = {"--onboarding"}, description = "onboarding")
