@@ -29,6 +29,9 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--dryRun"}, description = "dry run", converter = DryRunConverter.class)
     private RenovateDryRun dryRun;
 
+    @CommandLine.Option(names = {"--globalExtends"}, description = "globalExtends")
+    private List<String> globalExtends;
+
     @CommandLine.Option(names = {"--onboarding"}, description = "onboarding")
     private boolean onboarding = false;
 
@@ -43,6 +46,12 @@ public class RenovateConfigCli implements Runnable {
 
     @CommandLine.Option(names = {"--commitMessage"}, description = "commit message")
     private String commitMessage;
+
+    @CommandLine.Option(names = {"--branchPrefix"}, description = "branchPrefix")
+    private String branchPrefix;
+
+    @CommandLine.Option(names = {"--branchPrefixOld"}, description = "branchPrefixOld")
+    private String branchPrefixOld;
 
     @CommandLine.Option(names = {"--commitMessagePrefix"}, description = "commit message prefix")
     private String commitMessagePrefix;
@@ -96,6 +105,9 @@ public class RenovateConfigCli implements Runnable {
             config.setPrConcurrentLimit(prConcurrentLimit);
             config.setBranchConcurrentLimit(branchConcurrentLimit);
             config.setOnboarding(onboarding);
+            config.setGlobalExtends(globalExtends);
+            config.setBranchPrefix(branchPrefix);
+            config.setBranchPrefixOld(branchPrefixOld);
             config.setRepositories(repositories.stream().map(RepositoryConfig::getName).toList());
             config.setBaseBranchPatterns(repositories.stream().map(RepositoryConfig::getBranch).filter(Objects::nonNull).toList());
 
@@ -125,15 +137,15 @@ public class RenovateConfigCli implements Runnable {
                                     String version = versionToArtifactIds.getKey();
                                     Set<String> artifactIds = versionToArtifactIds.getValue();
                                     RenovatePackageRule rule = new RenovatePackageRule();
-                                    rule.setMatchPackageNames(artifactIds.stream()
+                                    rule.put("matchPackageNames", artifactIds.stream()
                                             .map(artifactId -> groupId + ":" + artifactId)
                                             .sorted()
                                             .toList());
                                     MavenVersion mavenVersion = new MavenVersion(version);
 //                                    mavenVersion.update(VersionIncrementType.PATCH, 0);
-//                                    rule.setAllowedVersions("~" + mavenVersion);
-                                    rule.setAllowedVersions(mavenVersion.toString());
-                                    rule.setGroupName(groupId);
+//                                    rule.put("allowedVersions", "~" +mavenVersion);
+                                    rule.put("allowedVersions", mavenVersion.toString());
+                                    rule.put("groupName", groupId);
                                     return rule;
                                 });
                     })
@@ -147,8 +159,8 @@ public class RenovateConfigCli implements Runnable {
                         .filter(h -> "maven".equals(h.getHostType()))
                         .map(RenovateHostRule::getMatchHost).toList();
                 RenovatePackageRule mavenPackageRule = new RenovatePackageRule();
-                mavenPackageRule.setMatchDatasources(List.of("maven"));
-                mavenPackageRule.setRegistryUrls(mavenHosts);
+                mavenPackageRule.put("matchDatasources", List.of("maven"));
+                mavenPackageRule.put("registryUrls", mavenHosts);
                 List<RenovatePackageRule> mavenPackageRules = List.of(mavenPackageRule);
 
                 config.setHostRules(hostRules);
