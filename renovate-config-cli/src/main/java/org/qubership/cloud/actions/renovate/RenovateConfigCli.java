@@ -56,6 +56,21 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--commitMessagePrefix"}, description = "commit message prefix")
     private String commitMessagePrefix;
 
+    @CommandLine.Option(names = {"--prCreation"}, description = "prCreation")
+    private String prCreation;
+
+    @CommandLine.Option(names = {"--printConfig"}, description = "printConfig")
+    private boolean printConfig = true;
+
+    @CommandLine.Option(names = {"--platformAutomerge"}, description = "platformAutomerge")
+    private boolean platformAutomerge = true;
+
+    @CommandLine.Option(names = {"--rebaseWhen"}, description = "rebaseWhen")
+    private String rebaseWhen;
+
+    @CommandLine.Option(names = {"--recreateWhen"}, description = "recreateWhen")
+    private String recreateWhen;
+
     @CommandLine.Option(names = {"--gavs"}, split = ",",
             description = "comma seperated list of GAVs to be used for building renovate config", converter = GAVConverter.class)
     private Set<GAV> gavs = new HashSet<>();
@@ -105,6 +120,11 @@ public class RenovateConfigCli implements Runnable {
             config.setPrConcurrentLimit(prConcurrentLimit);
             config.setBranchConcurrentLimit(branchConcurrentLimit);
             config.setOnboarding(onboarding);
+            config.setPrCreation(prCreation);
+            config.setPrintConfig(printConfig);
+            config.setPlatformAutomerge(platformAutomerge);
+            config.setRebaseWhen(rebaseWhen);
+            config.setRecreateWhen(recreateWhen);
             config.setGlobalExtends(globalExtends);
             config.setBranchPrefix(branchPrefix);
             config.setBranchPrefixOld(branchPrefixOld);
