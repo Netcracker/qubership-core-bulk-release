@@ -15,7 +15,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
+            <version>1.18.38</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>org.semver4j</groupId>
             <artifactId>semver4j</artifactId>
-            <version>5.7.1</version>
+            <version>5.8.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
