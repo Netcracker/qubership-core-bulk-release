@@ -4,7 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GA;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.maven.model.MavenVersion;
-import org.qubership.cloud.actions.renovate.model.*;
+import org.qubership.cloud.actions.maven.model.RepositoryConfig;
+import org.qubership.cloud.actions.renovate.model.RenovateConfig;
+import org.qubership.cloud.actions.renovate.model.RenovateDryRun;
+import org.qubership.cloud.actions.renovate.model.RenovateHostRule;
+import org.qubership.cloud.actions.renovate.model.RenovatePackageRule;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -128,8 +132,12 @@ public class RenovateConfigCli implements Runnable {
             config.setGlobalExtends(globalExtends);
             config.setBranchPrefix(branchPrefix);
             config.setBranchPrefixOld(branchPrefixOld);
-            config.setRepositories(repositories.stream().map(RepositoryConfig::getName).toList());
-            config.setBaseBranchPatterns(repositories.stream().map(RepositoryConfig::getBranch).filter(Objects::nonNull).toList());
+            config.setRepositories(repositories.stream().map(RepositoryConfig::getDir).toList());
+            config.setBaseBranchPatterns(repositories.stream()
+                    .map(RepositoryConfig::getBranch)
+                    .filter(Objects::nonNull)
+                    .filter(b -> !"HEAD".equals(b))
+                    .toList());
 
             // group by the same groupId and version
             if (gavsFile != null) {

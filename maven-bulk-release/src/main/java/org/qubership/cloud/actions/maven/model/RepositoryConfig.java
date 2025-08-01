@@ -14,8 +14,7 @@ import java.util.stream.Collectors;
 @Data
 public class RepositoryConfig {
     public static final String HEAD = "HEAD";
-    public static Pattern pattern = Pattern.compile("^(?<url>https://[^\\[]+)(\\[(?<params>.*)])?$");
-    public static Pattern repositoryUrlPattern = Pattern.compile("https://[^/]+/(.+)");
+    public static Pattern pattern = Pattern.compile("^(?<url>https://[^/]+/(?<dir>[^\\[]+))(\\[(?<params>.*)])?$");
 
     final String url;
     final String dir;
@@ -28,9 +27,11 @@ public class RepositoryConfig {
     protected RepositoryConfig(String url, String branch, boolean skipTests, String version,
                                VersionIncrementType versionIncrementType) {
         this.url = normalizeGitUrl.apply(url);
-        Matcher matcher = repositoryUrlPattern.matcher(url);
-        if (!matcher.matches()) throw new IllegalArgumentException("Invalid repository url: " + url);
-        this.dir = matcher.group(1);
+        Matcher matcher = pattern.matcher(url);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException(String.format("Invalid repository url: %s. Must match pattern: '%s'", url, pattern));
+        }
+        this.dir = matcher.group("dir");
         this.skipTests = skipTests;
         this.version = version;
         this.branch = Optional.ofNullable(branch).orElse(HEAD);;

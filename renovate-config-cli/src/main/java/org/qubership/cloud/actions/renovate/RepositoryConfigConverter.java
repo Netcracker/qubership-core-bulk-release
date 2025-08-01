@@ -1,6 +1,6 @@
 package org.qubership.cloud.actions.renovate;
 
-import org.qubership.cloud.actions.renovate.model.RepositoryConfig;
+import org.qubership.cloud.actions.maven.model.RepositoryConfig;
 import picocli.CommandLine;
 
 public class RepositoryConfigConverter implements CommandLine.ITypeConverter<RepositoryConfig> {
