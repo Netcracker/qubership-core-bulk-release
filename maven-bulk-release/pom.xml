@@ -12,7 +12,7 @@
     <artifactId>maven-bulk-release</artifactId>
 
     <properties>
-        <jackson.version>2.18.2</jackson.version>
+        <jackson.version>2.18.4</jackson.version>
         <org.jgrapht.version>1.5.2</org.jgrapht.version>
     </properties>
 
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
+            <version>1.18.38</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -52,7 +52,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.16</version>
+            <version>1.5.18</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
@@ -77,7 +77,7 @@
         <dependency>
             <groupId>org.semver4j</groupId>
             <artifactId>semver4j</artifactId>
-            <version>5.7.1</version>
+            <version>5.8.0</version>
         </dependency>
         <dependency>
             <groupId>com.github.zafarkhaja</groupId>
