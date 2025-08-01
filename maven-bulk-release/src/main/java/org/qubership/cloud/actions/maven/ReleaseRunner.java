@@ -44,7 +44,8 @@ public class ReleaseRunner {
                 .collect(Collectors.toMap(gav -> new GA(gav.getGroupId(), gav.getArtifactId()), GAV::getVersion));
         // build dependency graph
         RepositoryService repositoryService = new RepositoryService();
-        Map<Integer, List<RepositoryInfo>> dependencyGraph = repositoryService.buildDependencyGraph(config);
+        Map<Integer, List<RepositoryInfo>> dependencyGraph = repositoryService.buildDependencyGraph(config.getBaseDir(), config.getGitConfig(),
+                config.getRepositories(), config.getRepositoriesToReleaseFrom());
         result.setDependencyGraph(dependencyGraph);
         String dot = generateDotFile(dependencyGraph);
         result.setDependenciesDot(dot);
@@ -54,7 +55,7 @@ public class ReleaseRunner {
             int level = entry.getKey() + 1;
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
-                    String.join("\n", reposInfoList.stream().map(Repository::getUrl).toList()));
+                    String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
             int threads = config.isRunSequentially() ? 1 : 4;
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
@@ -98,10 +99,10 @@ public class ReleaseRunner {
             dependencyGraph.forEach((level, repos) -> {
                 int threads = config.isRunSequentially() ? 1 : repos.size();
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
-                        String.join("\n", repos.stream().map(Repository::getUrl).toList()));
+                        String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
                 try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                     allReleases.stream()
-                            .filter(release -> repos.stream().map(Repository::getUrl)
+                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
                                     .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
                             .map(release -> {
                                 try {
@@ -293,7 +294,7 @@ public class ReleaseRunner {
             }
             git.push()
                     .setProgressMonitor(new TextProgressMonitor(printWriter))
-                    .setCredentialsProvider(config.getCredentialsProvider())
+                    .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
                     .setPushAll()
                     .setPushTags()
                     .call();
@@ -351,8 +352,9 @@ public class ReleaseRunner {
         for (RepositoryInfo repositoryInfo : repositoryInfoList) {
             graph.addVertex(repositoryInfo.getUrl());
         }
+        RepositoryInfoLinker linker = new RepositoryInfoLinker(repositoryInfoList);
         for (RepositoryInfo repositoryInfo : repositoryInfoList) {
-            repositoryInfo.getRepoDependencies()
+            linker.getRepositoriesUsedByThis(repositoryInfo)
                     .stream()
                     .filter(ri -> dependencyGraph.values().stream()
                             .flatMap(Collection::stream).anyMatch(ri2 -> Objects.equals(ri2.getUrl(), ri.getUrl())))

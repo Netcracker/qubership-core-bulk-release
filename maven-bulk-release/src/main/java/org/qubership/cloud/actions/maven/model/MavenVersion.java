@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Data
-public class MavenVersion implements Comparable<MavenVersion>{
+public class MavenVersion implements Comparable<MavenVersion> {
 
     static Pattern versionPattern = Pattern.compile("^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<suffix>.+)?$");
 
@@ -27,10 +27,17 @@ public class MavenVersion implements Comparable<MavenVersion>{
             throw new IllegalArgumentException("Invalid maven version: " + version);
         }
         this.version = version;
-        major = Integer.parseInt(matcher.group("major"));
-        minor = Optional.ofNullable(matcher.group("minor")).map(Integer::parseInt).orElse(0);
-        patch = Optional.ofNullable(matcher.group("patch")).map(Integer::parseInt).orElse(0);
-        suffix = matcher.group("suffix");
+        this.major = Integer.parseInt(matcher.group("major"));
+        this.minor = Optional.ofNullable(matcher.group("minor")).map(Integer::parseInt).orElse(0);
+        this.patch = Optional.ofNullable(matcher.group("patch")).map(Integer::parseInt).orElse(0);
+        this.suffix = matcher.group("suffix");
+    }
+
+    public MavenVersion(int major, int minor, int patch) {
+        this.major = major;
+        this.minor = minor;
+        this.patch = patch;
+        this.version = String.format("%d.%d.%d", major, minor, patch);
     }
 
     public void update(VersionIncrementType type, int value) {
@@ -70,6 +77,11 @@ public class MavenVersion implements Comparable<MavenVersion>{
                 return Stream.of(major, minor, patch).filter(Objects::nonNull).collect(Collectors.joining(".")) + (suffix == null ? "" : suffix);
             }
         });
+    }
+
+    public void setSuffix(String suffix) {
+        this.suffix = suffix;
+        this.version = String.format("%d.%d.%d%s", major, minor, patch, suffix == null ? "" : suffix);
     }
 
     public String toString() {

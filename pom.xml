@@ -24,6 +24,7 @@
         <module>maven-bulk-release</module>
         <module>maven-bulk-release-cli</module>
         <module>maven-effective-dependencies-cli</module>
+        <module>maven-version-dependencies-cli</module>
         <module>renovate-config-cli</module>
     </modules>
 

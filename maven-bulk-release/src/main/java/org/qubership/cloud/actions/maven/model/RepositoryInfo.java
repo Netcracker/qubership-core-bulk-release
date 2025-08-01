@@ -1,14 +1,16 @@
 package org.qubership.cloud.actions.maven.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.apache.maven.model.*;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -19,26 +21,36 @@ import java.util.stream.Stream;
 
 @Getter
 @EqualsAndHashCode(callSuper = true)
-public class RepositoryInfo extends Repository {
+public class RepositoryInfo extends RepositoryConfig {
     public static Pattern propertyPattern = Pattern.compile("\\$\\{(.+?)}");
 
     String baseDir;
-    Set<GA> modules = new HashSet<>();
+    Set<GAV> modules = new HashSet<>();
     Set<GAV> moduleDependencies = new HashSet<>();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
-    Set<RepositoryInfo> repoDependencies = new HashSet<>();
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
-        super(repositoryConfig.getUrl(), repositoryConfig.params());
+        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(),
+                repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
         this.baseDir = baseDir;
-        this.resolveDependencies();
-    }
-
-    @JsonIgnore
-    public Set<RepositoryInfo> getRepoDependenciesFlatSet() {
-        Set<RepositoryInfo> result = new HashSet<>(repoDependencies);
-        repoDependencies.forEach(ri -> result.addAll(ri.getRepoDependenciesFlatSet()));
-        return result;
+        try {
+            Path repositoryDirPath = Paths.get(baseDir, this.getDir());
+            boolean repositoryDirExists = Files.exists(repositoryDirPath);
+            if (!repositoryDirExists || Files.list(repositoryDirPath).findAny().isEmpty()) {
+                throw new IllegalStateException(String.format("Repository directory '%s' does not exist or is empty", repositoryDirPath));
+            }
+            try (Git git = Git.open(repositoryDirPath.toFile())) {
+                String branch = repositoryConfig.getBranch();
+                try {
+                    git.checkout().setName(branch).call();
+                } catch (RefNotFoundException e)  {
+                    git.checkout().setName("origin/" +branch).call();
+                }
+            }
+            this.resolveDependencies();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String calculateReleaseVersion(VersionIncrementType versionIncrementType) throws Exception {
@@ -154,13 +166,13 @@ public class RepositoryInfo extends Repository {
 
     void resolveDependencies() {
         List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
-        this.getModules().clear();
-        this.getModuleDependencies().clear();
+        this.modules.clear();
+        this.moduleDependencies.clear();
         try {
             for (PomHolder pomHolder : poms) {
-                GA moduleGA = new GA(pomHolder.getGroupId(), pomHolder.getArtifactId());
-                this.getModules().add(moduleGA);
-                this.perModuleDependencies.put(moduleGA, new HashSet<>());
+                GAV moduleGAV = new GAV(pomHolder.getGroupId(), pomHolder.getArtifactId(), pomHolder.getVersion());
+                this.modules.add(moduleGAV);
+                this.perModuleDependencies.put(moduleGAV.toGA(), new HashSet<>());
             }
             for (PomHolder pomHolder : poms) {
                 Model project = pomHolder.getModel();
@@ -185,15 +197,15 @@ public class RepositoryInfo extends Repository {
                             Stream<GAV> pluginDepGAVs = p.getDependencies().stream().map(dep -> new GAV(dep.getGroupId(), dep.getArtifactId(), dep.getVersion()));
                             Object configuration = p.getConfiguration();
                             if (configuration instanceof Xpp3Dom configurationDom) {
-                                 Optional.ofNullable(configurationDom.getChild("annotationProcessorPaths"))
-                                        .map(annPaths -> annPaths.getChild("path")).ifPresent(annPaths-> {
-                                             String groupId = Optional.ofNullable(annPaths.getChild("groupId")).map(Xpp3Dom::getValue).orElse(null);
-                                             String artifactId = Optional.ofNullable(annPaths.getChild("artifactId")).map(Xpp3Dom::getValue).orElse(null);
-                                             String version = Optional.ofNullable(annPaths.getChild("version")).map(Xpp3Dom::getValue).orElse(null);
-                                             if (groupId != null && artifactId != null && version != null) {
-                                                 gavStreamBuilder.add(new GAV(groupId, artifactId, version));
-                                             }
-                                         });
+                                Optional.ofNullable(configurationDom.getChild("annotationProcessorPaths"))
+                                        .map(annPaths -> annPaths.getChild("path")).ifPresent(annPaths -> {
+                                            String groupId = Optional.ofNullable(annPaths.getChild("groupId")).map(Xpp3Dom::getValue).orElse(null);
+                                            String artifactId = Optional.ofNullable(annPaths.getChild("artifactId")).map(Xpp3Dom::getValue).orElse(null);
+                                            String version = Optional.ofNullable(annPaths.getChild("version")).map(Xpp3Dom::getValue).orElse(null);
+                                            if (groupId != null && artifactId != null && version != null) {
+                                                gavStreamBuilder.add(new GAV(groupId, artifactId, version));
+                                            }
+                                        });
                             }
                             return Stream.concat(gavStreamBuilder.build(), pluginDepGAVs);
                         })
