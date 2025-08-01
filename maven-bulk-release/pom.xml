@@ -57,7 +57,7 @@
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit</artifactId>
-            <version>7.2.0.202503040940-r</version>
+            <version>7.3.0.202506031305-r</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
@@ -74,17 +74,6 @@
             <artifactId>jgrapht-io</artifactId>
             <version>${org.jgrapht.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.semver4j</groupId>
-            <artifactId>semver4j</artifactId>
-            <version>5.8.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.zafarkhaja</groupId>
-            <artifactId>java-semver</artifactId>
-            <version>0.10.2</version>
-        </dependency>
-
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-artifact</artifactId>

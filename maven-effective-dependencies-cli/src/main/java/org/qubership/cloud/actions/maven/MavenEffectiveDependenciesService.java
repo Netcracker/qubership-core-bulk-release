@@ -8,7 +8,6 @@ import org.apache.maven.model.DependencyManagement;
 import org.apache.maven.model.PluginConfiguration;
 import org.apache.maven.model.PluginManagement;
 import org.qubership.cloud.actions.maven.model.*;
-import org.semver4j.Semver;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -36,8 +35,7 @@ public class MavenEffectiveDependenciesService {
                 gavs.stream().collect(Collectors.toMap(gav -> new GA(gav.getGroupId(), gav.getArtifactId()), gav -> {
                     String version = gav.getVersion();
                     // validate that version is a valid semver
-                    Semver semver = Semver.coerce(version);
-                    if (semver == null) {
+                    if (!MavenVersion.isValid(version)) {
                         throw new RuntimeException(String.format("gav: '%s' version is non-semver", gav));
                     }
                     return version;
@@ -147,8 +145,7 @@ public class MavenEffectiveDependenciesService {
         List<RepositoryInfo> repos = graph.get(level);
         if (repos == null) return Collections.emptyList();
         String version = gav.getVersion();
-        Semver gavSemver = Semver.coerce(version);
-        if (gavSemver == null) {
+        if (!MavenVersion.isValid(version)) {
             throw new IllegalArgumentException("non-semver GAV version: " + gav.getVersion());
         }
         List<RepositoryArtifactConsumer> artifactConsumers = repos.stream().flatMap(repositoryInfo -> {
