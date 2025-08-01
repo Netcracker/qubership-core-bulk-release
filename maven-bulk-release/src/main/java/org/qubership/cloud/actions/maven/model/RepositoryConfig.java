@@ -1,9 +1,9 @@
 package org.qubership.cloud.actions.maven.model;
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -17,47 +17,42 @@ public class RepositoryConfig {
     public static Pattern pattern = Pattern.compile("^(?<url>https://[^\\[]+)(\\[(?<params>.*)])?$");
     public static Pattern repositoryUrlPattern = Pattern.compile("https://[^/]+/(.+)");
 
-    String url;
-    String dir;
-    String from = HEAD;
-    String to = HEAD;
-    boolean skipTests = false;
-    VersionIncrementType versionIncrementType;
+    final String url;
+    final String dir;
+    final String branch;
+    final String version;
+    final boolean skipTests;
+    final VersionIncrementType versionIncrementType;
 
-    public RepositoryConfig(String url) {
-        this(url, Map.of());
-    }
-
-    public RepositoryConfig(String url, Map<String, String> params) {
+    @Builder(builderMethodName = "")
+    protected RepositoryConfig(String url, String branch, boolean skipTests, String version,
+                               VersionIncrementType versionIncrementType) {
         this.url = normalizeGitUrl.apply(url);
         Matcher matcher = repositoryUrlPattern.matcher(url);
         if (!matcher.matches()) throw new IllegalArgumentException("Invalid repository url: " + url);
         this.dir = matcher.group(1);
-        params = new LinkedHashMap<>(params);
-        Optional.ofNullable(params.remove("from")).ifPresent(from -> this.from = from);
-        Optional.ofNullable(params.remove("to")).ifPresent(to -> this.to = to);
-        Optional.ofNullable(params.remove("skipTests")).ifPresent(skipTests -> this.skipTests = Boolean.parseBoolean(skipTests));
-        Optional.ofNullable(params.remove("versionIncrementType")).ifPresent(versionIncrementType ->
-                this.versionIncrementType = VersionIncrementType.valueOf(versionIncrementType.toUpperCase()));
-        if (!params.isEmpty()) {
-            throw new IllegalArgumentException(String.format("Unknown repository [%s] params: %s", url, params));
-        }
+        this.skipTests = skipTests;
+        this.version = version;
+        this.branch = Optional.ofNullable(branch).orElse(HEAD);;
+        this.versionIncrementType = Optional.ofNullable(versionIncrementType).orElse(VersionIncrementType.PATCH);
+    }
+
+    public static RepositoryConfigBuilder builder(String url) {
+        return new RepositoryConfigBuilder().url(url);
+    }
+
+    public static RepositoryConfigBuilder builder(RepositoryConfig repositoryConfig) {
+        return new RepositoryConfigBuilder()
+                .url(repositoryConfig.getUrl())
+                .branch(repositoryConfig.getBranch())
+                .skipTests(repositoryConfig.isSkipTests())
+                .version(repositoryConfig.getVersion())
+                .versionIncrementType(repositoryConfig.getVersionIncrementType());
     }
 
     @Override
     public String toString() {
-        return String.format("%s [%s]", url, from);
-    }
-
-    public Map<String, String> params() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("from", from);
-        params.put("to", to);
-        params.put("skipTests", String.valueOf(skipTests));
-        if (versionIncrementType != null) {
-            params.put("versionIncrementType", versionIncrementType.toString());
-        }
-        return params;
+        return String.format("%s [%s]", url, branch);
     }
 
     public static Function<String, String> normalizeGitUrl = url -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
@@ -72,6 +67,11 @@ public class RepositoryConfig {
                 .map(entry -> entry.split("="))
                 .filter(entry -> entry.length == 2)
                 .collect(Collectors.toMap(item -> item[0], item -> item[1]));
-        return new RepositoryConfig(url, params);
+        RepositoryConfigBuilder builder = RepositoryConfig.builder(url);
+        Optional.ofNullable(params.getOrDefault("branch", params.get("from"))).ifPresent(builder::branch);
+        Optional.ofNullable(params.get("version")).ifPresent(builder::version);
+        Optional.ofNullable(params.get("skipTests")).map(Boolean::parseBoolean).ifPresent(builder::skipTests);
+        Optional.ofNullable(params.get("versionIncrementType")).map(String::toUpperCase).map(VersionIncrementType::valueOf).ifPresent(builder::versionIncrementType);
+        return builder.build();
     }
 }

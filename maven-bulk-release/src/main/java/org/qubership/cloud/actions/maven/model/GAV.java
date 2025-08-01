@@ -28,6 +28,10 @@ public class GAV extends GA implements Comparable<GAV> {
         this.version = version;
     }
 
+    public GA toGA() {
+        return new GA(groupId, artifactId);
+    }
+
     @Override
     public String toString() {
         return String.format("%s:%s:%s", groupId, artifactId, version);

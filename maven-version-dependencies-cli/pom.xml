@@ -9,19 +9,19 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>maven-effective-dependencies-cli</artifactId>
+    <artifactId>maven-version-dependencies-cli</artifactId>
 
     <dependencies>
-        <dependency>
-            <groupId>org.qubership.cloud</groupId>
-            <artifactId>maven-bulk-release</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.36</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.qubership.cloud</groupId>
+            <artifactId>maven-bulk-release</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>info.picocli</groupId>
@@ -61,7 +61,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.qubership.cloud.actions.maven.MavenEffectiveDependenciesCli</mainClass>
+                            <mainClass>org.qubership.cloud.actions.maven.MavenVersionDependenciesCli</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

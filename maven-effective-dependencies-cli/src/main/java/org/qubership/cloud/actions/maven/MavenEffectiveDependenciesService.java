@@ -203,7 +203,8 @@ public class MavenEffectiveDependenciesService {
 
     public Map<Integer, List<RepositoryInfo>> resolveRepositories(Config config) {
         gitService.setupGit(config.getGitConfig());
-        return repositoryService.buildDependencyGraph(config);
+        return repositoryService.buildDependencyGraph(config.getBaseDir(), config.getGitConfig(),
+                config.getRepositories(), config.getRepositoriesToReleaseFrom());
     }
 
     public Set<GAV> resolvePomEffectiveDependencies(Path pomPath, MavenConfig config) {
