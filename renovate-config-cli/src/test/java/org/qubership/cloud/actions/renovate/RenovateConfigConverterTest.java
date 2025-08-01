@@ -80,7 +80,7 @@ public class RenovateConfigConverterTest {
                 "--rebaseWhen=conflicted",
                 "--recreateWhen=always",
                 "--platformAutomerge=true",
-                "--labels=renovate",
+                "--labels=renovate,test",
                 "--branchPrefix=renovate-support/",
                 "--branchPrefixOld=renovate/",
                 "--globalExtends=:ignoreModulesAndTests,:dependencyDashboard",
@@ -272,7 +272,7 @@ public class RenovateConfigConverterTest {
                     allowedVersions : "2.18.4",
                     groupName : "com.fasterxml.jackson.dataformat"
                   } ],
-                  labels : [ "renovate" ]
+                  labels : [ "renovate", "test" ]
                 };""", result);
     }
 }

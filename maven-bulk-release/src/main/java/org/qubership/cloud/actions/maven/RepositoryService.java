@@ -192,8 +192,9 @@ public class RepositoryService {
                         }
                     }).toList();
             // find support branches for all repositories starting from the versioned repository
-            List<RepositoryInfo> resolvedSupportBranches = resolveSupportBranches(versionedRepository, repositoryInfoList,
-                    baseDir, gitConfig, mavenConfig, createMissingBranches, out, Direction.BOTH);
+            Map<String, String> processedVersionedRepositoryTree = new TreeMap<>();
+            List<RepositoryInfo> resolvedSupportBranches = resolveSupportBranches(processedVersionedRepositoryTree,
+                    versionedRepository, repositoryInfoList, baseDir, gitConfig, mavenConfig, createMissingBranches, out, Direction.BOTH);
 
             Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
 
@@ -228,43 +229,51 @@ public class RepositoryService {
         }
     }
 
-    List<RepositoryInfo> resolveSupportBranches(RepositoryConfig fromRepository, Collection<RepositoryInfo> repositories,
+    List<RepositoryInfo> resolveSupportBranches(Map<String, String> processedVersionedRepositoryTree,
+                                                RepositoryConfig fromRepository, Collection<RepositoryInfo> repositories,
                                                 String baseDir, GitConfig gitConfig, MavenConfig mavenConfig, boolean createMissingBranches,
                                                 OutputStream out, Direction direction) {
         String branch = resolveSupportBranch(baseDir, gitConfig, mavenConfig, fromRepository, createMissingBranches, out);
+        // check if we already processed the repository for this branch
+        if (processedVersionedRepositoryTree.putIfAbsent(fromRepository.getUrl(), branch) != null) {
+            return List.of();
+        }
         RepositoryConfig repositoryConfig = RepositoryConfig.builder(fromRepository).branch(branch).version(null).build();
         RepositoryInfo repositoryInfo = this.createRepositoryInfo(baseDir, gitConfig, repositoryConfig, out);
-        RepositoryInfoLinker linker = new RepositoryInfoLinker(repositories.stream().map(ri -> {
+
+        List<RepositoryInfo> updatedRepositories = repositories.stream().map(ri -> {
             if (Objects.equals(ri.getUrl(), repositoryInfo.getUrl())) {
                 return repositoryInfo;
             } else {
                 return ri;
             }
-        }).toList());
+        }).toList();
+        RepositoryInfoLinker linker = new RepositoryInfoLinker(updatedRepositories);
         List<RepositoryInfo> result = new ArrayList<>();
-        if (direction == Direction.BOTH || direction == Direction.UP) {
+        if (direction == Direction.BOTH || direction == Direction.UP) { // todo remove if
             List<RepositoryInfo> parents = linker.getRepositoriesUsingThis(repositoryInfo);
             result.addAll(parents.stream().flatMap(parent -> {
                 Set<GAV> gavs = repositoryInfo.getModules().stream()
                         .filter(module -> parent.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module.toGA()::equals))
-                        .peek(gav -> {
+                        .map(gav -> {
                             String version = gav.getVersion();
                             MavenVersion mavenVersion = new MavenVersion(version);
-                            if (mavenVersion.getSuffix().equals("-SNAPSHOT")) {
+                            if (mavenVersion.getSuffix() != null && mavenVersion.getSuffix().equals("-SNAPSHOT")) {
                                 mavenVersion.setSuffix("");
                                 mavenVersion.update(VersionIncrementType.PATCH, mavenVersion.getPatch() - 1);
-                                gav.setVersion(mavenVersion.toString());
+                                return new GAV(gav.getGroupId(), gav.getArtifactId(), mavenVersion.toString());
                             }
+                            return gav;
                         })
                         .collect(Collectors.toSet());
                 String version = findParentRepositoryVersion(baseDir, gitConfig, parent, gavs, out);
                 RepositoryConfig parentRepositoryConfig = RepositoryConfig.builder(parent).version(version).branch(null).build();
-                RepositoryInfo versionedParent = new RepositoryInfo(parentRepositoryConfig, baseDir);
-                return resolveSupportBranches(versionedParent, repositories, baseDir, gitConfig, mavenConfig, createMissingBranches, out, Direction.UP).stream();
+                return resolveSupportBranches(processedVersionedRepositoryTree,
+                        parentRepositoryConfig, updatedRepositories, baseDir, gitConfig, mavenConfig, createMissingBranches, out, Direction.BOTH).stream();
             }).toList());
         }
         result.add(repositoryInfo);
-        if (direction == Direction.BOTH || direction == Direction.DOWN) {
+        if (direction == Direction.BOTH || direction == Direction.DOWN) { // todo remove if
             List<RepositoryInfo> children = linker.getRepositoriesUsedByThis(repositoryInfo);
             result.addAll(children.stream().flatMap(child -> {
                 String version = repositoryInfo.getModuleDependencies().stream()
@@ -276,8 +285,8 @@ public class RepositoryService {
                     throw new IllegalStateException("No version found for repository: " + child.getUrl());
                 }
                 RepositoryConfig childRepositoryConfig = RepositoryConfig.builder(child).version(version).branch(null).build();
-                RepositoryInfo versionedChild = new RepositoryInfo(childRepositoryConfig, baseDir);
-                return resolveSupportBranches(versionedChild, repositories, baseDir, gitConfig, mavenConfig, createMissingBranches, out, Direction.DOWN).stream();
+                return resolveSupportBranches(processedVersionedRepositoryTree,
+                        childRepositoryConfig, updatedRepositories, baseDir, gitConfig, mavenConfig, createMissingBranches, out, Direction.BOTH).stream();
             }).toList());
         }
         return result.stream()
@@ -341,7 +350,15 @@ public class RepositoryService {
                 for (String tag : tags) {
                     RepositoryConfig repositoryConfig = RepositoryConfig.builder(versionedRepository).branch(tag).version(null).build();
                     RepositoryInfo repositoryInfo = createRepositoryInfo(baseDir, gitConf, repositoryConfig, out);
-                    if (repositoryInfo.getModuleDependencies().containsAll(mustHaveDependenciesGAVs)) {
+                    if (repositoryInfo.getModuleDependencies().stream()
+                            .filter(d-> mustHaveDependenciesGAVs.stream().anyMatch(gav -> gav.toGA().equals(d.toGA())))
+                            .anyMatch(dependency -> {
+                                MavenVersion dependencyVersion = new MavenVersion(dependency.getVersion());
+                                return mustHaveDependenciesGAVs.stream()
+                                        .filter(gav -> gav.toGA().equals(dependency.toGA()))
+                                        .map(gav -> new MavenVersion(gav.getVersion()))
+                                        .allMatch(mv -> dependencyVersion.compareTo(mv) <= 0);
+                            })) {
                         Optional<String> optionalVersion = repositoryInfo.getModules().stream().findFirst().map(GAV::getVersion);
                         if (optionalVersion.isEmpty()) {
                             throw new IllegalStateException("No version found for repository: " + repositoryInfo.getUrl());
