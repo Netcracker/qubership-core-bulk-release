@@ -13,7 +13,8 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.lib.TextProgressMonitor;
-import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.TagOpt;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
@@ -35,6 +36,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -351,7 +353,7 @@ public class RepositoryService {
                     RepositoryConfig repositoryConfig = RepositoryConfig.builder(versionedRepository).branch(tag).version(null).build();
                     RepositoryInfo repositoryInfo = createRepositoryInfo(baseDir, gitConf, repositoryConfig, out);
                     if (repositoryInfo.getModuleDependencies().stream()
-                            .filter(d-> mustHaveDependenciesGAVs.stream().anyMatch(gav -> gav.toGA().equals(d.toGA())))
+                            .filter(d -> mustHaveDependenciesGAVs.stream().anyMatch(gav -> gav.toGA().equals(d.toGA())))
                             .anyMatch(dependency -> {
                                 MavenVersion dependencyVersion = new MavenVersion(dependency.getVersion());
                                 return mustHaveDependenciesGAVs.stream()
@@ -463,10 +465,16 @@ public class RepositoryService {
                                     String msg = "CPCAP-0000 updating poms versions for support branch created from the tag";
                                     git.commit().setMessage(msg).call();
                                     log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
-                                    git.push()
-                                            .setRefSpecs(new RefSpec(branch + ":" + branch))
+                                    Iterable<PushResult> pushResults = git.push()
+                                            .setRemote("origin")
+                                            .add("refs/heads/" + branch)
                                             .call();
-                                    log.info("Pushed '{}'", msg);
+                                    List<PushResult> results = StreamSupport.stream(pushResults.spliterator(), false).toList();
+                                    List<RemoteRefUpdate> failedUpdates = results.stream().flatMap(r -> r.getRemoteUpdates().stream()).filter(r -> r.getStatus() != RemoteRefUpdate.Status.OK).toList();
+                                    if (!failedUpdates.isEmpty()) {
+                                        throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
+                                    }
+                                    log.info("Pushed '{}'. Results: ", msg);
                                 }
                             }
                         }
@@ -544,7 +552,8 @@ public class RepositoryService {
                     git.checkout().setForced(true).setName("origin/" + branch).call();
                 }
             } else {
-                try (PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(out, UTF_8))) {
+                PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(out, UTF_8));
+                try {
                     printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
                     Files.createDirectories(repositoryDirPath);
 
@@ -558,6 +567,8 @@ public class RepositoryService {
                             .setTagOption(TagOpt.FETCH_TAGS)
                             .setProgressMonitor(new TextProgressMonitor(printWriter))
                             .call();
+                } finally {
+                    printWriter.flush();
                 }
             }
             try (git; org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
