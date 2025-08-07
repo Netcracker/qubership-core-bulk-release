@@ -23,6 +23,8 @@
     <modules>
         <module>maven-bulk-release</module>
         <module>maven-bulk-release-cli</module>
+        <module>go-bulk-release</module>
+        <module>go-bulk-release-cli</module>
         <module>maven-effective-dependencies-cli</module>
         <module>maven-version-dependencies-cli</module>
         <module>renovate-config-cli</module>
@@ -37,6 +39,13 @@
                     <version>3.14.0</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>1.18.38</version>
+                            </path>
+                        </annotationProcessorPaths>
                     </configuration>
                 </plugin>
                 <plugin>
