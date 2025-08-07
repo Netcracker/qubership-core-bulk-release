@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 @Getter
 @EqualsAndHashCode(callSuper = true)
+//TODO VLLA why inheritance, why not composition?
 public class RepositoryInfo extends RepositoryConfig {
     public static Pattern propertyPattern = Pattern.compile("\\$\\{(.+?)}");
 
@@ -29,6 +30,8 @@ public class RepositoryInfo extends RepositoryConfig {
     Set<GAV> moduleDependencies = new HashSet<>();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
 
+    //TODO VLLA complex logic in the constructor that not only constructs the object, but also changes the file system (git.checkout)
+    // => hard to test, hard to override => move to the service level
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
         super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(),
                 repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
@@ -40,6 +43,7 @@ public class RepositoryInfo extends RepositoryConfig {
                 throw new IllegalStateException(String.format("Repository directory '%s' does not exist or is empty", repositoryDirPath));
             }
             try (Git git = Git.open(repositoryDirPath.toFile())) {
+//                TODO VLLA why do checkout again if it's already done at buildDependencyGraph level?
                 String branch = repositoryConfig.getBranch();
                 try {
                     git.checkout().setName(branch).call();

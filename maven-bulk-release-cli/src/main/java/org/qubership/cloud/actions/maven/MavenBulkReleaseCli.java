@@ -156,6 +156,7 @@ public class MavenBulkReleaseCli implements Runnable {
                 try {
                     Path summaryPath = Paths.get(summaryFile);
                     String md = ReleaseSummary.md(result);
+                    //TODO VLLA it writes huge amount of text in logs, here and below
                     log.info("Writing to {} summary:\n{}", summaryPath, md);
                     Files.writeString(summaryPath, md, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                 } catch (Exception e) {
@@ -177,6 +178,7 @@ public class MavenBulkReleaseCli implements Runnable {
                 // write GAVs
                 try {
                     Path resultPath = Paths.get(gavsResultFile);
+                    // TODO VLLA ReleaseSummary.gavs(result) called twice
                     String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
                     log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
                     Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);

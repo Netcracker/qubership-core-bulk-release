@@ -50,11 +50,13 @@ public class RepositoryService {
     static Pattern versionPattern = Pattern.compile(".*?(?<major>\\d+)\\.(?<minor>(\\d+|x))\\.(?<patch>(\\d+|x))(-SNAPSHOT)?$");
     static Pattern supportBranchPattern = Pattern.compile(".*(?<branch>support/(?<major>\\d+)\\.(?<minor>\\d+|x)\\.(?<patch>\\d+|x))");
 
+//    TODO VLLA: make separate class for Map<Integer, List<RepositoryInfo>>
     public Map<Integer, List<RepositoryInfo>> buildDependencyGraph(String baseDir,
                                                                    GitConfig gitConfig,
                                                                    Set<RepositoryConfig> repositories,
                                                                    Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
+//        TODO VLLA why do we need branhces functionality?
         BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, List<RepositoryConfig>> mergeFunction =
                 (repos1, repos2) -> repos1.stream()
                         .map(repositoryToReleaseFrom -> repos2.stream()

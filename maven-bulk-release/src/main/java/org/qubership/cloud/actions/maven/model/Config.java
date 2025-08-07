@@ -25,6 +25,7 @@ public class Config {
     boolean dryRun;
     int runParallelism;
     @JsonIgnore
+//            TODO VLLA is it needed?
     OutputStream summaryOutputStream;
 
     @Builder(builderMethodName = "")
