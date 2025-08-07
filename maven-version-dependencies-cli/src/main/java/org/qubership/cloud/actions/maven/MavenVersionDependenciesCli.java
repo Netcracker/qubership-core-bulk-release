@@ -1,10 +1,7 @@
 package org.qubership.cloud.actions.maven;
 
 import lombok.extern.slf4j.Slf4j;
-import org.qubership.cloud.actions.maven.model.GitConfig;
-import org.qubership.cloud.actions.maven.model.MavenConfig;
-import org.qubership.cloud.actions.maven.model.RepositoryConfig;
-import org.qubership.cloud.actions.maven.model.RepositoryInfo;
+import org.qubership.cloud.actions.maven.model.*;
 import picocli.CommandLine;
 
 import java.io.OutputStream;
@@ -16,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @CommandLine.Command(description = "maven version dependencies cli")
@@ -41,10 +39,16 @@ public class MavenVersionDependenciesCli implements Runnable {
             description = "create and push to git required support branch if it's not found")
     private boolean createMissingBranches;
 
+    @CommandLine.Option(names = {"--validateSameVersionUpToLevel"}, description = "")
+    private VersionIncrementType validateSameVersionUpToLevel = VersionIncrementType.MINOR;
+
     @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
             description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories;
+
+    @CommandLine.Option(names = {"--skipValidationForGAPatterns"}, split = ",", converter = PatternConverter.class)
+    private List<Pattern> skipValidationForGAPatterns;
 
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
     private String mavenLocalRepoPath = "${user.home}/.m2/repository";
@@ -81,7 +85,8 @@ public class MavenVersionDependenciesCli implements Runnable {
 
             RepositoryService repositoryService = new RepositoryService();
             Map<Integer, List<RepositoryInfo>> repositoriesMap = repositoryService.buildVersionedDependencyGraph(baseDir,
-                    gitConfig, mavenConfig, repositories, createMissingBranches, out);
+                    gitConfig, mavenConfig, repositories, createMissingBranches, validateSameVersionUpToLevel,
+                    skipValidationForGAPatterns, out);
             String result = repositoriesMap.values().stream()
                     .flatMap(Collection::stream)
                     .map(r -> String.format("%s[branch=%s]", r.getUrl(), r.getBranch()))

@@ -9,7 +9,6 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 @ToString(exclude = {"password", "credentialsProvider"})
 @Data
-@Builder
 public class GitConfig {
     String username;
     String email;
@@ -19,11 +18,14 @@ public class GitConfig {
     @JsonIgnore
     CredentialsProvider credentialsProvider;
 
-    public synchronized CredentialsProvider getCredentialsProvider() {
-        if (credentialsProvider == null) {
-            credentialsProvider = new UsernamePasswordCredentialsProvider(this.getUsername(), this.getPassword());
-            CredentialsProvider.setDefault(credentialsProvider);
-        }
-        return credentialsProvider;
+    @Builder
+    public GitConfig(String username, String email, String password, String url) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.url = url;
+        CredentialsProvider credentialsProvider = new UsernamePasswordCredentialsProvider(this.getUsername(), this.getPassword());
+        CredentialsProvider.setDefault(credentialsProvider);
+        this.credentialsProvider = credentialsProvider;
     }
 }
