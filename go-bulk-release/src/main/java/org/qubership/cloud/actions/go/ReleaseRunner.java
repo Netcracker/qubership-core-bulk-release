@@ -51,307 +51,307 @@ public class ReleaseRunner {
         result.setDependenciesDot(dot);
         result.setDryRun(config.isDryRun());
 
-        List<RepositoryRelease> allReleases = dependencyGraph.entrySet().stream().flatMap(entry -> {
-            int level = entry.getKey() + 1;
-            List<RepositoryInfo> reposInfoList = entry.getValue();
-            log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
-                    String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
-//            TODO VLLA extract to configuration file?
-            int threads = config.isRunSequentially() ? 1 : 4;
-//            TODO VLLA why so complicated?..
-            try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-                Set<GAV> gavList = dependenciesGavs.entrySet().stream()
-                        .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
-                        .collect(Collectors.toSet());
-                List<RepositoryRelease> releases = reposInfoList.stream()
-                        .map(repo -> {
-                            try {
-                                PipedOutputStream out = new PipedOutputStream();
-                                PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                                Future<RepositoryRelease> future = executorService.submit(() -> releasePrepare(config, repo, gavList, out));
-                                return new TraceableFuture<>(future, pipedInputStream, repo);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        })
-                        .toList()
-                        .stream()
-                        .map(future -> {
-                            try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-                                 BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                                String line;
-                                while ((line = reader.readLine()) != null) {
-                                    log.info(line);
-                                }
-                                return future.getFuture().get();
-                            } catch (Exception e) {
-                                if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                log.error("'prepare' process for repository '{}' has failed. Error: {}", future.getObject().getUrl(), e.getMessage());
-                                throw new RuntimeException(e);
-                            }
-                        })
-                        .toList();
-                releases.stream().flatMap(r -> r.getGavs().stream())
-                        .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
-                return releases.stream();
-            }
-        }).toList();
-
-        if (!config.isDryRun()) {
-            dependencyGraph.forEach((level, repos) -> {
-                int threads = config.isRunSequentially() ? 1 : repos.size();
-                log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
-                        String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
-                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-                    allReleases.stream()
-                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
-                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
-                            .map(release -> {
-                                try {
-                                    PipedOutputStream out = new PipedOutputStream();
-                                    PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release, out));
-                                    return new TraceableFuture<>(future, pipedInputStream, release);
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            })
-                            .toList()
-                            .forEach(future -> {
-                                try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-                                     BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                                    String line;
-                                    while ((line = reader.readLine()) != null) {
-                                        log.info(line);
-                                    }
-                                    future.getFuture().get();
-                                } catch (Exception e) {
-                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
-                                            future.getObject().getRepository().getUrl(), e.getMessage());
-                                    throw new RuntimeException(e);
-                                }
-                            });
-                }
-            });
-        }
-        result.setReleases(allReleases);
+//        List<RepositoryRelease> allReleases = dependencyGraph.entrySet().stream().flatMap(entry -> {
+//            int level = entry.getKey() + 1;
+//            List<RepositoryInfo> reposInfoList = entry.getValue();
+//            log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
+//                    String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
+////            TODO VLLA extract to configuration file?
+//            int threads = config.isRunSequentially() ? 1 : 4;
+////            TODO VLLA why so complicated?..
+//            try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+//                Set<GAV> gavList = dependenciesGavs.entrySet().stream()
+//                        .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
+//                        .collect(Collectors.toSet());
+//                List<RepositoryRelease> releases = reposInfoList.stream()
+//                        .map(repo -> {
+//                            try {
+//                                PipedOutputStream out = new PipedOutputStream();
+//                                PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
+//                                Future<RepositoryRelease> future = executorService.submit(() -> releasePrepare(config, repo, gavList, out));
+//                                return new TraceableFuture<>(future, pipedInputStream, repo);
+//                            } catch (IOException e) {
+//                                throw new RuntimeException(e);
+//                            }
+//                        })
+//                        .toList()
+//                        .stream()
+//                        .map(future -> {
+//                            try (PipedInputStream pipedInputStream = future.getPipedInputStream();
+//                                 BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
+//                                String line;
+//                                while ((line = reader.readLine()) != null) {
+//                                    log.info(line);
+//                                }
+//                                return future.getFuture().get();
+//                            } catch (Exception e) {
+//                                if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+//                                log.error("'prepare' process for repository '{}' has failed. Error: {}", future.getObject().getUrl(), e.getMessage());
+//                                throw new RuntimeException(e);
+//                            }
+//                        })
+//                        .toList();
+//                releases.stream().flatMap(r -> r.getGavs().stream())
+//                        .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
+//                return releases.stream();
+//            }
+//        }).toList();
+//
+//        if (!config.isDryRun()) {
+//            dependencyGraph.forEach((level, repos) -> {
+//                int threads = config.isRunSequentially() ? 1 : repos.size();
+//                log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
+//                        String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
+//                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+//                    allReleases.stream()
+//                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
+//                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
+//                            .map(release -> {
+//                                try {
+//                                    PipedOutputStream out = new PipedOutputStream();
+//                                    PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
+//                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release, out));
+//                                    return new TraceableFuture<>(future, pipedInputStream, release);
+//                                } catch (IOException e) {
+//                                    throw new RuntimeException(e);
+//                                }
+//                            })
+//                            .toList()
+//                            .forEach(future -> {
+//                                try (PipedInputStream pipedInputStream = future.getPipedInputStream();
+//                                     BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
+//                                    String line;
+//                                    while ((line = reader.readLine()) != null) {
+//                                        log.info(line);
+//                                    }
+//                                    future.getFuture().get();
+//                                } catch (Exception e) {
+//                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+//                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
+//                                            future.getObject().getRepository().getUrl(), e.getMessage());
+//                                    throw new RuntimeException(e);
+//                                }
+//                            });
+//                }
+//            });
+//        }
+//        result.setReleases(allReleases);
         return result;
     }
 
-    RepositoryRelease releasePrepare(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream outputStream) throws Exception {
-        try (outputStream) {
-            updateDependencies(repository, dependencies);
+//    RepositoryRelease releasePrepare(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream outputStream) throws Exception {
+//        try (outputStream) {
+//            updateDependencies(repository, dependencies);
+//
+//            String javaVersion = repository.calculateJavaVersion();
+//            // todo - disable, because this plugin brings versions from redhat server i.e. 2.0.17.redhat-00001 which is not acceptable
+//            // updatePatchVersions(repository, config, javaVersion, outputStream);
+//
+//            VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
+//            String releaseVersion = repository.calculateReleaseVersion(versionIncrementType);
+//            return releasePrepare(repository, config, releaseVersion, javaVersion, outputStream);
+//        }
+//    }
+//
+//    void updateDependencies(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
+//        repositoryInfo.updateDepVersions(dependencies);
+//        // check all versions were updated
+//        Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
+//        Set<GAV> missedDependencies = updatedModuleDependencies.stream()
+//                .filter(gav -> {
+//                    Optional<GAV> foundGav = dependencies.stream()
+//                            .filter(dGav -> Objects.equals(gav.getGroupId(), dGav.getGroupId()) &&
+//                                            Objects.equals(gav.getArtifactId(), dGav.getArtifactId()))
+//                            .findFirst();
+//                    if (foundGav.isEmpty()) return false;
+//                    GAV g = foundGav.get();
+//                    return !Objects.equals(gav.getVersion(), g.getVersion());
+//                })
+//                .collect(Collectors.toSet());
+//        if (!missedDependencies.isEmpty()) {
+//            throw new RuntimeException("Failed to update dependencies: " + missedDependencies.stream().map(GAV::toString).collect(Collectors.joining("\n")));
+//        }
+//        commitUpdatedDependenciesIfAny(repositoryInfo);
+//    }
+//
+//    void commitUpdatedDependenciesIfAny(RepositoryInfo repository) {
+//        Path repositoryDirPath = Paths.get(repository.getBaseDir(), repository.getDir());
+//        try (Git git = Git.open(repositoryDirPath.toFile())) {
+//            List<DiffEntry> diff = git.diff().call();
+//            List<String> modifiedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY).map(DiffEntry::getNewPath).toList();
+//            if (!modifiedFiles.isEmpty()) {
+//                git.add().setUpdate(true).call();
+//                String msg = "updating dependencies before release";
+//                git.commit().setMessage(msg).call();
+//                log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
+//            }
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
 
-            String javaVersion = repository.calculateJavaVersion();
-            // todo - disable, because this plugin brings versions from redhat server i.e. 2.0.17.redhat-00001 which is not acceptable
-            // updatePatchVersions(repository, config, javaVersion, outputStream);
-
-            VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
-            String releaseVersion = repository.calculateReleaseVersion(versionIncrementType);
-            return releasePrepare(repository, config, releaseVersion, javaVersion, outputStream);
-        }
-    }
-
-    void updateDependencies(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
-        repositoryInfo.updateDepVersions(dependencies);
-        // check all versions were updated
-        Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
-        Set<GAV> missedDependencies = updatedModuleDependencies.stream()
-                .filter(gav -> {
-                    Optional<GAV> foundGav = dependencies.stream()
-                            .filter(dGav -> Objects.equals(gav.getGroupId(), dGav.getGroupId()) &&
-                                            Objects.equals(gav.getArtifactId(), dGav.getArtifactId()))
-                            .findFirst();
-                    if (foundGav.isEmpty()) return false;
-                    GAV g = foundGav.get();
-                    return !Objects.equals(gav.getVersion(), g.getVersion());
-                })
-                .collect(Collectors.toSet());
-        if (!missedDependencies.isEmpty()) {
-            throw new RuntimeException("Failed to update dependencies: " + missedDependencies.stream().map(GAV::toString).collect(Collectors.joining("\n")));
-        }
-        commitUpdatedDependenciesIfAny(repositoryInfo);
-    }
-
-    void commitUpdatedDependenciesIfAny(RepositoryInfo repository) {
-        Path repositoryDirPath = Paths.get(repository.getBaseDir(), repository.getDir());
-        try (Git git = Git.open(repositoryDirPath.toFile())) {
-            List<DiffEntry> diff = git.diff().call();
-            List<String> modifiedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY).map(DiffEntry::getNewPath).toList();
-            if (!modifiedFiles.isEmpty()) {
-                git.add().setUpdate(true).call();
-                String msg = "updating dependencies before release";
-                git.commit().setMessage(msg).call();
-                log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    void updatePatchVersions(RepositoryInfo repositoryInfo, Config config, String javaVersion, OutputStream outputStream) throws Exception {
-        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
-        List<String> arguments = new ArrayList<>();
-        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
-        List<String> cmd = List.of("mvn", "-B", "versions:use-latest-releases",
-                "-DallowMajorUpdates=false",
-                "-DallowMinorUpdates=false",
-                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
-                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments)))
-        );
-
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-        Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
-                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
-
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
-
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
-        }
-    }
-
-    RepositoryRelease releasePrepare(RepositoryInfo repositoryInfo, Config config, String releaseVersion,
-                                     String javaVersion, OutputStream outputStream) throws Exception {
-        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
-        List<String> arguments = new ArrayList<>();
-        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
-        if (repositoryInfo.isSkipTests() || config.isSkipTests()) {
-            arguments.add("-DskipTests=true");
-        } else {
-            arguments.add("-Dsurefire.rerunFailingTestsCount=1");
-        }
-//        TODO VLLA is this var needed?
-        String tag = releaseVersion;
-//        TODO VLLA extract script to file template?
-        List<String> cmd = List.of("mvn", "-B", "release:prepare",
-                "-Dresume=true",
-                "-DautoVersionSubmodules=true",
-                "-DreleaseVersion=" + releaseVersion,
-                "-DpushChanges=false",
-                "-Dtag=" + tag,
-                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
-                warpPropertyInQuotes("-DtagNameFormat=@{project.version}"),
-                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments))),
-                warpPropertyInQuotes("-DpreparationGoals=clean install"));
-
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-        Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
-                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
-
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
-
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
-        }
-        List<GAV> gavs = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines()
-                .filter(l -> l.startsWith("project.rel."))
-                .map(l -> l.replace("project.rel.", "")
-                        .replace("\\", "")
-                        .replace("=", ":"))
-                .map(GAV::new).toList();
-        RepositoryRelease release = new RepositoryRelease();
-        release.setRepository(repositoryInfo);
-        release.setReleaseVersion(releaseVersion);
-        release.setTag(tag);
-        release.setJavaVersion(javaVersion);
-        release.setGavs(gavs);
-        return release;
-    }
-
-    String warpPropertyInQuotes(String prop) {
-        return String.format("\"%s\"", prop);
-    }
-
-    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
-//        TODO VLLA: the method do not creates stream and not owns it, we should not close it here
-        try (outputStream) {
-//            TODO VLLA: why we pass repository separately, it already contains in release
-            RepositoryInfo repository = release.getRepository();
-            pushChanges(config, repository, release, outputStream);
-            releaseDeploy(repository, config, release, outputStream);
-            return release;
-        }
-    }
-
-    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
-        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
-        String releaseVersion = release.getReleaseVersion();
-        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
-        try (Git git = Git.open(repositoryDirPath.toFile())) {
-            Optional<Ref> tagOpt = git.tagList().call().stream()
-                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
-                    .findFirst();
-            if (tagOpt.isEmpty()) {
-                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
-            }
-            git.push()
-                    .setProgressMonitor(new TextProgressMonitor(printWriter))
-                    .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
-                    .setPushAll()
-                    .setPushTags()
-                    .call();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            // do not close because we want
-            printWriter.flush();
-        }
-        log.info("Pushed to git: tag: {}", releaseVersion);
-        release.setPushedToGit(true);
-    }
-
-    void releaseDeploy(RepositoryInfo repositoryInfo, Config config,
-                       RepositoryRelease release, OutputStream outputStream) throws Exception {
-        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
-        List<String> arguments = new ArrayList<>();
-        arguments.add("-DskipTests");
-        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
-        if (config.getMavenConfig().getAltDeploymentRepository() != null) {
-            arguments.add("-DaltDeploymentRepository=" + config.getMavenConfig().getAltDeploymentRepository());
-        }
-        String argsString = String.join(" ", arguments);
-        List<String> cmd = Stream.of("mvn", "-B", "release:perform",
-                        "-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath(),
-                        "-DlocalCheckout=true",
-                        "-DautoVersionSubmodules=true",
-                        warpPropertyInQuotes(String.format("-Darguments=%s", argsString)))
-                .collect(Collectors.toList());
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
-
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-        Optional.ofNullable(release.getJavaVersion()).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
-                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
-        // maven envs
-        if (config.getMavenConfig().getUser() != null && config.getMavenConfig().getPassword() != null) {
-            processBuilder.environment().put("MAVEN_USER", config.getMavenConfig().getUser());
-            processBuilder.environment().put("MAVEN_TOKEN", config.getMavenConfig().getPassword());
-        }
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.getErrorStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
-        }
-        release.setDeployed(true);
-    }
-
+//    void updatePatchVersions(RepositoryInfo repositoryInfo, Config config, String javaVersion, OutputStream outputStream) throws Exception {
+//        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
+//        List<String> arguments = new ArrayList<>();
+//        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
+//        List<String> cmd = List.of("mvn", "-B", "versions:use-latest-releases",
+//                "-DallowMajorUpdates=false",
+//                "-DallowMinorUpdates=false",
+//                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
+//                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments)))
+//        );
+//
+//        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
+//        Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
+//                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
+//
+//        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
+//
+//        processBuilder.redirectErrorStream(true);
+//        Process process = processBuilder.start();
+//        process.getInputStream().transferTo(outputStream);
+//        process.waitFor();
+//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
+//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
+//        if (process.exitValue() != 0) {
+//            throw new RuntimeException("Failed to execute cmd");
+//        }
+//    }
+//
+//    RepositoryRelease releasePrepare(RepositoryInfo repositoryInfo, Config config, String releaseVersion,
+//                                     String javaVersion, OutputStream outputStream) throws Exception {
+//        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
+//        List<String> arguments = new ArrayList<>();
+//        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
+//        if (repositoryInfo.isSkipTests() || config.isSkipTests()) {
+//            arguments.add("-DskipTests=true");
+//        } else {
+//            arguments.add("-Dsurefire.rerunFailingTestsCount=1");
+//        }
+////        TODO VLLA is this var needed?
+//        String tag = releaseVersion;
+////        TODO VLLA extract script to file template?
+//        List<String> cmd = List.of("mvn", "-B", "release:prepare",
+//                "-Dresume=true",
+//                "-DautoVersionSubmodules=true",
+//                "-DreleaseVersion=" + releaseVersion,
+//                "-DpushChanges=false",
+//                "-Dtag=" + tag,
+//                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
+//                warpPropertyInQuotes("-DtagNameFormat=@{project.version}"),
+//                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments))),
+//                warpPropertyInQuotes("-DpreparationGoals=clean install"));
+//
+//        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
+//        Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
+//                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
+//
+//        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
+//
+//        processBuilder.redirectErrorStream(true);
+//        Process process = processBuilder.start();
+//        process.getInputStream().transferTo(outputStream);
+//        process.waitFor();
+//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
+//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
+//        if (process.exitValue() != 0) {
+//            throw new RuntimeException("Failed to execute cmd");
+//        }
+//        List<GAV> gavs = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines()
+//                .filter(l -> l.startsWith("project.rel."))
+//                .map(l -> l.replace("project.rel.", "")
+//                        .replace("\\", "")
+//                        .replace("=", ":"))
+//                .map(GAV::new).toList();
+//        RepositoryRelease release = new RepositoryRelease();
+//        release.setRepository(repositoryInfo);
+//        release.setReleaseVersion(releaseVersion);
+//        release.setTag(tag);
+//        release.setJavaVersion(javaVersion);
+//        release.setGavs(gavs);
+//        return release;
+//    }
+//
+//    String warpPropertyInQuotes(String prop) {
+//        return String.format("\"%s\"", prop);
+//    }
+//
+//    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
+////        TODO VLLA: the method do not creates stream and not owns it, we should not close it here
+//        try (outputStream) {
+////            TODO VLLA: why we pass repository separately, it already contains in release
+//            RepositoryInfo repository = release.getRepository();
+//            pushChanges(config, repository, release, outputStream);
+//            releaseDeploy(repository, config, release, outputStream);
+//            return release;
+//        }
+//    }
+//
+//    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
+//        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
+//        String releaseVersion = release.getReleaseVersion();
+//        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
+//        try (Git git = Git.open(repositoryDirPath.toFile())) {
+//            Optional<Ref> tagOpt = git.tagList().call().stream()
+//                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
+//                    .findFirst();
+//            if (tagOpt.isEmpty()) {
+//                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+//            }
+//            git.push()
+//                    .setProgressMonitor(new TextProgressMonitor(printWriter))
+//                    .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
+//                    .setPushAll()
+//                    .setPushTags()
+//                    .call();
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        } finally {
+//            // do not close because we want
+//            printWriter.flush();
+//        }
+//        log.info("Pushed to git: tag: {}", releaseVersion);
+//        release.setPushedToGit(true);
+//    }
+//
+//    void releaseDeploy(RepositoryInfo repositoryInfo, Config config,
+//                       RepositoryRelease release, OutputStream outputStream) throws Exception {
+//        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
+//        List<String> arguments = new ArrayList<>();
+//        arguments.add("-DskipTests");
+//        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
+//        if (config.getMavenConfig().getAltDeploymentRepository() != null) {
+//            arguments.add("-DaltDeploymentRepository=" + config.getMavenConfig().getAltDeploymentRepository());
+//        }
+//        String argsString = String.join(" ", arguments);
+//        List<String> cmd = Stream.of("mvn", "-B", "release:perform",
+//                        "-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath(),
+//                        "-DlocalCheckout=true",
+//                        "-DautoVersionSubmodules=true",
+//                        warpPropertyInQuotes(String.format("-Darguments=%s", argsString)))
+//                .collect(Collectors.toList());
+//        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
+//
+//        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
+//        Optional.ofNullable(release.getJavaVersion()).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
+//                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
+//        // maven envs
+//        if (config.getMavenConfig().getUser() != null && config.getMavenConfig().getPassword() != null) {
+//            processBuilder.environment().put("MAVEN_USER", config.getMavenConfig().getUser());
+//            processBuilder.environment().put("MAVEN_TOKEN", config.getMavenConfig().getPassword());
+//        }
+//        Process process = processBuilder.start();
+//        process.getInputStream().transferTo(outputStream);
+//        process.getErrorStream().transferTo(outputStream);
+//        process.waitFor();
+//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
+//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
+//        if (process.exitValue() != 0) {
+//            throw new RuntimeException("Failed to execute cmd");
+//        }
+//        release.setDeployed(true);
+//    }
+//
     String generateDotFile(Map<Integer, List<RepositoryInfo>> dependencyGraph) {
         Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
         List<RepositoryInfo> repositoryInfoList = dependencyGraph.values().stream().flatMap(Collection::stream).toList();

@@ -19,6 +19,7 @@ import org.eclipse.jgit.transport.TagOpt;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +31,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -50,103 +50,83 @@ public class RepositoryService {
     static Pattern versionPattern = Pattern.compile(".*?(?<major>\\d+)\\.(?<minor>(\\d+|x))\\.(?<patch>(\\d+|x))(-SNAPSHOT)?$");
     static Pattern supportBranchPattern = Pattern.compile(".*(?<branch>support/(?<major>\\d+)\\.(?<minor>\\d+|x)\\.(?<patch>\\d+|x))");
 
-//    TODO VLLA: make separate class for Map<Integer, List<RepositoryInfo>>
+    //    TODO VLLA: make separate class for Map<Integer, List<RepositoryInfo>>
     public Map<Integer, List<RepositoryInfo>> buildDependencyGraph(String baseDir,
                                                                    GitConfig gitConfig,
                                                                    Set<RepositoryConfig> repositories,
                                                                    Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
-//        TODO VLLA why do we need branhces functionality?
-        BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, Set<RepositoryConfig>> mergeFunction =
-                (repos1, repos2) -> repos1.stream()
-                        .map(repositoryToReleaseFrom -> repos2.stream()
-                                .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
-                                .findFirst()
-                                .map(repository -> {
-                                    String repositoryBranch1 = repository.getBranch();
-                                    String repositoryBranch2 = repositoryToReleaseFrom.getBranch();
-                                    if (!Objects.equals(repositoryBranch1, repositoryBranch2)) {
-                                        if (!Objects.equals(repositoryBranch2, RepositoryConfig.HEAD)) {
-                                            return RepositoryConfig.builder(repository).branch(repositoryBranch2).build();
-                                        } else {
-                                            return RepositoryConfig.builder(repository).branch(repositoryBranch1).build();
-                                        }
-                                    }
-                                    return repository;
-                                }).orElse(repositoryToReleaseFrom))
-                        .collect(Collectors.toSet());
-        Set<RepositoryConfig> mergedRepositories = mergeFunction.apply(repositories, repositoriesToReleaseFrom);
-        Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = mergeFunction.apply(repositoriesToReleaseFrom, repositories);
-        try (ExecutorService executorService = Executors.newFixedThreadPool(4)) {
-            List<RepositoryInfo> repositoryInfoList = mergedRepositories.stream()
-                    .map(rc -> {
-                        try {
-                            PipedOutputStream out = new PipedOutputStream();
-                            PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                            Future<RepositoryInfo> future = executorService.submit(() -> {
-                                gitCheckout(baseDir, gitConfig, rc, out);
-                                return new RepositoryInfo(rc, baseDir);
-                            });
-                            return new TraceableFuture<>(future, pipedInputStream, rc);
-                        } catch (IOException e) {
-                            throw new IllegalStateException(e);
-                        }
-                    }).toList()
-                    .stream()
-                    .map(future -> {
-                        try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-                             BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                log.info(line);
-                            }
-                            return future.getFuture().get();
-                        } catch (Exception e) {
-                            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                            throw new RuntimeException(e);
-                        }
-                    }).toList();
-            // set repository dependencies
-            RepositoryInfoLinker repositoryInfoLinker = new RepositoryInfoLinker(repositoryInfoList);
+//        TODO VLLA why do we need branches functionality?
+        Set<RepositoryConfig> mergedRepositories = merge(repositories, repositoriesToReleaseFrom);
+        Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = merge(repositoriesToReleaseFrom, repositories);
 
-            // filter repositories which are not affected by 'released from' repositories
-            List<RepositoryInfo> repositoryInfos = mergedRepositoriesToReleaseFrom.isEmpty() ? repositoryInfoList : repositoryInfoList.stream()
-                    .filter(ri ->
-                            mergedRepositoriesToReleaseFrom.stream().map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(ri.getUrl()) ||
-                            mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(ri).stream()
-                                    .map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(riFrom.getUrl())))
-                    .toList();
+        ParallelExecutor<RepositoryConfig, RepositoryInfo> executor = new ParallelExecutor<>(4);
+        List<RepositoryInfo> repositoryInfoList = executor.process(mergedRepositories,
+                (RepositoryConfig rc, OutputStream out) -> {
+                    gitCheckout(baseDir, gitConfig, rc, out);
+                    return new RepositoryInfo(rc, baseDir);
+                });
 
-            Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
+        // set repository dependencies
+        RepositoryInfoLinker repositoryInfoLinker = new RepositoryInfoLinker(repositoryInfoList);
 
-            for (RepositoryInfo repositoryInfo : repositoryInfos) {
-                graph.addVertex(repositoryInfo.getUrl());
-            }
-            for (RepositoryInfo repositoryInfo : repositoryInfos) {
-                repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(repositoryInfo)
-                        .stream()
-                        .filter(ri -> repositoryInfos.stream().anyMatch(riFrom -> Objects.equals(riFrom.getUrl(), ri.getUrl())))
-                        .forEach(ri -> graph.addEdge(ri.getUrl(), repositoryInfo.getUrl()));
-            }
-            List<RepositoryInfo> independentRepos = repositoryInfos.stream()
-                    .filter(ri -> graph.incomingEdgesOf(ri.getUrl()).isEmpty()).toList();
-            List<RepositoryInfo> dependentRepos = repositoryInfos.stream()
-                    .filter(ri -> !graph.incomingEdgesOf(ri.getUrl()).isEmpty()).collect(Collectors.toList());
-            Map<Integer, List<RepositoryInfo>> groupedReposMap = new TreeMap<>();
-            groupedReposMap.put(0, independentRepos);
-            int level = 1;
-            while (!dependentRepos.isEmpty()) {
-                List<RepositoryInfo> prevLevelRepos = IntStream.range(0, level).boxed().flatMap(lvl -> groupedReposMap.get(lvl).stream()).toList();
-                List<RepositoryInfo> thisLevelRepos = dependentRepos.stream()
-                        .filter(ri -> graph.incomingEdgesOf(ri.getUrl()).stream().map(StringEdge::getSource)
-                                .allMatch(dependentRepoUrl -> prevLevelRepos.stream().map(RepositoryInfo::getUrl)
-                                        .collect(Collectors.toSet()).contains(dependentRepoUrl))).toList();
-                groupedReposMap.put(level, thisLevelRepos);
-                dependentRepos.removeAll(thisLevelRepos);
-                level++;
-            }
-            return groupedReposMap;
+        // filter repositories which are not affected by 'released from' repositories
+        List<RepositoryInfo> repositoryInfos = mergedRepositoriesToReleaseFrom.isEmpty() ? repositoryInfoList : repositoryInfoList.stream()
+                .filter(ri ->
+                        mergedRepositoriesToReleaseFrom.stream().map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(ri.getUrl()) ||
+                        mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(ri).stream()
+                                .map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(riFrom.getUrl())))
+                .toList();
+
+        Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
+
+        for (RepositoryInfo repositoryInfo : repositoryInfos) {
+            graph.addVertex(repositoryInfo.getUrl());
         }
+        for (RepositoryInfo repositoryInfo : repositoryInfos) {
+            repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(repositoryInfo)
+                    .stream()
+                    .filter(ri -> repositoryInfos.stream().anyMatch(riFrom -> Objects.equals(riFrom.getUrl(), ri.getUrl())))
+                    .forEach(ri -> graph.addEdge(ri.getUrl(), repositoryInfo.getUrl()));
+        }
+        List<RepositoryInfo> independentRepos = repositoryInfos.stream()
+                .filter(ri -> graph.incomingEdgesOf(ri.getUrl()).isEmpty()).toList();
+        List<RepositoryInfo> dependentRepos = repositoryInfos.stream()
+                .filter(ri -> !graph.incomingEdgesOf(ri.getUrl()).isEmpty()).collect(Collectors.toList());
+        Map<Integer, List<RepositoryInfo>> groupedReposMap = new TreeMap<>();
+        groupedReposMap.put(0, independentRepos);
+        int level = 1;
+        while (!dependentRepos.isEmpty()) {
+            List<RepositoryInfo> prevLevelRepos = IntStream.range(0, level).boxed().flatMap(lvl -> groupedReposMap.get(lvl).stream()).toList();
+            List<RepositoryInfo> thisLevelRepos = dependentRepos.stream()
+                    .filter(ri -> graph.incomingEdgesOf(ri.getUrl()).stream().map(StringEdge::getSource)
+                            .allMatch(dependentRepoUrl -> prevLevelRepos.stream().map(RepositoryInfo::getUrl)
+                                    .collect(Collectors.toSet()).contains(dependentRepoUrl))).toList();
+            groupedReposMap.put(level, thisLevelRepos);
+            dependentRepos.removeAll(thisLevelRepos);
+            level++;
+        }
+        return groupedReposMap;
+    }
+
+    private Set<RepositoryConfig> merge(Collection<RepositoryConfig> repos1, Collection<RepositoryConfig> repos2) {
+        return repos1.stream()
+                .map(repositoryToReleaseFrom -> repos2.stream()
+                        .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
+                        .findFirst()
+                        .map(repository -> {
+                            String repositoryBranch1 = repository.getBranch();
+                            String repositoryBranch2 = repositoryToReleaseFrom.getBranch();
+                            if (!Objects.equals(repositoryBranch1, repositoryBranch2)) {
+                                if (!Objects.equals(repositoryBranch2, RepositoryConfig.HEAD)) {
+                                    return RepositoryConfig.builder(repository).branch(repositoryBranch2).build();
+                                } else {
+                                    return RepositoryConfig.builder(repository).branch(repositoryBranch1).build();
+                                }
+                            }
+                            return repository;
+                        }).orElse(repositoryToReleaseFrom))
+                .collect(Collectors.toSet());
     }
 
     public Map<Integer, List<RepositoryInfo>> buildVersionedDependencyGraph(String baseDir, GitConfig gitConfig,

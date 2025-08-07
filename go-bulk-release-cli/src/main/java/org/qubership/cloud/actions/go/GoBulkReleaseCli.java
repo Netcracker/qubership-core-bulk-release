@@ -14,9 +14,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@CommandLine.Command(description = "maven bulk release cli")
+@CommandLine.Command(description = "go bulk release cli")
 @Slf4j
-public class MavenBulkReleaseCli implements Runnable {
+public class GoBulkReleaseCli implements Runnable {
 
     @CommandLine.Option(names = {"--gitURL"}, required = true, description = "git host")
     private String gitURL;
@@ -43,9 +43,9 @@ public class MavenBulkReleaseCli implements Runnable {
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositoriesToReleaseFrom = Set.of();
 
-    @CommandLine.Option(names = {"--gavs"}, split = "\\s*,\\s*",
-            description = "comma seperated list of GAVs to update dependencies from pom.xml files to")
-    private Set<String> gavs = new HashSet<>();
+//    @CommandLine.Option(names = {"--gavs"}, split = "\\s*,\\s*",
+//            description = "comma seperated list of GAVs to update dependencies from pom.xml files to")
+//    private Set<String> gavs = new HashSet<>();
 
     @CommandLine.Option(names = {"--skipTests"}, arity = "0", defaultValue = "false", description = "skip tests run by release:prepare mvn command")
     private boolean skipTests;
@@ -59,26 +59,27 @@ public class MavenBulkReleaseCli implements Runnable {
             """)
     private boolean dryRun;
 
-    @CommandLine.Option(names = {"--mavenAltDeploymentRepository"},
-            description = "altDeploymentRepository to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
-    private String mavenAltDeploymentRepository;
+//    @CommandLine.Option(names = {"--mavenAltDeploymentRepository"},
+//            description = "altDeploymentRepository to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
+//    private String mavenAltDeploymentRepository;
 
     @CommandLine.Option(names = {"--versionIncrementType"}, type = VersionIncrementType.class,
             description = "'altDeploymentRepository' to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
     private VersionIncrementType versionIncrementType = VersionIncrementType.PATCH;
 
-    @CommandLine.Option(names = {"--javaVersionToJavaHomeEnv"}, split = "\\s*,\\s*",
-            description = "comma seperated list of javaVersion=JAVA_HOME mappings")
-    private Map<String, String> javaVersionToJavaHomeEnv = Map.of();
+//    TODO VLLA: restore functionality for go versions
+//    @CommandLine.Option(names = {"--javaVersionToJavaHomeEnv"}, split = "\\s*,\\s*",
+//            description = "comma seperated list of javaVersion=JAVA_HOME mappings")
+//    private Map<String, String> javaVersionToJavaHomeEnv = Map.of();
 
-    @CommandLine.Option(names = {"--mavenUser"}, description = "maven username to use to login to remote repository")
-    private String mavenUser;
+//    @CommandLine.Option(names = {"--mavenUser"}, description = "maven username to use to login to remote repository")
+//    private String mavenUser;
 
-    @CommandLine.Option(names = {"--mavenPassword"}, description = "maven password to use to login to remote repository")
-    private String mavenPassword;
+//    @CommandLine.Option(names = {"--mavenPassword"}, description = "maven password to use to login to remote repository")
+//    private String mavenPassword;
 
-    @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
-    private String mavenLocalRepoPath = "${user.home}/.m2/repository";
+//    @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
+//    private String mavenLocalRepoPath = "${user.home}/.m2/repository";
 
     @CommandLine.Option(names = {"--summaryFile"}, description = "File path to save summary to")
     private String summaryFile;
@@ -93,7 +94,7 @@ public class MavenBulkReleaseCli implements Runnable {
     private String gavsResultFile;
 
     public static void main(String... args) {
-        CommandLine commandLine = new CommandLine(new MavenBulkReleaseCli());
+        CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
         commandLine.registerConverter(VersionIncrementType.class, v -> VersionIncrementType.valueOf(v.toUpperCase()));
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);
@@ -115,24 +116,24 @@ public class MavenBulkReleaseCli implements Runnable {
                     .password(gitPassword)
                     .build();
 
-            MavenConfig mavenConfig = MavenConfig.builder()
-                    .user(mavenUser)
-                    .password(mavenPassword)
-                    .altDeploymentRepository(mavenAltDeploymentRepository)
-                    .localRepositoryPath(mavenLocalRepoPath)
-                    .build();
+//            MavenConfig mavenConfig = MavenConfig.builder()
+//                    .user(mavenUser)
+//                    .password(mavenPassword)
+//                    .altDeploymentRepository(mavenAltDeploymentRepository)
+//                    .localRepositoryPath(mavenLocalRepoPath)
+//                    .build();
 
-            gavs = this.gavs.stream().filter(gav -> !gav.isBlank()).collect(Collectors.toSet());
+//            gavs = this.gavs.stream().filter(gav -> !gav.isBlank()).collect(Collectors.toSet());
 
             repositoriesToReleaseFrom = repositoriesToReleaseFrom.stream()
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
-            Config config = Config.builder(baseDir, gitConfig, mavenConfig, repositories)
+            Config config = Config.builder(baseDir, gitConfig, repositories)
                     .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
                     .versionIncrementType(versionIncrementType)
-                    .javaVersionToJavaHomeEnv(javaVersionToJavaHomeEnv)
-                    .gavs(gavs)
+//                    .javaVersionToJavaHomeEnv(javaVersionToJavaHomeEnv)
+//                    .gavs(gavs)
                     .skipTests(skipTests)
                     .dryRun(dryRun)
                     .build();

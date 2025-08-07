@@ -56,7 +56,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.qubership.cloud.actions.go.MavenBulkReleaseCli</mainClass>
+                            <mainClass>org.qubership.cloud.actions.go.GoBulkReleaseCli</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
