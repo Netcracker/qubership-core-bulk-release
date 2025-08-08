@@ -5,11 +5,14 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.*;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Ref;
 import org.qubership.cloud.actions.go.model.gomod.GoModFile;
 import org.qubership.cloud.actions.go.model.gomod.GoModFileFactory;
 import org.qubership.cloud.actions.go.util.FilesUtils;
 import org.qubership.cloud.actions.go.util.UrlUtils;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -73,9 +76,48 @@ public class RepositoryInfo extends RepositoryConfig {
 //        }
 //    }
 
-    public String calculateReleaseVersion(VersionIncrementType versionIncrementType) throws Exception {
-        //TODO VLLA IMPLEMENT
-        return "v6.6.6";
+    private static final Pattern SEMVER_PATTERN = Pattern.compile("^v(\\d+)\\.(\\d+)\\.(\\d+)$");
+
+    public String calculateReleaseVersion(VersionIncrementType versionIncrementType) {
+        String currentVersion;
+        Path releaseVersionPath = Path.of(this.getBaseDir(), this.getDir(), "release.version");
+        if (Files.exists(releaseVersionPath)) {
+            Properties props = new Properties();
+            try (FileInputStream fis = new FileInputStream(releaseVersionPath.toFile())) {
+                props.load(fis);
+                currentVersion = props.getProperty("version");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else {
+            throw new RuntimeException("Could not find release version file");
+        }
+
+        Pattern semverPattern = Pattern.compile("v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)");
+        Matcher matcher = semverPattern.matcher(currentVersion);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException(String.format("Non-semver version: %s. Must match pattern: '%s'", currentVersion, semverPattern.pattern()));
+        }
+        int major = Integer.parseInt(matcher.group("major"));
+        int minor = Integer.parseInt(matcher.group("minor"));
+        int patch = Integer.parseInt(matcher.group("patch"));
+        switch (versionIncrementType) {
+            case MAJOR -> {
+                major++;
+                minor = 0;
+                patch = 0;
+            }
+            case MINOR -> {
+                minor++;
+                patch = 0;
+            }
+            case PATCH -> {
+                patch++;
+            }
+        }
+        return String.format("v%d.%d.%d", major, minor, patch);
+
 //        Path releasePropsPath = Path.of(this.getBaseDir(), this.getDir(), "release.properties");
 //        if (Files.exists(releasePropsPath)) {
 //            String content = Files.readString(releasePropsPath);
