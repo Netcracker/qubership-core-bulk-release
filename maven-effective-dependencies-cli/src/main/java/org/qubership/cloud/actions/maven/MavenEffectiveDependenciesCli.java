@@ -75,7 +75,6 @@ public class MavenEffectiveDependenciesCli implements Runnable {
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         try {
-            MavenEffectiveDependenciesService service = new MavenEffectiveDependenciesService();
             GitConfig gitConfig = GitConfig.builder()
                     .url(gitURL)
                     .username(gitUsername)
@@ -86,6 +85,8 @@ public class MavenEffectiveDependenciesCli implements Runnable {
             MavenConfig mavenConfig = MavenConfig.builder()
                     .localRepositoryPath(mavenLocalRepoPath)
                     .build();
+
+            MavenEffectiveDependenciesService service = new MavenEffectiveDependenciesService(new GitService(gitConfig));
 
             Config config = Config.builder(Path.of(baseDir, "repositories").toString(), gitConfig, mavenConfig, repositories).build();
             Set<GAV> gavs1 = service.resolvePomsEffectiveDependencies(Path.of(baseDir, type1PomRelativeDir), mavenConfig);
