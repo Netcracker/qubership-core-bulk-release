@@ -151,29 +151,29 @@ public class GoBulkReleaseCli implements Runnable {
                     log.error("Failed to write summary to file {}", summaryFile, e);
                 }
             }
-            if (resultOutputFile != null && !resultOutputFile.isBlank()) {
-                // write the result
-                try {
-                    Path resultPath = Paths.get(resultOutputFile);
-                    String gavsResult = ReleaseSummary.gavs(result);
-                    log.info("Writing to {} result:\n{}", resultPath, gavsResult.replaceAll(",", "\n"));
-                    Files.writeString(resultPath, String.format("result=%s", gavsResult), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (Exception e) {
-                    log.error("Failed to write result to file {}", resultOutputFile, e);
-                }
-            }
-            if (gavsResultFile != null && !gavsResultFile.isBlank()) {
-                // write GAVs
-                try {
-                    Path resultPath = Paths.get(gavsResultFile);
-                    // TODO VLLA ReleaseSummary.gavs(result) called twice
-                    String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
-                    log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
-                    Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (Exception e) {
-                    log.error("Failed to write GAVs to file {}", gavsResultFile, e);
-                }
-            }
+//            if (resultOutputFile != null && !resultOutputFile.isBlank()) {
+//                // write the result
+//                try {
+//                    Path resultPath = Paths.get(resultOutputFile);
+//                    String gavsResult = ReleaseSummary.gavs(result);
+//                    log.info("Writing to {} result:\n{}", resultPath, gavsResult.replaceAll(",", "\n"));
+//                    Files.writeString(resultPath, String.format("result=%s", gavsResult), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+//                } catch (Exception e) {
+//                    log.error("Failed to write result to file {}", resultOutputFile, e);
+//                }
+//            }
+//            if (gavsResultFile != null && !gavsResultFile.isBlank()) {
+//                // write GAVs
+//                try {
+//                    Path resultPath = Paths.get(gavsResultFile);
+//                    // TODO VLLA ReleaseSummary.gavs(result) called twice
+//                    String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
+//                    log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
+//                    Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+//                } catch (Exception e) {
+//                    log.error("Failed to write GAVs to file {}", gavsResultFile, e);
+//                }
+//            }
             if (dependencyGraphFile != null && !dependencyGraphFile.isBlank()) {
                 // write the dependency graph
                 try {
