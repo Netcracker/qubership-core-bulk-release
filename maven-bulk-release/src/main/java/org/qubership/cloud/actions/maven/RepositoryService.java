@@ -8,14 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
-import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.StoredConfig;
-import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
-import org.eclipse.jgit.transport.TagOpt;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.qubership.cloud.actions.maven.model.*;
@@ -38,10 +34,14 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 @Slf4j
 public class RepositoryService {
+
+    GitService gitService;
+
+    public RepositoryService(GitService gitService) {
+        this.gitService = gitService;
+    }
 
     enum DependencyType {
         REFERENCES, DECLARED_IN
@@ -81,10 +81,8 @@ public class RepositoryService {
                         try {
                             PipedOutputStream out = new PipedOutputStream();
                             PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                            Future<RepositoryInfo> future = executorService.submit(() -> {
-                                gitCheckout(baseDir, gitConfig, rc, out);
-                                return new RepositoryInfo(rc, baseDir);
-                            });
+                            Future<RepositoryInfo> future = executorService.submit(() ->
+                                    createRepositoryInfo(baseDir, gitConfig, rc, out));
                             return new TraceableFuture<>(future, pipedInputStream, rc);
                         } catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -661,53 +659,7 @@ public class RepositoryService {
     }
 
     RepositoryInfo createRepositoryInfo(String baseDir, GitConfig gitConf, RepositoryConfig repositoryConfig, OutputStream out) {
-        gitCheckout(baseDir, gitConf, repositoryConfig, out);
+        gitService.gitCheckout(baseDir, gitConf, repositoryConfig, out);
         return new RepositoryInfo(repositoryConfig, baseDir);
-    }
-
-    void gitCheckout(String baseDir, GitConfig gitConf, RepositoryConfig repository, OutputStream out) {
-        try (out) {
-            Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
-            boolean repositoryDirExists = Files.exists(repositoryDirPath);
-            Git git;
-            String branch = repository.getBranch();
-            if (repositoryDirExists && Files.list(repositoryDirPath).findAny().isPresent()) {
-                git = Git.open(repositoryDirPath.toFile());
-                try {
-                    git.checkout().setForced(true).setName(branch).call();
-                } catch (RefNotFoundException e) {
-                    git.checkout().setForced(true).setName("origin/" + branch).call();
-                }
-            } else {
-                PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(out, UTF_8));
-                try {
-                    printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
-                    Files.createDirectories(repositoryDirPath);
-
-                    git = Git.cloneRepository()
-                            .setCredentialsProvider(gitConf.getCredentialsProvider())
-                            .setURI(repository.getUrl())
-                            .setDirectory(repositoryDirPath.toFile())
-                            .setDepth(1)
-                            .setBranch(branch)
-                            .setCloneAllBranches(false)
-                            .setTagOption(TagOpt.FETCH_TAGS)
-                            .setProgressMonitor(new TextProgressMonitor(printWriter))
-                            .call();
-                } finally {
-                    printWriter.flush();
-                }
-            }
-            try (git; org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
-                StoredConfig gitConfig = rep.getConfig();
-                gitConfig.setString("user", null, "name", gitConf.getUsername());
-                gitConfig.setString("user", null, "email", gitConf.getEmail());
-                gitConfig.setString("credential", null, "helper", "store");
-                gitConfig.save();
-                log.debug("Saved git config:\n{}", gitConfig.toText());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -6,9 +6,8 @@ import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.maven.model.MavenVersion;
 import org.qubership.cloud.actions.maven.model.RepositoryConfig;
 import org.qubership.cloud.actions.renovate.model.RenovateConfig;
-import org.qubership.cloud.actions.renovate.model.RenovateDryRun;
-import org.qubership.cloud.actions.renovate.model.RenovateHostRule;
-import org.qubership.cloud.actions.renovate.model.RenovatePackageRule;
+import org.qubership.cloud.actions.renovate.model.RenovateMap;
+import org.qubership.cloud.actions.renovate.model.RenovateParam;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -21,59 +20,9 @@ import java.util.stream.Stream;
 @CommandLine.Command(description = "maven effective dependencies cli")
 @Slf4j
 public class RenovateConfigCli implements Runnable {
-    @CommandLine.Option(names = {"--username"}, description = "username")
-    private String username = "renovate";
-
-    @CommandLine.Option(names = {"--gitAuthor"}, description = "gitAuthor")
-    private String gitAuthor = "Renovate Bot <bot@renovate.com>";
 
     @CommandLine.Option(names = {"--platform"}, required = true, description = "platform")
     private String platform;
-
-    @CommandLine.Option(names = {"--dryRun"}, description = "dry run", converter = DryRunConverter.class)
-    private RenovateDryRun dryRun;
-
-    @CommandLine.Option(names = {"--globalExtends"}, description = "globalExtends", split = ",")
-    private List<String> globalExtends;
-
-    @CommandLine.Option(names = {"--onboarding"}, description = "onboarding")
-    private boolean onboarding = false;
-
-    @CommandLine.Option(names = {"--branchConcurrentLimit"}, description = "branchConcurrentLimit")
-    private int branchConcurrentLimit = 20;
-
-    @CommandLine.Option(names = {"--prConcurrentLimit"}, description = "prConcurrentLimit")
-    private int prConcurrentLimit = 20;
-
-    @CommandLine.Option(names = {"--prHourlyLimit"}, description = "prConcurrentLimit")
-    private int prHourlyLimit = 5;
-
-    @CommandLine.Option(names = {"--commitMessage"}, description = "commit message")
-    private String commitMessage;
-
-    @CommandLine.Option(names = {"--branchPrefix"}, description = "branchPrefix")
-    private String branchPrefix;
-
-    @CommandLine.Option(names = {"--branchPrefixOld"}, description = "branchPrefixOld")
-    private String branchPrefixOld;
-
-    @CommandLine.Option(names = {"--commitMessagePrefix"}, description = "commit message prefix")
-    private String commitMessagePrefix;
-
-    @CommandLine.Option(names = {"--prCreation"}, description = "prCreation")
-    private String prCreation;
-
-    @CommandLine.Option(names = {"--printConfig"}, description = "printConfig")
-    private boolean printConfig = true;
-
-    @CommandLine.Option(names = {"--platformAutomerge"}, description = "platformAutomerge")
-    private boolean platformAutomerge = true;
-
-    @CommandLine.Option(names = {"--rebaseWhen"}, description = "rebaseWhen")
-    private String rebaseWhen;
-
-    @CommandLine.Option(names = {"--recreateWhen"}, description = "recreateWhen")
-    private String recreateWhen;
 
     @CommandLine.Option(names = {"--gavs"}, split = ",",
             description = "comma seperated list of GAVs to be used for building renovate config", converter = GAVConverter.class)
@@ -82,20 +31,25 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--gavsFile"}, description = "file of GAVs seperated by new-line to be used for building renovate config")
     private String gavsFile;
 
-    @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--param"},
+            description = "base renovate config param like 'platform', 'dryRun' etc",
+            converter = RenovateParamConverter.class)
+    private List<RenovateParam> params = new LinkedList<>();
+
+    @CommandLine.Option(names = {"--repository"}, required = true,
             description = "comma seperated list of git urls to all repositories to be used for building renovate config",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories;
 
-    @CommandLine.Option(names = {"--packageRules"}, split = ",",
-            description = "comma seperated list of default packageRules to be included for building renovate config",
-            converter = RenovatePackageRuleConverter.class)
-    private List<RenovatePackageRule> defaultPackageRules = new ArrayList<>();
+    @CommandLine.Option(names = {"--packageRule"},
+            description = "Default packageRule to be included for building renovate config",
+            converter = RenovateMapConverter.class)
+    private List<RenovateMap> defaultPackageRules = new ArrayList<>();
 
-    @CommandLine.Option(names = {"--hostRules"}, split = ",",
-            description = "comma seperated list of hostRules to be used for building renovate config",
-            converter = RenovateHostRuleConverter.class)
-    private List<RenovateHostRule> hostRules;
+    @CommandLine.Option(names = {"--hostRule"},
+            description = "hostRule to be used for building renovate config",
+            converter = RenovateMapConverter.class)
+    private List<RenovateMap> hostRules;
 
     @CommandLine.Option(names = {"--labels"}, split = ",", description = "comma seperated list of labels to be used for building renovate config")
     private List<String> labels;
@@ -115,35 +69,20 @@ public class RenovateConfigCli implements Runnable {
     public void run() {
         try {
             RenovateConfig config = new RenovateConfig();
-            config.setUsername(username);
-            config.setGitAuthor(gitAuthor);
-            config.setPlatform(platform);
-            config.setCommitMessage(commitMessage);
-            config.setCommitMessagePrefix(commitMessagePrefix);
-            config.setPrHourlyLimit(prHourlyLimit);
-            config.setPrConcurrentLimit(prConcurrentLimit);
-            config.setBranchConcurrentLimit(branchConcurrentLimit);
-            config.setOnboarding(onboarding);
-            config.setPrCreation(prCreation);
-            config.setPrintConfig(printConfig);
-            config.setPlatformAutomerge(platformAutomerge);
-            config.setRebaseWhen(rebaseWhen);
-            config.setRecreateWhen(recreateWhen);
-            config.setGlobalExtends(globalExtends);
-            config.setBranchPrefix(branchPrefix);
-            config.setBranchPrefixOld(branchPrefixOld);
-            config.setRepositories(repositories.stream().map(RepositoryConfig::getDir).toList());
-            config.setBaseBranchPatterns(repositories.stream()
+            config.put("platform", platform);
+            config.putAll(params.stream().collect(Collectors.toMap(RenovateParam::getKey, RenovateParam::getValue,
+                    (v1, v2) -> v2, LinkedHashMap::new)));
+            config.put("repositories", repositories.stream().map(RepositoryConfig::getDir).toList());
+            config.put("baseBranchPatterns", repositories.stream()
                     .map(RepositoryConfig::getBranch)
                     .filter(Objects::nonNull)
                     .filter(b -> !"HEAD".equals(b))
                     .toList());
-
             // group by the same groupId and version
             if (gavsFile != null) {
                 Files.readAllLines(Path.of(gavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(gavs::add);
             }
-            List<RenovatePackageRule> packageRules = new ArrayList<>(defaultPackageRules);
+            List<RenovateMap> packageRules = new ArrayList<>(defaultPackageRules);
             packageRules.addAll(gavs.stream()
                     .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
                     .collect(Collectors.toMap(GA::getGroupId, gav -> {
@@ -164,7 +103,7 @@ public class RenovateConfigCli implements Runnable {
                                 .map(versionToArtifactIds -> {
                                     String version = versionToArtifactIds.getKey();
                                     Set<String> artifactIds = versionToArtifactIds.getValue();
-                                    RenovatePackageRule rule = new RenovatePackageRule();
+                                    RenovateMap rule = new RenovateMap();
                                     rule.put("matchPackageNames", artifactIds.stream()
                                             .map(artifactId -> groupId + ":" + artifactId)
                                             .sorted()
@@ -178,22 +117,20 @@ public class RenovateConfigCli implements Runnable {
                                 });
                     })
                     .toList());
-            config.setPackageRules(packageRules);
-            config.setLabels(labels);
 
-            if (dryRun != null) config.setDryRun(dryRun.name());
             if (hostRules != null && !hostRules.isEmpty()) {
                 List<String> mavenHosts = hostRules.stream()
-                        .filter(h -> "maven".equals(h.getHostType()))
-                        .map(RenovateHostRule::getMatchHost).toList();
-                RenovatePackageRule mavenPackageRule = new RenovatePackageRule();
+                        .filter(h -> "maven".equals(h.get("hostType")))
+                        .map(m -> (String) m.get("matchHost")).toList();
+                RenovateMap mavenPackageRule = new RenovateMap();
                 mavenPackageRule.put("matchDatasources", List.of("maven"));
                 mavenPackageRule.put("registryUrls", mavenHosts);
-                List<RenovatePackageRule> mavenPackageRules = List.of(mavenPackageRule);
+                List<RenovateMap> mavenPackageRules = List.of(mavenPackageRule);
 
-                config.setHostRules(hostRules);
-                config.setPackageRules(Stream.concat(mavenPackageRules.stream(), packageRules.stream()).toList());
+                config.put("hostRules", hostRules);
+                packageRules = Stream.concat(mavenPackageRules.stream(), packageRules.stream()).toList();
             }
+            config.put("packageRules", packageRules);
             String result = RenovateConfigToJsConverter.convert(config);
             if (renovateConfigOutputFile != null && !renovateConfigOutputFile.isBlank()) {
                 // write the result

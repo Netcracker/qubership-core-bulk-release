@@ -83,7 +83,7 @@ public class MavenVersionDependenciesCli implements Runnable {
                 }
             };
 
-            RepositoryService repositoryService = new RepositoryService();
+            RepositoryService repositoryService = new RepositoryService(new GitService(gitConfig));
             Map<Integer, List<RepositoryInfo>> repositoriesMap = repositoryService.buildVersionedDependencyGraph(baseDir,
                     gitConfig, mavenConfig, repositories, createMissingBranches, validateSameVersionUpToLevel,
                     skipValidationForGAPatterns, out);

@@ -37,13 +37,12 @@ public class ReleaseRunner {
         Result result = new Result();
         log.info("Config: {}", yamlMapper.writeValueAsString(config));
         // set up git creds if necessary
-        GitService gitService = new GitService();
-        gitService.setupGit(config.getGitConfig());
+        GitService gitService = new GitService(config.getGitConfig());
 
         Map<GA, String> dependenciesGavs = config.getGavs().stream().map(GAV::new)
                 .collect(Collectors.toMap(gav -> new GA(gav.getGroupId(), gav.getArtifactId()), GAV::getVersion));
         // build dependency graph
-        RepositoryService repositoryService = new RepositoryService();
+        RepositoryService repositoryService = new RepositoryService(gitService);
         Map<Integer, List<RepositoryInfo>> dependencyGraph = repositoryService.buildDependencyGraph(config.getBaseDir(), config.getGitConfig(),
                 config.getRepositories(), config.getRepositoriesToReleaseFrom());
         result.setDependencyGraph(dependencyGraph);

@@ -22,8 +22,14 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class MavenEffectiveDependenciesService {
-    GitService gitService = new GitService();
-    RepositoryService repositoryService = new RepositoryService();
+
+    GitService gitService;
+    RepositoryService repositoryService;
+
+    public MavenEffectiveDependenciesService(GitService gitService) {
+        this.gitService = gitService;
+        this.repositoryService = new RepositoryService(gitService);
+    }
 
     GAV empty = new GAV("", "", "");
 
@@ -199,7 +205,6 @@ public class MavenEffectiveDependenciesService {
     }
 
     public Map<Integer, List<RepositoryInfo>> resolveRepositories(Config config) {
-        gitService.setupGit(config.getGitConfig());
         return repositoryService.buildDependencyGraph(config.getBaseDir(), config.getGitConfig(),
                 config.getRepositories(), config.getRepositoriesToReleaseFrom());
     }
