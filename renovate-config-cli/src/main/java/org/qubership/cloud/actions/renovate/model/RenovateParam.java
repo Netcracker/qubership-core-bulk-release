@@ -29,7 +29,7 @@ public class RenovateParam {
         } else if (intPattern.matcher(v).matches()) {
             value = Integer.parseInt(v);
         } else if ((m = listPattern.matcher(v)).matches()) {
-            value = Arrays.stream(m.group(1).split(";")).toList();
+            value = Arrays.stream(m.group(1).split(",")).toList();
         } else {
             value = v;
         }

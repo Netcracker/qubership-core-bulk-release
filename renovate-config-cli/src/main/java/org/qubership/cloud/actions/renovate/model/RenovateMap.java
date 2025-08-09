@@ -33,7 +33,7 @@ public class RenovateMap extends LinkedHashMap<String, Object> {
                     } else if (intPattern.matcher(v).matches()) {
                         return Integer.parseInt(v);
                     } else if ((m = listPattern.matcher(v)).matches()) {
-                        return Arrays.stream(m.group(1).split("&")).toList();
+                        return Arrays.stream(m.group(1).split(",")).toList();
                     } else {
                         return v;
                     }
