@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +47,7 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--repositories"}, split = "\\s*,\\s*",
             description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
             converter = RepositoryConfigConverter.class)
-    private Set<RepositoryConfig> repositories;
+    private Set<RepositoryConfig> repositories = new LinkedHashSet<>();
 
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
     private String mavenLocalRepoPath = "${user.home}/.m2/repository";
