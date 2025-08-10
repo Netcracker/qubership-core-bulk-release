@@ -43,7 +43,7 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--gitPassword"}, required = true, description = "git password")
     private String gitPassword;
 
-    @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--repositories"}, split = "\\s*,\\s*",
             description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories;
@@ -51,13 +51,13 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
     private String mavenLocalRepoPath = "${user.home}/.m2/repository";
 
-    @CommandLine.Option(names = {"--resultOutputFile"}, required = true, description = "File path to save result to")
+    @CommandLine.Option(names = {"--resultOutputFile"}, description = "File path to save result to")
     private String resultOutputFile;
 
-    @CommandLine.Option(names = {"--gavsOutputFile", "--effectiveGavsOutputFile"}, required = true, description = "File path to save GAVs to")
+    @CommandLine.Option(names = {"--gavsOutputFile", "--effectiveGavsOutputFile"}, description = "File path to save GAVs to")
     private String gavsOutputFile;
 
-    @CommandLine.Option(names = {"--implicitGavsOutputFile"}, required = true, description = "File path to save implicit (declared in poms) GAVs to")
+    @CommandLine.Option(names = {"--implicitGavsOutputFile"}, description = "File path to save implicit (declared in poms) GAVs to")
     private String implicitGavsOutputFile;
 
     public static void main(String... args) {
