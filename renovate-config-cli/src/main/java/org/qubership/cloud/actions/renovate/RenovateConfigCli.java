@@ -121,7 +121,7 @@ public class RenovateConfigCli implements Runnable {
                                             if (type == null) {
                                                 rule.put("allowedVersions", mavenVersion.toString());
                                             } else if (type == VersionIncrementType.PATCH) {
-                                                rule.put("allowedVersions", String.format("/^%d\\.%d\\.\\d+$/",
+                                                rule.put("allowedVersions", String.format("/^%d\\.%d(\\.\\d+)+$/",
                                                         mavenVersion.getMajor(), mavenVersion.getMinor()));
                                             } else {
                                                 throw new IllegalArgumentException(String.format("Unsupported version increment type '%s' to build a packageRule", type));
