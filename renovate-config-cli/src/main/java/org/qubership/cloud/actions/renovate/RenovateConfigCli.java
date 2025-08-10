@@ -30,12 +30,12 @@ public class RenovateConfigCli implements Runnable {
     private String gavsFile;
 
     @CommandLine.Option(names = {"--patchGavs"}, split = ",",
-            description = "comma seperated list of GAVs to be used for building renovate config with packageRule with allowedVersions='<{major}.{minor+1}'",
+            description = "comma seperated list of GAVs to be used for building renovate config with packageRule with allowedVersions='/^{major}\\.{minor}\\.\\d+$/'",
             converter = GAVConverter.class)
     private Set<GAV> patchGavs = new HashSet<>();
 
     @CommandLine.Option(names = {"--patchGavsFile"},
-            description = "file of GAVs seperated by new-line to be used for building renovate config with packageRule with allowedVersions='<{major}.{minor+1}'")
+            description = "file of GAVs seperated by new-line to be used for building renovate config with packageRule with allowedVersions='/^{major}\\.{minor}\\.\\d+$/'")
     private String patchGavsFile;
 
     @CommandLine.Option(names = {"--param"},
@@ -121,8 +121,8 @@ public class RenovateConfigCli implements Runnable {
                                             if (type == null) {
                                                 rule.put("allowedVersions", mavenVersion.toString());
                                             } else if (type == VersionIncrementType.PATCH) {
-                                                rule.put("allowedVersions", String.format("<%d.%d.0",
-                                                        mavenVersion.getMajor(), mavenVersion.getMinor() + 1));
+                                                rule.put("allowedVersions", String.format("/^%d\\.%d\\.\\d+$/",
+                                                        mavenVersion.getMajor(), mavenVersion.getMinor()));
                                             } else {
                                                 throw new IllegalArgumentException(String.format("Unsupported version increment type '%s' to build a packageRule", type));
                                             }
