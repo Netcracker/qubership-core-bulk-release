@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @CommandLine.Command(description = "maven effective dependencies cli")
 @Slf4j
@@ -24,14 +25,8 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--baseDir"}, required = true, description = "directory to pom.xml")
     private String baseDir;
 
-    @CommandLine.Option(names = {"--type1"}, required = true, description = "type1 dependencies name")
-    private String type1;
-
     @CommandLine.Option(names = {"--type1PomRelativeDir"}, required = true, description = "directory to pom.xml")
     private String type1PomRelativeDir;
-
-    @CommandLine.Option(names = {"--type2"}, required = true, description = "type2 dependencies name")
-    private String type2;
 
     @CommandLine.Option(names = {"--type2PomRelativeDir"}, required = true, description = "directory to pom.xml")
     private String type2PomRelativeDir;
@@ -59,8 +54,11 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--resultOutputFile"}, required = true, description = "File path to save result to")
     private String resultOutputFile;
 
-    @CommandLine.Option(names = {"--gavsOutputFile"}, required = true, description = "File path to save GAVs to")
+    @CommandLine.Option(names = {"--gavsOutputFile", "--effectiveGavsOutputFile"}, required = true, description = "File path to save GAVs to")
     private String gavsOutputFile;
+
+    @CommandLine.Option(names = {"--implicitGavsOutputFile"}, required = true, description = "File path to save implicit (declared in poms) GAVs to")
+    private String implicitGavsOutputFile;
 
     public static void main(String... args) {
         System.exit(new CommandLine(new MavenEffectiveDependenciesCli()).execute(args));
@@ -88,33 +86,54 @@ public class MavenEffectiveDependenciesCli implements Runnable {
 
             MavenEffectiveDependenciesService service = new MavenEffectiveDependenciesService(new GitService(gitConfig));
 
+            Path type1PomPath = Path.of(baseDir, type1PomRelativeDir);
+            Path type2PomPath = Path.of(baseDir, type2PomRelativeDir);
+
+            String type1 = type1PomPath.getName(type1PomPath.getNameCount() - 1).toString();
+            String type2 = type2PomPath.getName(type2PomPath.getNameCount() - 1).toString();
+
+            Set<GAV> gavs1 = service.resolvePomsEffectiveDependencies(type1PomPath, mavenConfig);
+            Set<GAV> gavs2 = service.resolvePomsEffectiveDependencies(type2PomPath, mavenConfig);
+
             Config config = Config.builder(Path.of(baseDir, "repositories").toString(), gitConfig, mavenConfig, repositories).build();
-            Set<GAV> gavs1 = service.resolvePomsEffectiveDependencies(Path.of(baseDir, type1PomRelativeDir), mavenConfig);
-            Set<GAV> gavs2 = service.resolvePomsEffectiveDependencies(Path.of(baseDir, type2PomRelativeDir), mavenConfig);
             Map<Integer, List<RepositoryInfo>> graph = service.resolveRepositories(config);
 
             EffectiveDependenciesDiff diff = service.compare(type1, gavs1, type2, gavs2, graph, mavenConfig);
 
             if (resultOutputFile != null && !resultOutputFile.isBlank()) {
                 // write the result
+                Path resultPath = resultOutputFile.startsWith("/") ? Path.of(resultOutputFile) : Paths.get(baseDir, resultOutputFile);
                 try {
-                    Path resultPath = resultOutputFile.startsWith("/") ? Path.of(resultOutputFile) : Paths.get(baseDir, resultOutputFile);
                     String result = yaml.writeValueAsString(diff);
                     log.info("Writing to {} result:\n{}", resultPath, result);
                     Files.writeString(resultPath, result, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                 } catch (Exception e) {
-                    log.error("Failed to write result to file {}", resultOutputFile, e);
+                    log.error("Failed to write result to file {}", resultPath, e);
                 }
             }
             if (gavsOutputFile != null && !gavsOutputFile.isBlank()) {
                 // write the result
+                Path resultPath = gavsOutputFile.startsWith("/") ? Path.of(gavsOutputFile) : Paths.get(baseDir, gavsOutputFile);
                 try {
-                    Path resultPath = gavsOutputFile.startsWith("/") ? Path.of(gavsOutputFile) : Paths.get(baseDir, gavsOutputFile);
                     String gavs = diff.getGavs().stream().map(GAV::toString).collect(Collectors.joining("\n"));
                     log.info("Writing to {} gavs:\n{}", resultPath, gavs);
                     Files.writeString(resultPath, gavs, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                 } catch (Exception e) {
-                    log.error("Failed to write result to file {}", gavsOutputFile, e);
+                    log.error("Failed to write result to file {}", resultPath, e);
+                }
+            }
+            if (implicitGavsOutputFile != null && !implicitGavsOutputFile.isBlank()) {
+                Set<GAV> implicitGavs1 = service.resolvePomsImplicitDependencies(type1PomPath);
+                Set<GAV> implicitGavs2 = service.resolvePomsImplicitDependencies(type2PomPath);
+                // write the result
+                Path resultPath = implicitGavsOutputFile.startsWith("/") ? Path.of(implicitGavsOutputFile) : Paths.get(baseDir, implicitGavsOutputFile);
+                try {
+                    String gavs = Stream.concat(implicitGavs1.stream(), implicitGavs2.stream())
+                            .map(GAV::toString).collect(Collectors.joining("\n"));
+                    log.info("Writing to {} gavs:\n{}", resultPath, gavs);
+                    Files.writeString(resultPath, gavs, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                } catch (Exception e) {
+                    log.error("Failed to write result to file {}", resultPath, e);
                 }
             }
         } catch (Exception e) {

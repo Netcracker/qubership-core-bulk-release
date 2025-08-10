@@ -1,10 +1,7 @@
 package org.qubership.cloud.actions.renovate;
 
 import lombok.extern.slf4j.Slf4j;
-import org.qubership.cloud.actions.maven.model.GA;
-import org.qubership.cloud.actions.maven.model.GAV;
-import org.qubership.cloud.actions.maven.model.MavenVersion;
-import org.qubership.cloud.actions.maven.model.RepositoryConfig;
+import org.qubership.cloud.actions.maven.model.*;
 import org.qubership.cloud.actions.renovate.model.RenovateConfig;
 import org.qubership.cloud.actions.renovate.model.RenovateMap;
 import org.qubership.cloud.actions.renovate.model.RenovateParam;
@@ -14,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,12 +22,21 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--platform"}, required = true, description = "platform")
     private String platform;
 
-    @CommandLine.Option(names = {"--gavs"}, split = ",",
+    @CommandLine.Option(names = {"--gavs", "--strictGavs"}, split = ",",
             description = "comma seperated list of GAVs to be used for building renovate config", converter = GAVConverter.class)
     private Set<GAV> gavs = new HashSet<>();
 
-    @CommandLine.Option(names = {"--gavsFile"}, description = "file of GAVs seperated by new-line to be used for building renovate config")
+    @CommandLine.Option(names = {"--gavsFile", "--strictGavsFile"}, description = "file of GAVs seperated by new-line to be used for building renovate config")
     private String gavsFile;
+
+    @CommandLine.Option(names = {"--patchGavs"}, split = ",",
+            description = "comma seperated list of GAVs to be used for building renovate config with packageRule with allowedVersions='<{major}.{minor+1}'",
+            converter = GAVConverter.class)
+    private Set<GAV> patchGavs = new HashSet<>();
+
+    @CommandLine.Option(names = {"--patchGavsFile"},
+            description = "file of GAVs seperated by new-line to be used for building renovate config with packageRule with allowedVersions='<{major}.{minor+1}'")
+    private String patchGavsFile;
 
     @CommandLine.Option(names = {"--param"},
             description = "base renovate config param like 'platform', 'dryRun' etc",
@@ -50,9 +57,6 @@ public class RenovateConfigCli implements Runnable {
             description = "hostRule to be used for building renovate config",
             converter = RenovateMapConverter.class)
     private List<RenovateMap> hostRules;
-
-    @CommandLine.Option(names = {"--labels"}, split = ",", description = "comma seperated list of labels to be used for building renovate config")
-    private List<String> labels;
 
     @CommandLine.Option(names = {"--renovateConfigOutputFile"}, required = true, description = "File path to save result to")
     private String renovateConfigOutputFile;
@@ -82,41 +86,52 @@ public class RenovateConfigCli implements Runnable {
             if (gavsFile != null) {
                 Files.readAllLines(Path.of(gavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(gavs::add);
             }
+            if (patchGavsFile != null) {
+                Files.readAllLines(Path.of(patchGavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(patchGavs::add);
+            }
             List<RenovateMap> packageRules = new ArrayList<>(defaultPackageRules);
-            packageRules.addAll(gavs.stream()
-                    .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
-                    .collect(Collectors.toMap(GA::getGroupId, gav -> {
-                                LinkedHashMap<String, Set<String>> versionToArtifactIds = new LinkedHashMap<>();
-                                HashSet<String> set = new HashSet<>();
-                                set.add(gav.getArtifactId());
-                                versionToArtifactIds.put(gav.getVersion(), set);
-                                return versionToArtifactIds;
-                            },
-                            (m1, m2) -> {
-                                m2.forEach((k, v) -> m1.computeIfAbsent(k, k1 -> new HashSet<>()).addAll(v));
-                                return m1;
-                            }))
-                    .entrySet().stream()
-                    .flatMap(group -> {
-                        String groupId = group.getKey();
-                        return group.getValue().entrySet().stream()
-                                .map(versionToArtifactIds -> {
-                                    String version = versionToArtifactIds.getKey();
-                                    Set<String> artifactIds = versionToArtifactIds.getValue();
-                                    RenovateMap rule = new RenovateMap();
-                                    rule.put("matchPackageNames", artifactIds.stream()
-                                            .map(artifactId -> groupId + ":" + artifactId)
-                                            .sorted()
-                                            .toList());
-                                    MavenVersion mavenVersion = new MavenVersion(version);
-//                                    mavenVersion.update(VersionIncrementType.PATCH, 0);
-//                                    rule.put("allowedVersions", "~" +mavenVersion);
-                                    rule.put("allowedVersions", mavenVersion.toString());
-                                    rule.put("groupName", groupId);
-                                    return rule;
-                                });
-                    })
-                    .toList());
+            BiFunction<Collection<GAV>, VersionIncrementType, Collection<RenovateMap>> gavsToRulesFunc =
+                    (gavs, type) -> gavs.stream()
+                            .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
+                            .collect(Collectors.toMap(GA::getGroupId, gav -> {
+                                        LinkedHashMap<String, Set<String>> versionToArtifactIds = new LinkedHashMap<>();
+                                        HashSet<String> set = new HashSet<>();
+                                        set.add(gav.getArtifactId());
+                                        versionToArtifactIds.put(gav.getVersion(), set);
+                                        return versionToArtifactIds;
+                                    },
+                                    (m1, m2) -> {
+                                        m2.forEach((k, v) -> m1.computeIfAbsent(k, k1 -> new HashSet<>()).addAll(v));
+                                        return m1;
+                                    }))
+                            .entrySet().stream()
+                            .flatMap(group -> {
+                                String groupId = group.getKey();
+                                return group.getValue().entrySet().stream()
+                                        .map(versionToArtifactIds -> {
+                                            String version = versionToArtifactIds.getKey();
+                                            Set<String> artifactIds = versionToArtifactIds.getValue();
+                                            RenovateMap rule = new RenovateMap();
+                                            rule.put("matchPackageNames", artifactIds.stream()
+                                                    .map(artifactId -> groupId + ":" + artifactId)
+                                                    .sorted()
+                                                    .toList());
+                                            rule.put("groupName", groupId);
+                                            MavenVersion mavenVersion = new MavenVersion(version);
+                                            if (type == null) {
+                                                rule.put("allowedVersions", mavenVersion.toString());
+                                            } else if (type == VersionIncrementType.PATCH) {
+                                                rule.put("allowedVersions", String.format("<%d.%d.0",
+                                                        mavenVersion.getMajor(), mavenVersion.getMinor() + 1));
+                                            } else {
+                                                throw new IllegalArgumentException(String.format("Unsupported version increment type '%s' to build a packageRule", type));
+                                            }
+                                            return rule;
+                                        });
+                            })
+                            .toList();
+            packageRules.addAll(gavsToRulesFunc.apply(gavs, null));
+            packageRules.addAll(gavsToRulesFunc.apply(patchGavs, VersionIncrementType.PATCH));
 
             if (hostRules != null && !hostRules.isEmpty()) {
                 List<String> mavenHosts = hostRules.stream()

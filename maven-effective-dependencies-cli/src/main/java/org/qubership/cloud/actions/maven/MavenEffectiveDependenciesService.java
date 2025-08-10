@@ -13,7 +13,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
@@ -209,20 +208,16 @@ public class MavenEffectiveDependenciesService {
                 config.getRepositories(), config.getRepositoriesToReleaseFrom());
     }
 
-    public Set<GAV> resolvePomEffectiveDependencies(Path pomPath, MavenConfig config) {
-        try {
-            // check if effective-pom.xml already present
-            Path effectivePomPath = Path.of(pomPath.getParent().toString(), "effective-pom.xml");
-            PomHolder pomHolder;
-            if (Files.exists(effectivePomPath)) {
-                pomHolder = PomHolder.parsePom(effectivePomPath);
-            } else {
-                pomHolder = effectivePom(PomHolder.parsePom(pomPath), config);
-            }
-            return resolveDependenciesFromEffectivePom(pomHolder);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public Set<GAV> resolvePomsImplicitDependencies(Path pomDir) {
+        List<PomHolder> poms = PomHolder.parsePoms(pomDir);
+        Set<GA> selfGavs = poms.stream().map(pom-> new GA(pom.getGroupId(), pom.getArtifactId())).collect(Collectors.toSet());
+        return poms.stream()
+                .flatMap(pom -> pom.getGavs().stream()
+                        .filter(gav -> !selfGavs.contains(gav.toGA()))
+                        .map(gav -> new GAV(pom.autoResolvePropReference(gav.getGroupId()),
+                                pom.autoResolvePropReference(gav.getArtifactId()),
+                                pom.autoResolvePropReference(gav.getVersion()))))
+                .collect(Collectors.toSet());
     }
 
     public Set<GAV> resolvePomsEffectiveDependencies(Path pomDir, MavenConfig config) {
@@ -334,24 +329,6 @@ public class MavenEffectiveDependenciesService {
 
     PomHolder effectivePom(PomHolder pom, MavenConfig mavenConfig) throws Exception {
         Path parentPath = pom.getPath().getParent();
-//        try {
-//            // need to run mvn validate to download parent poms otherwise if local m2 does not contain help:effective-pom will build pom without parent pom!
-//            List<String> cmd = List.of("mvn", "-B", "-f", pom.getPath().getFileName().toString(), "validate",
-//                    wrapPropertyInQuotes("-Dmaven.repo.local=" + mavenConfig.getLocalRepositoryPath())
-//            );
-//            ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(parentPath.toFile());
-//            log.info("Dir: {}\nCmd: '{}' started", pom.getPath(), String.join(" ", cmd));
-//            processBuilder.redirectErrorStream(true);
-//            Process process = processBuilder.start();
-//            process.getInputStream().transferTo(System.out);
-//            process.waitFor();
-//            log.info("Dir: {}\nCmd: '{}' ended with code: {}", pom.getPath(), String.join(" ", cmd), process.exitValue());
-//            if (process.exitValue() != 0) {
-//                throw new RuntimeException("Failed to execute cmd");
-//            }
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
         Path effectivePomPath = Path.of(parentPath.toString(), "effective-pom.xml");
         List<String> cmd = List.of("mvn", "-B", "-f", pom.getPath().getFileName().toString(), "help:effective-pom",
                 "-Doutput=" + effectivePomPath,
@@ -426,27 +403,6 @@ public class MavenEffectiveDependenciesService {
             return new String(process.getInputStream().readAllBytes());
         } catch (Exception e) {
             throw new RuntimeException("Failed to resolve local maven repository", e);
-        }
-    }
-
-    void cleanInstall(PomHolder pom, MavenConfig mavenConfig) {
-        try {
-            Path parentPath = pom.getPath().getParent();
-            List<String> cmd = List.of("mvn", "-B", "clean", "install", "-DskipTests",
-                    wrapPropertyInQuotes("-Dmaven.repo.local=" + mavenConfig.getLocalRepositoryPath())
-            );
-            ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(parentPath.toFile());
-            log.info("Dir: {}\nCmd: '{}' started", pom.getPath(), String.join(" ", cmd));
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            process.getInputStream().transferTo(System.out);
-            process.waitFor();
-            log.info("Dir: {}\nCmd: '{}' ended with code: {}", pom.getPath(), String.join(" ", cmd), process.exitValue());
-            if (process.exitValue() != 0) {
-                throw new RuntimeException("Failed to execute cmd:\n" + new String(process.getInputStream().readAllBytes()));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to clean install maven repository", e);
         }
     }
 
