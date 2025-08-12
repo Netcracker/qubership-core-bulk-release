@@ -7,14 +7,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Data
-public class RenovateParam {
+public class RenovateParam implements RenovateMappable {
     String key;
     Object value;
 
     public static Pattern pattern = Pattern.compile("^(?<key>.+?)=(?<value>.+?)$");
-    public static Pattern booleanPattern = Pattern.compile("^(true|false)$", Pattern.CASE_INSENSITIVE);
-    public static Pattern intPattern = Pattern.compile("^\\d+$");
-    public static Pattern listPattern = Pattern.compile("^\\[(.+)]$");
 
     public RenovateParam(String param) {
         Matcher matcher = pattern.matcher(param);
@@ -30,6 +27,8 @@ public class RenovateParam {
             value = Integer.parseInt(v);
         } else if ((m = listPattern.matcher(v)).matches()) {
             value = Arrays.stream(m.group(1).split(",")).toList();
+        } else if ((m = mapPattern.matcher(v)).matches()) {
+            value = new RenovateMap(m.group(1));
         } else {
             value = v;
         }

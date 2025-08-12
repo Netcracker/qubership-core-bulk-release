@@ -12,18 +12,23 @@ import java.util.stream.Collectors;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class RenovateMap extends LinkedHashMap<String, Object> {
+public class RenovateMap extends LinkedHashMap<String, Object> implements RenovateMappable {
 
-    public static Pattern booleanPattern = Pattern.compile("^(true|false)$", Pattern.CASE_INSENSITIVE);
-    public static Pattern intPattern = Pattern.compile("^\\d+$");
-    public static Pattern listPattern = Pattern.compile("^\\[(.+)]$");
+    Pattern mapEntryPattern = Pattern.compile("(?<key>[^=]+?)=(?<map>\\{(.+)})");
 
     public RenovateMap() {
     }
 
     public RenovateMap(String value) {
         Map<String, Object> params = Arrays.stream(value.split(";"))
-                .map(v -> v.split("="))
+                .map(v -> {
+                    Matcher m = mapEntryPattern.matcher(v);
+                    if (m.matches()) {
+                        return new String[]{m.group("key"), m.group("map")};
+                    } else {
+                        return v.split("=");
+                    }
+                })
                 .filter(a -> a.length == 2)
                 .collect(Collectors.toMap(a -> a[0], a -> {
                     String v = a[1];
@@ -34,6 +39,8 @@ public class RenovateMap extends LinkedHashMap<String, Object> {
                         return Integer.parseInt(v);
                     } else if ((m = listPattern.matcher(v)).matches()) {
                         return Arrays.stream(m.group(1).split(",")).toList();
+                    } else if ((m = mapPattern.matcher(v)).matches()) {
+                        return new RenovateMap(m.group(1));
                     } else {
                         return v;
                     }
