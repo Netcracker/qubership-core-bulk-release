@@ -52,6 +52,9 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--checkoutParallelism"}, description = "checkout parallelism")
     private int checkoutParallelism = 1;
 
+    @CommandLine.Option(names = {"--gitPrintProgress"}, description = "use git progress monitor")
+    private boolean gitPrintProgress = false;
+
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
     private String mavenLocalRepoPath = "${user.home}/.m2/repository";
 
@@ -83,6 +86,7 @@ public class MavenEffectiveDependenciesCli implements Runnable {
                     .email(gitEmail)
                     .password(gitPassword)
                     .checkoutParallelism(checkoutParallelism)
+                    .printProgress(gitPrintProgress)
                     .build();
 
             MavenConfig mavenConfig = MavenConfig.builder()

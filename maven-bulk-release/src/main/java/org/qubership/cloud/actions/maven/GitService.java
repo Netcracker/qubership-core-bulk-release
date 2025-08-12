@@ -102,7 +102,7 @@ public class GitService {
                             .setBranch(branch)
                             .setCloneAllBranches(false)
                             .setTagOption(TagOpt.FETCH_TAGS)
-                            .setProgressMonitor(new TextProgressMonitor(printWriter))
+                            .setProgressMonitor(gitConf.isPrintProgress() ? new TextProgressMonitor(printWriter) : null)
                             .call();
                 } finally {
                     printWriter.flush();

@@ -30,6 +30,12 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--gitPassword"}, required = true, description = "git password")
     private String gitPassword;
 
+    @CommandLine.Option(names = {"--checkoutParallelism"}, description = "checkout parallelism")
+    private int checkoutParallelism = 1;
+
+    @CommandLine.Option(names = {"--gitPrintProgress"}, description = "use git progress monitor")
+    private boolean gitPrintProgress = false;
+
     @CommandLine.Option(names = {"--baseDir"}, required = true, description = "base directory to write result to")
     private String baseDir;
 
@@ -113,6 +119,8 @@ public class MavenBulkReleaseCli implements Runnable {
                     .username(gitUsername)
                     .email(gitEmail)
                     .password(gitPassword)
+                    .checkoutParallelism(checkoutParallelism)
+                    .printProgress(gitPrintProgress)
                     .build();
 
             MavenConfig mavenConfig = MavenConfig.builder()
