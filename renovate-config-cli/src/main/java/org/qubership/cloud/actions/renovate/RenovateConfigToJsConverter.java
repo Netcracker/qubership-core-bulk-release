@@ -12,7 +12,7 @@ public class RenovateConfigToJsConverter {
 
     //"\"@nc.libraries.helm.staging\""
     static Pattern keyPattern = Pattern.compile("\"(?<key>[^:\"]+?)\" :");
-    static Pattern quotedkeyPattern = Pattern.compile("\"\\\\\"(?<key>[^:\\\"]+?)\\\\\"\" :");
+    static Pattern quotedkeyPattern = Pattern.compile("(\"\\\\\"|')(?<key>[^:\"]+?)(\\\\\"\"|') :");
     static Pattern processEnvPattern = Pattern.compile("\"(?<value>process\\.env\\..+?)\"");
 
     @SneakyThrows
