@@ -49,7 +49,7 @@ public class MavenEffectiveDependenciesCli implements Runnable {
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories = new LinkedHashSet<>();
 
-    @CommandLine.Option(names = {"--checkoutParallelism"}, required = true, description = "checkout parallelism")
+    @CommandLine.Option(names = {"--checkoutParallelism"}, description = "checkout parallelism")
     private int checkoutParallelism = 1;
 
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
