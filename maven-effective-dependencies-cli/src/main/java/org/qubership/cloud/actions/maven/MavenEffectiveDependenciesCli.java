@@ -49,6 +49,9 @@ public class MavenEffectiveDependenciesCli implements Runnable {
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories = new LinkedHashSet<>();
 
+    @CommandLine.Option(names = {"--checkoutParallelism"}, required = true, description = "checkout parallelism")
+    private int checkoutParallelism = 1;
+
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
     private String mavenLocalRepoPath = "${user.home}/.m2/repository";
 
@@ -79,6 +82,7 @@ public class MavenEffectiveDependenciesCli implements Runnable {
                     .username(gitUsername)
                     .email(gitEmail)
                     .password(gitPassword)
+                    .checkoutParallelism(checkoutParallelism)
                     .build();
 
             MavenConfig mavenConfig = MavenConfig.builder()

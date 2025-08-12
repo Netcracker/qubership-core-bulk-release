@@ -75,7 +75,7 @@ public class RepositoryService {
                         .collect(Collectors.toSet());
         Set<RepositoryConfig> mergedRepositories = mergeFunction.apply(repositories, repositoriesToReleaseFrom);
         Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = mergeFunction.apply(repositoriesToReleaseFrom, repositories);
-        try (ExecutorService executorService = Executors.newFixedThreadPool(4)) {
+        try (ExecutorService executorService = Executors.newFixedThreadPool(gitConfig.getCheckoutParallelism())) {
             List<RepositoryInfo> repositoryInfoList = mergedRepositories.stream()
                     .map(rc -> {
                         try {
