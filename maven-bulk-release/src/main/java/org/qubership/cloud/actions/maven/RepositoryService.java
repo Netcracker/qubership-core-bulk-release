@@ -55,7 +55,7 @@ public class RepositoryService {
                                                                    Set<RepositoryConfig> repositories,
                                                                    Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
-        BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, Set<RepositoryConfig>> mergeFunction =
+        BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, List<RepositoryConfig>> mergeFunction =
                 (repos1, repos2) -> repos1.stream()
                         .map(repositoryToReleaseFrom -> repos2.stream()
                                 .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
@@ -72,9 +72,9 @@ public class RepositoryService {
                                     }
                                     return repository;
                                 }).orElse(repositoryToReleaseFrom))
-                        .collect(Collectors.toSet());
-        Set<RepositoryConfig> mergedRepositories = mergeFunction.apply(repositories, repositoriesToReleaseFrom);
-        Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = mergeFunction.apply(repositoriesToReleaseFrom, repositories);
+                        .collect(Collectors.toList());
+        List<RepositoryConfig> mergedRepositories = mergeFunction.apply(repositories, repositoriesToReleaseFrom);
+        List<RepositoryConfig> mergedRepositoriesToReleaseFrom = mergeFunction.apply(repositoriesToReleaseFrom, repositories);
         try (ExecutorService executorService = Executors.newFixedThreadPool(gitConfig.getCheckoutParallelism())) {
             List<RepositoryInfo> repositoryInfoList = mergedRepositories.stream()
                     .map(rc -> {
