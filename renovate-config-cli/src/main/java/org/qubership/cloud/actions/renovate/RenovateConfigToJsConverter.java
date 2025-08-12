@@ -10,7 +10,9 @@ import java.util.regex.Pattern;
 
 public class RenovateConfigToJsConverter {
 
+    //"\"@nc.libraries.helm.staging\""
     static Pattern keyPattern = Pattern.compile("\"(?<key>[^:\"]+?)\" :");
+    static Pattern quotedkeyPattern = Pattern.compile("\"\\\\\"(?<key>[^:\\\"]+?)\\\\\"\" :");
     static Pattern processEnvPattern = Pattern.compile("\"(?<value>process\\.env\\..+?)\"");
 
     @SneakyThrows
@@ -20,6 +22,7 @@ public class RenovateConfigToJsConverter {
                 .enable(SerializationFeature.INDENT_OUTPUT);
         String json = mapper.writeValueAsString(config);
         json = keyPattern.matcher(json).replaceAll(mr -> mr.group("key") + " :");
+        json = quotedkeyPattern.matcher(json).replaceAll(mr -> String.format("\"%s\"", mr.group("key")) + " :");
         json = processEnvPattern.matcher(json).replaceAll(mr -> mr.group("value"));
         return String.format("module.exports = %s;", json);
     }
