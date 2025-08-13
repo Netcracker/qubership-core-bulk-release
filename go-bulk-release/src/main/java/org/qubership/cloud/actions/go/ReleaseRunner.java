@@ -9,9 +9,13 @@ import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.dot.DOTExporter;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.proxy.GoProxy;
+import org.qubership.cloud.actions.go.proxy.GoProxyPublisher;
+import org.qubership.cloud.actions.go.util.CommandRunner;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -28,6 +32,8 @@ public class ReleaseRunner {
 
     @SneakyThrows
     public Result release(Config config) {
+        GoProxy.enableGoProxy();
+
         Result result = new Result();
         log.info("Config: {}", yamlMapper.writeValueAsString(config));
         // set up git creds if necessary
@@ -51,7 +57,7 @@ public class ReleaseRunner {
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
 //            TODO VLLA extract to configuration file?
-            int threads = config.isRunSequentially() ? 1 : 4;
+            int threads = config.isRunSequentially() ? 1 : /*4*/1;//todo vlla commented
 //            TODO VLLA why so complicated?..
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
@@ -220,27 +226,54 @@ public class ReleaseRunner {
         log.info("releasePrepare 2. {}", repositoryInfo.getUrl());
         Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
 
-        List<String> cmd = Arrays.asList("go", "test", "./...", "-v");
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
-        }
+
+        //go test
+        log.info("=== GO TEST ===");
+        CommandRunner.runCommand(repositoryDirPath.toFile(), "go", "test", "./...", "-v");
+//        List<String> cmd = Arrays.asList("go", "test", "./...", "-v");
+//        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
+//        processBuilder.redirectErrorStream(true);
+//        Process process = processBuilder.start();
+//        process.getInputStream().transferTo(outputStream);
+//        process.waitFor();
+//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
+//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
+//        if (process.exitValue() != 0) {
+//            throw new RuntimeException("Failed to execute cmd");
+//        }
+
+        //create tag
+        //todo vlla move to separate service
+        log.info("=== CREATE TAG ===");
+        CommandRunner.runCommand(repositoryDirPath.toFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+//        cmd = Arrays.asList("git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+//        processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
+//        processBuilder.redirectErrorStream(true);
+//        process = processBuilder.start();
+//        process.getInputStream().transferTo(outputStream);
+//        process.waitFor();
+//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
+//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
+//        if (process.exitValue() != 0) {
+//            throw new RuntimeException("Failed to execute cmd");
+//        }
+
+        //build go proxy
+        log.info("=== BUILD GO PROXY ===");
+        Path goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
+        GoProxyPublisher.publishToLocalGoProxy(repositoryDirPath, releaseVersion, goProxy, null);
 
         RepositoryRelease release = new RepositoryRelease();
         release.setRepository(repositoryInfo);
         release.setReleaseVersion(releaseVersion);
         release.setTag(releaseVersion);
-        //TOFO VLLA DIRTY HACK, CALCULATE AND ADD
+        //TODO VLLA DIRTY HACK, CALCULATE AND ADD
         List<GAV> gavs = new ArrayList<>();
         String moduleName = repositoryInfo.getModules().stream().findFirst().get().getArtifactId();
         gavs.add(new GAV("TMP", moduleName, releaseVersion));
         release.setGavs(gavs);
+
+        log.info("=== PRE-RELEASE DONE FOR {} ===", repositoryInfo.getUrl());
         return release;
 
 

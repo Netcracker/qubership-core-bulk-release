@@ -3,24 +3,23 @@ package org.qubership.cloud.actions.go.model;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.model.*;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.qubership.cloud.actions.go.model.gomod.GoModFile;
 import org.qubership.cloud.actions.go.model.gomod.GoModFileFactory;
+import org.qubership.cloud.actions.go.proxy.GoModule;
 import org.qubership.cloud.actions.go.util.FilesUtils;
 import org.qubership.cloud.actions.go.util.UrlUtils;
 
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -31,8 +30,6 @@ import java.util.stream.Stream;
 @EqualsAndHashCode(callSuper = true)
 //TODO VLLA why inheritance, why not composition?
 public class RepositoryInfo extends RepositoryConfig {
-    public static Pattern propertyPattern = Pattern.compile("\\$\\{(.+?)}");
-
     String baseDir;
 
     Set<GAV> modules = new HashSet<>();
@@ -76,28 +73,25 @@ public class RepositoryInfo extends RepositoryConfig {
 //        }
 //    }
 
-    private static final Pattern SEMVER_PATTERN = Pattern.compile("^v(\\d+)\\.(\\d+)\\.(\\d+)$");
+    private static final Pattern SEMVER_PATTERN = Pattern.compile("v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)");
 
     public String calculateReleaseVersion(VersionIncrementType versionIncrementType) {
         String currentVersion;
-        Path releaseVersionPath = Path.of(this.getBaseDir(), this.getDir(), "release.version");
-        if (Files.exists(releaseVersionPath)) {
-            Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream(releaseVersionPath.toFile())) {
-                props.load(fis);
-                currentVersion = props.getProperty("version");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        else {
-            throw new RuntimeException("Could not find release version file");
+
+        try {
+            Path repoPath = Path.of(this.getBaseDir(), this.getDir());
+            currentVersion = getLastGitTag(repoPath.toFile());
+        } catch (NoTagsFoundException e) {
+            log.debug("No tags found -> calculate current version from go.mod");
+            //todo vlla getFirst is HACK
+            String moduleName = getGoModFiles().getFirst().getModuleName();
+            String moduleVersion = extractGoModuleVersion(moduleName);
+            currentVersion = moduleVersion + ".0.0";
         }
 
-        Pattern semverPattern = Pattern.compile("v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)");
-        Matcher matcher = semverPattern.matcher(currentVersion);
+        Matcher matcher = SEMVER_PATTERN.matcher(currentVersion);
         if (!matcher.matches()) {
-            throw new IllegalArgumentException(String.format("Non-semver version: %s. Must match pattern: '%s'", currentVersion, semverPattern.pattern()));
+            throw new IllegalArgumentException(String.format("Non-semver version: %s. Must match pattern: '%s'", currentVersion, SEMVER_PATTERN.pattern()));
         }
         int major = Integer.parseInt(matcher.group("major"));
         int minor = Integer.parseInt(matcher.group("minor"));
@@ -169,6 +163,55 @@ public class RepositoryInfo extends RepositoryConfig {
 //        }
 //        return String.format("%d.%d.%d", major, minor, patch);
     }
+
+    public static String getLastGitTag(File repoDir) throws NoTagsFoundException {
+        try {
+
+            if (!repoDir.exists() || !new File(repoDir, ".git").exists()) {
+                throw new IllegalArgumentException("Directory is not a git repository: " + repoDir);
+            }
+
+            ProcessBuilder pb = new ProcessBuilder("git", "describe", "--tags", "--abbrev=0");
+            pb.directory(repoDir);
+            pb.redirectErrorStream(true);
+
+            Process process = pb.start();
+
+            String output;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                output = reader.lines().collect(Collectors.joining("\n")).trim();
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode != 0 || output.isEmpty()) {
+                throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
+            }
+
+            return output;
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String extractGoModuleVersion(String moduleName) {
+        if (moduleName == null || moduleName.isEmpty()) {
+            return null;
+        }
+
+        int lastSlash = moduleName.lastIndexOf('/');
+        if (lastSlash == -1) {
+            return "v1";
+        }
+
+        String lastSegment = moduleName.substring(lastSlash + 1);
+
+        if (lastSegment.matches("v\\d+")) {
+            return lastSegment;
+        }
+
+        return "v1";
+    }
+
 //
 //    public String calculateJavaVersion() {
 //        List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
@@ -243,6 +286,7 @@ public class RepositoryInfo extends RepositoryConfig {
 
             List<Path> goModFilePaths = FilesUtils.findAll(Path.of(baseDir, dir), "go.mod");
 
+            //todo vlla collect all, not only first
             List<GoModFile> goModFiles = goModFilePaths.stream()
                     .map(path -> GoModFileFactory.create(goModFilePaths.getFirst()))
                     .toList();
@@ -266,6 +310,8 @@ public class RepositoryInfo extends RepositoryConfig {
         catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        log.info("VLLA resolveDependencies {}. module deps: {}", getUrl(), moduleDependencies);
 
 //        List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
 //        this.modules.clear();
@@ -330,7 +376,40 @@ public class RepositoryInfo extends RepositoryConfig {
 //        }
     }
 
+
     public void updateDepVersions(Collection<GAV> dependencies) {
+        log.info("=== UPDATE DEPENDENCIES ===");
+        for (GoModFile goModFile : goModFiles) {
+            log.debug("process goModFile {}", goModFile.getFile());
+            GoModule goModule = new GoModule(goModFile.getFile().getParent());
+
+            log.info("VLLA dependencies: " + dependencies);
+            log.info("VLLA getModuleDependencies: " + getModuleDependencies());
+
+            dependencies.stream().filter(this::isModuleContainsDependency).forEach(goModule::get);
+
+//            log.info("go mod tidy");
+//            goModule.tidy();
+
+//            for (GAV dependency : dependencies) {
+//                if (isModuleContainsDependency(dependency)) {
+//                    log.debug("VLLA module DO contains dependency");
+//                    goModule.get(dependency);
+//                }
+//                else {
+//                    log.debug("VLLA module DO NOT contains dependency");
+//                }
+//
+//            }
+        }
+        this.resolveDependencies();
+    }
+
+    private boolean isModuleContainsDependency(GAV dependency) {
+        return getModuleDependencies().stream().anyMatch(gav -> gav.isSameArtifact(dependency));
+    }
+
+    public void updateDepVersions_old(Collection<GAV> dependencies) {
         try {
             Map<String, String> depMap = new HashMap<>();
             for (GAV gav : dependencies) {

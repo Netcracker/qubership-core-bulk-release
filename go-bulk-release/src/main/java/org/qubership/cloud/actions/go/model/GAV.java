@@ -42,4 +42,8 @@ public class GAV extends GA implements Comparable<GAV> {
         return Comparator.comparing(GA::getGroupId).thenComparing(GA::getArtifactId).compare(this, o);
     }
 
+    public boolean isSameArtifact(GAV another) {
+        return artifactId.equals(another.artifactId) && groupId.equals(another.groupId);
+    }
+
 }
