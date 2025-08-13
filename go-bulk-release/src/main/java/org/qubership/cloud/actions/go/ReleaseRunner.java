@@ -15,7 +15,6 @@ import org.qubership.cloud.actions.go.util.CommandRunner;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -23,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -68,7 +68,7 @@ public class ReleaseRunner {
                             try {
                                 PipedOutputStream out = new PipedOutputStream();
                                 PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                                Future<RepositoryRelease> future = executorService.submit(() -> releasePrepare(config, repo, gavList, out));
+                                Future<RepositoryRelease> future = executorService.submit(() -> prepareRelease(config, repo, gavList));
                                 return new TraceableFuture<>(future, pipedInputStream, repo);
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
@@ -139,47 +139,88 @@ public class ReleaseRunner {
         return result;
     }
 
-    RepositoryRelease releasePrepare(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream outputStream) throws Exception {
+    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) throws Exception {
         log.info("releasePrepare - start. {}", repository.getUrl());
-        try (outputStream) {
-            updateDependencies(repository, dependencies);
 
-//            String javaVersion = repository.calculateJavaVersion();
-            // todo - disable, because this plugin brings versions from redhat server i.e. 2.0.17.redhat-00001 which is not acceptable
-            // updatePatchVersions(repository, config, javaVersion, outputStream);
+        updateDependencies(repository, dependencies);
 
-            VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
-            String releaseVersion = repository.calculateReleaseVersion(versionIncrementType);
-            return releasePrepare(repository, config, releaseVersion, outputStream);
-        }
+        String releaseVersion = resolveReleaseVersion(config, repository);
+
+        runGoBuild(repository);
+        runGoTest(repository);
+
+        createTag(repository, releaseVersion);
+
+        buildGoProxy(repository, releaseVersion);
+
+        RepositoryRelease release = buildRepositoryReleaseDTO(repository, releaseVersion);
+        log.info("=== PRE-RELEASE DONE FOR {} ===", repository.getUrl());
+        return release;
     }
 
-    void updateDependencies(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
+    private void updateDependencies(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
         log.info("updateDependencies. {}", repositoryInfo.getUrl());
         repositoryInfo.updateDepVersions(dependencies);
-        // check all versions were updated
+
+        checkIsAllDependenciesUpdated(repositoryInfo, dependencies);
+
+        commitUpdatedDependenciesIfAny(repositoryInfo);
+    }
+
+    private void checkIsAllDependenciesUpdated(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
         Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
         Set<GAV> missedDependencies = updatedModuleDependencies.stream()
-                .filter(gav -> {
-                    Optional<GAV> foundGav = dependencies.stream()
-                            .filter(dGav -> Objects.equals(gav.getGroupId(), dGav.getGroupId()) &&
-                                            Objects.equals(gav.getArtifactId(), dGav.getArtifactId()))
-                            .findFirst();
-                    if (foundGav.isEmpty()) return false;
-                    GAV g = foundGav.get();
-                    return !Objects.equals(gav.getVersion(), g.getVersion());
-                })
+                .filter(new DifferentVersionDependencyPredicate(dependencies))
                 .collect(Collectors.toSet());
         if (!missedDependencies.isEmpty()) {
             throw new RuntimeException("Failed to update dependencies: " + missedDependencies.stream().map(GAV::toString).collect(Collectors.joining("\n")));
         }
-        commitUpdatedDependenciesIfAny(repositoryInfo);
+    }
+
+    private String resolveReleaseVersion(Config config, RepositoryInfo repository) {
+        log.debug("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
+        VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
+        return repository.calculateReleaseVersion(versionIncrementType);
+    }
+
+    private void runGoBuild(RepositoryInfo repository) {
+        log.info("=== GO BUILD {} ===", repository.getUrl());
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "build", "./...", "-v");
+    }
+
+    private void runGoTest(RepositoryInfo repository) {
+        log.info("=== GO TEST {} ===", repository.getUrl());
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
+    }
+
+    private void createTag(RepositoryInfo repository, String releaseVersion) {
+        //todo vlla move to separate service
+        log.info("=== CREATE TAG {} ===", repository.getUrl());
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+    }
+
+    private void buildGoProxy(RepositoryInfo repository,  String releaseVersion) throws Exception {
+        log.info("=== BUILD GO PROXY {} ===", repository.getUrl());
+        Path goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
+        GoProxyPublisher.publishToLocalGoProxy(repository.getRepositoryDirFile().toPath(), releaseVersion, goProxy, null);
+    }
+
+    private RepositoryRelease buildRepositoryReleaseDTO(RepositoryInfo repository, String releaseVersion) {
+        RepositoryRelease release = new RepositoryRelease();
+        release.setRepository(repository);
+        release.setReleaseVersion(releaseVersion);
+        release.setTag(releaseVersion);
+        //TODO VLLA DIRTY HACK, CALCULATE AND ADD
+        List<GAV> gavs = new ArrayList<>();
+        String moduleName = repository.getModules().stream().findFirst().get().getArtifactId();
+        gavs.add(new GAV("TMP", moduleName, releaseVersion));
+        release.setGavs(gavs);
+        return release;
     }
 
     void commitUpdatedDependenciesIfAny(RepositoryInfo repository) {
         log.info("commitUpdatedDependenciesIfAny. {}", repository.getUrl());
-        Path repositoryDirPath = Paths.get(repository.getBaseDir(), repository.getDir());
-        try (Git git = Git.open(repositoryDirPath.toFile())) {
+        try (Git git = Git.open(repository.getRepositoryDirFile())) {
             List<DiffEntry> diff = git.diff().call();
             List<String> modifiedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY).map(DiffEntry::getNewPath).toList();
             if (!modifiedFiles.isEmpty()) {
@@ -221,117 +262,7 @@ public class ReleaseRunner {
 //        }
 //    }
 //
-    RepositoryRelease releasePrepare(RepositoryInfo repositoryInfo, Config config, String releaseVersion,
-                                     OutputStream outputStream) throws Exception {
-        log.info("releasePrepare 2. {}", repositoryInfo.getUrl());
-        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
 
-
-        //go test
-        log.info("=== GO TEST ===");
-        CommandRunner.runCommand(repositoryDirPath.toFile(), "go", "test", "./...", "-v");
-//        List<String> cmd = Arrays.asList("go", "test", "./...", "-v");
-//        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-//        processBuilder.redirectErrorStream(true);
-//        Process process = processBuilder.start();
-//        process.getInputStream().transferTo(outputStream);
-//        process.waitFor();
-//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-//        if (process.exitValue() != 0) {
-//            throw new RuntimeException("Failed to execute cmd");
-//        }
-
-        //create tag
-        //todo vlla move to separate service
-        log.info("=== CREATE TAG ===");
-        CommandRunner.runCommand(repositoryDirPath.toFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
-//        cmd = Arrays.asList("git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
-//        processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-//        processBuilder.redirectErrorStream(true);
-//        process = processBuilder.start();
-//        process.getInputStream().transferTo(outputStream);
-//        process.waitFor();
-//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-//        if (process.exitValue() != 0) {
-//            throw new RuntimeException("Failed to execute cmd");
-//        }
-
-        //build go proxy
-        log.info("=== BUILD GO PROXY ===");
-        Path goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
-        GoProxyPublisher.publishToLocalGoProxy(repositoryDirPath, releaseVersion, goProxy, null);
-
-        RepositoryRelease release = new RepositoryRelease();
-        release.setRepository(repositoryInfo);
-        release.setReleaseVersion(releaseVersion);
-        release.setTag(releaseVersion);
-        //TODO VLLA DIRTY HACK, CALCULATE AND ADD
-        List<GAV> gavs = new ArrayList<>();
-        String moduleName = repositoryInfo.getModules().stream().findFirst().get().getArtifactId();
-        gavs.add(new GAV("TMP", moduleName, releaseVersion));
-        release.setGavs(gavs);
-
-        log.info("=== PRE-RELEASE DONE FOR {} ===", repositoryInfo.getUrl());
-        return release;
-
-
-//        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
-//        List<String> arguments = new ArrayList<>();
-//        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
-//        if (repositoryInfo.isSkipTests() || config.isSkipTests()) {
-//            arguments.add("-DskipTests=true");
-//        } else {
-//            arguments.add("-Dsurefire.rerunFailingTestsCount=1");
-//        }
-////        TODO VLLA is this var needed?
-//        String tag = releaseVersion;
-////        TODO VLLA extract script to file template?
-//        List<String> cmd = List.of("mvn", "-B", "release:prepare",
-//                "-Dresume=true",
-//                "-DautoVersionSubmodules=true",
-//                "-DreleaseVersion=" + releaseVersion,
-//                "-DpushChanges=false",
-//                "-Dtag=" + tag,
-//                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
-//                warpPropertyInQuotes("-DtagNameFormat=@{project.version}"),
-//                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments))),
-//                warpPropertyInQuotes("-DpreparationGoals=clean install"));
-//
-//        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-//        Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
-//                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
-//
-//        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
-//
-//        processBuilder.redirectErrorStream(true);
-//        Process process = processBuilder.start();
-//        process.getInputStream().transferTo(outputStream);
-//        process.waitFor();
-//        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-//                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-//        if (process.exitValue() != 0) {
-//            throw new RuntimeException("Failed to execute cmd");
-//        }
-//        List<GAV> gavs = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines()
-//                .filter(l -> l.startsWith("project.rel."))
-//                .map(l -> l.replace("project.rel.", "")
-//                        .replace("\\", "")
-//                        .replace("=", ":"))
-//                .map(GAV::new).toList();
-//        RepositoryRelease release = new RepositoryRelease();
-//        release.setRepository(repositoryInfo);
-//        release.setReleaseVersion(releaseVersion);
-//        release.setTag(tag);
-//        release.setJavaVersion(javaVersion);
-//        release.setGavs(gavs);
-//        return release;
-    }
-
-    String warpPropertyInQuotes(String prop) {
-        return String.format("\"%s\"", prop);
-    }
 //
 //    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
 ////        TODO VLLA: the method do not creates stream and not owns it, we should not close it here
@@ -444,6 +375,25 @@ public class ReleaseRunner {
             return stream.toString();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static class DifferentVersionDependencyPredicate implements Predicate<GAV> {
+        private final Collection<GAV> dependencies;
+
+        private DifferentVersionDependencyPredicate(Collection<GAV> dependencies) {
+            this.dependencies = dependencies;
+        }
+
+        @Override
+        public boolean test(GAV gav) {
+            Optional<GAV> foundGav = dependencies.stream()
+                    .filter(dGav -> dGav.isSameArtifact(gav))
+                    .findFirst();
+            if (foundGav.isEmpty()) return false;
+            GAV g = foundGav.get();
+            return !Objects.equals(gav.getVersion(), g.getVersion());
+
         }
     }
 }

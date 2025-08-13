@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,7 +44,7 @@ public class GAV extends GA implements Comparable<GAV> {
     }
 
     public boolean isSameArtifact(GAV another) {
-        return artifactId.equals(another.artifactId) && groupId.equals(another.groupId);
+        return Objects.equals(artifactId, another.artifactId) && Objects.equals(groupId, another.groupId);
     }
 
 }
