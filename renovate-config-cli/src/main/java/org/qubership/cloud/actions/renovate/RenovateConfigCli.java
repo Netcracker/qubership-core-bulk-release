@@ -44,7 +44,7 @@ public class RenovateConfigCli implements Runnable {
     private List<RenovateParam> params = new LinkedList<>();
 
     @CommandLine.Option(names = {"--repository"}, required = true,
-            description = "comma seperated list of git urls to all repositories to be used for building renovate config",
+            description = "repository to be used for building renovate config. Use multiple params to specify more than 1 repository",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories;
 
@@ -119,7 +119,7 @@ public class RenovateConfigCli implements Runnable {
                                             rule.put("groupName", groupId);
                                             MavenVersion mavenVersion = new MavenVersion(version);
                                             if (type == null) {
-                                                rule.put("allowedVersions", mavenVersion.toString());
+                                                rule.put("allowedVersions", String.format("/^%s$/", mavenVersion));
                                             } else if (type == VersionIncrementType.PATCH) {
                                                 rule.put("allowedVersions", String.format("/^%d\\.%d(\\.\\d+)+$/",
                                                         mavenVersion.getMajor(), mavenVersion.getMinor()));
