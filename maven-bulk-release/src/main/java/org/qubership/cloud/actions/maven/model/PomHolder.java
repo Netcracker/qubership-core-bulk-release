@@ -24,16 +24,17 @@ import java.util.stream.Collectors;
 @Data
 public class PomHolder {
 
+    static Pattern commentPattern = Pattern.compile("<!--.+?-->");
     static Pattern dependencyPattern = Pattern.compile("(?s)<dependency>(.*?)</dependency>");
-    static Pattern groupIdPattern = Pattern.compile("<groupId>(?<groupId>[^<>]+?)</groupId>");
-    static Pattern artifactIdPattern = Pattern.compile("<artifactId>(?<artifactId>[^<>]+?)</artifactId>");
-    static Pattern versionPattern = Pattern.compile("(<version>(?<version>[^<>]+?)</version>)?");
+    static Pattern groupIdPattern = Pattern.compile("<groupId>(" + commentPattern + ")?(?<groupId>[^<>]+?)(" + commentPattern + ")?</groupId>");
+    static Pattern artifactIdPattern = Pattern.compile("<artifactId>(" + commentPattern + ")?(?<artifactId>[^<>]+?)(" + commentPattern + ")?</artifactId>");
+    static Pattern versionPattern = Pattern.compile("(<version>(" + commentPattern + ")?(?<version>[^<>]+?)(" + commentPattern + ")?</version>)?");
     static Pattern referencePattern = Pattern.compile("\\$\\{(.+?)}");
 
     static Function<List<Pattern>, Pattern> gavPatternFunction = patterns ->
             Pattern.compile("(?s)" + patterns.stream().map(Pattern::pattern)
                     // whitespaces and XML comments
-                    .collect(Collectors.joining("\\s*(<!--(.*?)-->)?(<scope>.+?</scope>)?(<classifier>.+?</classifier>)?\\s*")));
+                    .collect(Collectors.joining("\\s*((<!--(.*?)-->)|(<scope>.+?</scope>)|(<classifier>.+?</classifier>))*\\s*")));
 
     static List<Pattern> gavCombinations = List.of(
             gavPatternFunction.apply(List.of(groupIdPattern, artifactIdPattern, versionPattern)),
@@ -41,8 +42,7 @@ public class PomHolder {
             gavPatternFunction.apply(List.of(artifactIdPattern, groupIdPattern, versionPattern)),
             gavPatternFunction.apply(List.of(artifactIdPattern, versionPattern, groupIdPattern)),
             gavPatternFunction.apply(List.of(versionPattern, groupIdPattern, artifactIdPattern)),
-            gavPatternFunction.apply(List.of(versionPattern, artifactIdPattern, groupIdPattern))
-    );
+            gavPatternFunction.apply(List.of(versionPattern, artifactIdPattern, groupIdPattern)));
 
     Path path;
     PomHolder parent;
@@ -151,7 +151,8 @@ public class PomHolder {
                 String oldVersion = propMatcher.group(1);
                 String oldVersionTag = propMatcher.group();
                 pomContent = pomContent.replace(properties, properties.replace(oldVersionTag, newVersionTag));
-                if (!Objects.equals(oldVersion, version)) log.info("Updated property: {} [{} -> {}] in {}:{}", name, oldVersion, version, this.getGroupId(), this.getArtifactId());
+                if (!Objects.equals(oldVersion, version))
+                    log.info("Updated property: {} [{} -> {}] in {}:{}", name, oldVersion, version, this.getGroupId(), this.getArtifactId());
             }
         }
         setPom(pomContent);
@@ -173,7 +174,8 @@ public class PomHolder {
                     version = version.trim();
                     if (groupId.equals(gav.getGroupId()) && artifactId.equals(gav.getArtifactId())) {
                         pomContent = pomContent.replace(dependency, dependency.replace(version, gav.getVersion()));
-                        if (!Objects.equals(gav.getVersion(), version)) log.info("Updated gav: {}:{} [{} -> {}] in {}:{}", groupId, artifactId, version, gav.getVersion(), this.getGroupId(), this.getArtifactId());
+                        if (!Objects.equals(gav.getVersion(), version))
+                            log.info("Updated gav: {}:{} [{} -> {}] in {}:{}", groupId, artifactId, version, gav.getVersion(), this.getGroupId(), this.getArtifactId());
                     }
                 }
             }
@@ -187,13 +189,13 @@ public class PomHolder {
         for (Pattern pattern : gavCombinations) {
             Matcher matcher = pattern.matcher(pom);
             while (matcher.find()) {
-                String groupId = autoResolvePropReference(matcher.group("groupId"));
-                String artifactId = autoResolvePropReference(matcher.group("artifactId"));
+                String groupId = autoResolvePropReference(matcher.group("groupId").replaceAll(commentPattern.pattern(), ""));
+                String artifactId = autoResolvePropReference(matcher.group("artifactId").replaceAll(commentPattern.pattern(), ""));
                 String version = matcher.group("version");
                 if (groupId != null && artifactId != null && version != null) {
                     groupId = groupId.trim();
                     artifactId = artifactId.trim();
-                    version = version.trim();
+                    version = version.trim().replaceAll(commentPattern.pattern(), "");
                     gavs.add(new GAV(groupId, artifactId, version));
                 }
             }
