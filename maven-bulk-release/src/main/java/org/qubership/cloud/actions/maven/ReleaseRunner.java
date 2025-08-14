@@ -8,6 +8,7 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
@@ -323,12 +324,16 @@ public class ReleaseRunner {
             if (tagOpt.isEmpty()) {
                 throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
             }
+            String branch = git.getRepository().getFullBranch();
+            RefSpec branchRef = Optional.of(branch).map(b -> new RefSpec(b + ":" + b)).get();
+            RefSpec tagRefSpec = Optional.of(tagOpt.get().getName()).map(t -> new RefSpec(t + ":" + t)).get();
+
             Iterable<PushResult> pushResults = git.push()
                     .setProgressMonitor(new TextProgressMonitor(printWriter))
                     .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
-                    .setPushAll()
-                    .setPushTags()
+                    .setRefSpecs(branchRef, tagRefSpec)
                     .call();
+
             List<PushResult> results = StreamSupport.stream(pushResults.spliterator(), false).toList();
             List<RemoteRefUpdate> failedUpdates = results.stream().flatMap(r -> r.getRemoteUpdates().stream()).filter(r -> r.getStatus() != RemoteRefUpdate.Status.OK).toList();
             if (!failedUpdates.isEmpty()) {
