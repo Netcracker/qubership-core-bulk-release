@@ -178,7 +178,17 @@ public class ReleaseRunner {
 
     private void buildGoProxy(RepositoryInfo repository,  String releaseVersion) {
         log.info("=== BUILD GO PROXY {} ===", repository.getUrl());
-        Path goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
+        Path goProxy;
+
+        String osName = System.getProperty("os.name").toLowerCase();
+        log.debug("os.name = {}", osName);
+        if (osName.contains("win")) {
+            goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
+        }
+        else {
+            goProxy = Paths.get("/tmp/GOPROXY");
+        }
+
         GoProxyPublisher.publishToLocalGoProxy(repository.getRepositoryDirFile().toPath(), releaseVersion, goProxy, null);
     }
 

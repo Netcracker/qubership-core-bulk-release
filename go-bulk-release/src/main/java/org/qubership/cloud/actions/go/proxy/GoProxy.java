@@ -1,11 +1,15 @@
 package org.qubership.cloud.actions.go.proxy;
 
+import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.go.util.CommandRunner;
 
+@Slf4j
 public class GoProxy {
+
     public static void enableGoProxy() {
         //todo vlla just fo local dev
         String osName = System.getProperty("os.name").toLowerCase();
+        log.debug("os.name = {}", osName);
         if (osName.contains("win")) {
             String[][] commands = {
                     //todo vlla change to real one
