@@ -4,10 +4,11 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.qubership.cloud.actions.go.model.gomod.GoModFile;
 import org.qubership.cloud.actions.go.model.gomod.GoModFileFactory;
 import org.qubership.cloud.actions.go.proxy.GoModule;
@@ -15,15 +16,13 @@ import org.qubership.cloud.actions.go.util.FilesUtils;
 import org.qubership.cloud.actions.go.util.UrlUtils;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Getter
@@ -39,8 +38,7 @@ public class RepositoryInfo extends RepositoryConfig {
     List<GoModFile> goModFiles;
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
-        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(),
-                repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
+        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(), repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
         this.baseDir = baseDir;
 
         resolveDependencies();
@@ -63,7 +61,7 @@ public class RepositoryInfo extends RepositoryConfig {
 //                throw new IllegalStateException(String.format("Repository directory '%s' does not exist or is empty", repositoryDirPath));
 //            }
 //            try (Git git = Git.open(repositoryDirPath.toFile())) {
-////                TODO VLLA why do checkout again if it's already done at buildDependencyGraph level?
+    ////                TODO VLLA why do checkout again if it's already done at buildDependencyGraph level?
 //                String branch = repositoryConfig.getBranch();
 //                try {
 //                    git.checkout().setName(branch).call();
@@ -118,32 +116,67 @@ public class RepositoryInfo extends RepositoryConfig {
 
     public static String getLastGitTag(File repoDir) throws NoTagsFoundException {
         try {
-
             if (!repoDir.exists() || !new File(repoDir, ".git").exists()) {
                 throw new IllegalArgumentException("Directory is not a git repository: " + repoDir);
             }
 
-            ProcessBuilder pb = new ProcessBuilder("git", "describe", "--tags", "--abbrev=0");
-            pb.directory(repoDir);
-            pb.redirectErrorStream(true);
+            try (Git git = Git.open(repoDir)) {
+                List<Ref> tagRefs = git.tagList().call();
 
-            Process process = pb.start();
+                try (RevWalk walk = new RevWalk(git.getRepository())) {
+                    Optional<TagInfo> lastTag = tagRefs.stream().map(ref -> {
+                        try {
+                            RevObject obj = walk.parseAny(ref.getObjectId());
 
-            String output;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                output = reader.lines().collect(Collectors.joining("\n")).trim();
+                            if (obj instanceof RevTag tag) {
+                                return new TagInfo(ref.getName(), tag.getTaggerIdent().getWhenAsInstant());
+                            }
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                        return null;
+                    }).filter(Objects::nonNull).max(Comparator.comparing(TagInfo::date));
+                    if (lastTag.isPresent()) {
+                        return lastTag.get().name();
+                    } else {
+                        throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
+                    }
+                }
             }
 
-            int exitCode = process.waitFor();
-            log.debug("VLLA exitCode = {}", exitCode);
-            log.debug("VLLA output = {}", output);
-            if (exitCode != 0 || output.isEmpty()) {
-                throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
-            }
 
-            return output;
-        } catch (IOException | InterruptedException e) {
+//            if (!repoDir.exists() || !new File(repoDir, ".git").exists()) {
+//                throw new IllegalArgumentException("Directory is not a git repository: " + repoDir);
+//            }
+//
+//            ProcessBuilder pb = new ProcessBuilder("git", "tag", "--sort=-creatordate");
+//            pb.directory(repoDir);
+//            pb.redirectErrorStream(true);
+//
+//            Process process = pb.start();
+//
+//            String output;
+//            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+//                output = reader.readLine();
+//            }
+//
+//            int exitCode = process.waitFor();
+//            log.debug("VLLA exitCode = {}", exitCode);
+//            log.debug("VLLA output = {}", output);
+//            if (exitCode != 0 || output.isEmpty()) {
+//                throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
+//            }
+//
+//            return output;
+        } catch (IOException | GitAPIException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    record TagInfo(String name, Instant date) {
+        @Override
+        public String name() {
+            return name.replace("refs/tags/", "");
         }
     }
 
@@ -182,9 +215,7 @@ public class RepositoryInfo extends RepositoryConfig {
             List<Path> goModFilePaths = FilesUtils.findAll(Path.of(baseDir, dir), "go.mod");
 
             //todo vlla collect all, not only first
-            List<GoModFile> goModFiles = goModFilePaths.stream()
-                    .map(path -> GoModFileFactory.create(goModFilePaths.getFirst()))
-                    .toList();
+            List<GoModFile> goModFiles = goModFilePaths.stream().map(path -> GoModFileFactory.create(goModFilePaths.getFirst())).toList();
 
             this.goModFiles = goModFiles;
 
@@ -194,15 +225,13 @@ public class RepositoryInfo extends RepositoryConfig {
                 modules.add(moduleGAV);
                 perModuleDependencies.put(moduleGAV, new HashSet<>());
 
-                goModFile.getDependencies()
-                        .forEach(goDependency -> {
-                            GAV gav = new GAV("TMP", goDependency.getModule(), goDependency.getVersion());
-                            moduleDependencies.add(gav);
-                            perModuleDependencies.get(moduleGAV).add(gav);
-                        });
+                goModFile.getDependencies().forEach(goDependency -> {
+                    GAV gav = new GAV("TMP", goDependency.getModule(), goDependency.getVersion());
+                    moduleDependencies.add(gav);
+                    perModuleDependencies.get(moduleGAV).add(gav);
+                });
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
