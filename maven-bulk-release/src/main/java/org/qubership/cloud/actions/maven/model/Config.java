@@ -24,6 +24,7 @@ public class Config {
     boolean skipTests;
     boolean dryRun;
     boolean runSequentially;
+    int runParallelism;
     @JsonIgnore
     OutputStream summaryOutputStream;
 
@@ -39,6 +40,7 @@ public class Config {
                    boolean skipTests,
                    boolean dryRun,
                    boolean runSequentially,
+                   int runParallelism,
                    OutputStream summaryOutputStream) {
         this.baseDir = baseDir;
         this.gitConfig = gitConfig;
@@ -50,6 +52,7 @@ public class Config {
         this.skipTests = skipTests;
         this.dryRun = dryRun;
         this.runSequentially = runSequentially;
+        this.runParallelism = runParallelism <= 0 ? 2 : runParallelism;
         this.versionIncrementType = versionIncrementType;
         this.summaryOutputStream = summaryOutputStream;
     }

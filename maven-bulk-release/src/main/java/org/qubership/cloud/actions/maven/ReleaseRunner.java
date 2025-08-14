@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,12 +51,24 @@ public class ReleaseRunner {
         result.setDependenciesDot(dot);
         result.setDryRun(config.isDryRun());
 
+        Path logsFolderPath = Path.of(config.getBaseDir()).resolve("logs");
+        if (!Files.exists(logsFolderPath)) {
+            Files.createDirectories(logsFolderPath);
+        }
+        log.info("Dependency graph:\n{}", String.join("\n", dependencyGraph.entrySet().stream()
+                .map(entry -> {
+                    int level = entry.getKey();
+                    List<RepositoryInfo> reposInfoList = entry.getValue();
+                    return String.format("Level %d/%d, repos:\n%s", level + 1, dependencyGraph.size(),
+                            String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
+                }).toList()));
+
         List<RepositoryRelease> allReleases = dependencyGraph.entrySet().stream().flatMap(entry -> {
             int level = entry.getKey() + 1;
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
-            int threads = config.isRunSequentially() ? 1 : 4;
+            int threads = config.isRunSequentially() ? 1 : Math.min(config.getRunParallelism(), reposInfoList.size());
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                         .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
@@ -74,16 +87,24 @@ public class ReleaseRunner {
                         .toList()
                         .stream()
                         .map(future -> {
+                            RepositoryInfo repositoryInfo = future.getObject();
                             try (PipedInputStream pipedInputStream = future.getPipedInputStream();
                                  BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
+                                Path repoLogDirPath = logsFolderPath.resolve(repositoryInfo.getDir());
+                                Path repoLogFilePath = repoLogDirPath.resolve("prepare.log");
+                                if (!Files.exists(repoLogDirPath)) {
+                                    Files.createDirectories(repoLogDirPath);
+                                }
+                                Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                                 String line;
                                 while ((line = reader.readLine()) != null) {
                                     log.info(line);
+                                    Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                 }
                                 return future.getFuture().get();
                             } catch (Exception e) {
                                 if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                log.error("'prepare' process for repository '{}' has failed. Error: {}", future.getObject().getUrl(), e.getMessage());
+                                log.error("'prepare' process for repository '{}' has failed. Error: {}", repositoryInfo.getUrl(), e.getMessage());
                                 throw new RuntimeException(e);
                             }
                         })
@@ -96,7 +117,7 @@ public class ReleaseRunner {
 
         if (!config.isDryRun()) {
             dependencyGraph.forEach((level, repos) -> {
-                int threads = config.isRunSequentially() ? 1 : repos.size();
+                int threads = config.isRunSequentially() ? 1 : Math.min(config.getRunParallelism(), repos.size());
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
                 try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
@@ -115,17 +136,25 @@ public class ReleaseRunner {
                             })
                             .toList()
                             .forEach(future -> {
+                                RepositoryRelease repositoryRelease = future.getObject();
                                 try (PipedInputStream pipedInputStream = future.getPipedInputStream();
                                      BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
+                                    Path repoLogDirPath = logsFolderPath.resolve(repositoryRelease.getRepository().getDir());
+                                    Path repoLogFilePath = repoLogDirPath.resolve("perform.log");
+                                    if (!Files.exists(repoLogDirPath)) {
+                                        Files.createDirectories(repoLogDirPath);
+                                    }
+                                    Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                                     String line;
                                     while ((line = reader.readLine()) != null) {
                                         log.info(line);
+                                        Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                     }
                                     future.getFuture().get();
                                 } catch (Exception e) {
                                     if (e instanceof InterruptedException) Thread.currentThread().interrupt();
                                     log.error("'perform' process for repository '{}' has failed. Error: {}",
-                                            future.getObject().getRepository().getUrl(), e.getMessage());
+                                            repositoryRelease.getRepository().getUrl(), e.getMessage());
                                     throw new RuntimeException(e);
                                 }
                             });

@@ -56,6 +56,14 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--skipTests"}, arity = "0", defaultValue = "false", description = "skip tests run by release:prepare mvn command")
     private boolean skipTests;
 
+    @CommandLine.Option(names = {"--runSequentially"}, arity = "0", defaultValue = "true",
+            description = "perform release command for each repository one by one")
+    private boolean runSequentially;
+
+    @CommandLine.Option(names = {"--runParallelism"}, defaultValue = "2",
+            description = "perform release command for each repository from the same level in parallel with specified concurrency or the number of repose in the same level")
+    private int runParallelism;
+
     @CommandLine.Option(names = {"--dryRun"}, arity = "0", defaultValue = "false", description = """
             if specified:
             1. only run release:prepare mvn command in each repository updating dependencies with versions from artifacts in dependent repositories
@@ -143,6 +151,8 @@ public class MavenBulkReleaseCli implements Runnable {
                     .gavs(gavs)
                     .skipTests(skipTests)
                     .dryRun(dryRun)
+                    .runSequentially(runSequentially)
+                    .runParallelism(runParallelism)
                     .build();
 
             Result result = new ReleaseRunner().release(config);
