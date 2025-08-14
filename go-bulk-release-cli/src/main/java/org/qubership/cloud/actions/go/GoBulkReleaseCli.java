@@ -162,18 +162,18 @@ public class GoBulkReleaseCli implements Runnable {
 //                    log.error("Failed to write result to file {}", resultOutputFile, e);
 //                }
 //            }
-//            if (gavsResultFile != null && !gavsResultFile.isBlank()) {
-//                // write GAVs
-//                try {
-//                    Path resultPath = Paths.get(gavsResultFile);
-//                    // TODO VLLA ReleaseSummary.gavs(result) called twice
-//                    String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
-//                    log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
-//                    Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-//                } catch (Exception e) {
-//                    log.error("Failed to write GAVs to file {}", gavsResultFile, e);
-//                }
-//            }
+            if (gavsResultFile != null && !gavsResultFile.isBlank()) {
+                // write GAVs
+                try {
+                    Path resultPath = Paths.get(gavsResultFile);
+                    // TODO VLLA ReleaseSummary.gavs(result) called twice
+                    String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
+                    log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
+                    Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                } catch (Exception e) {
+                    log.error("Failed to write GAVs to file {}", gavsResultFile, e);
+                }
+            }
             if (dependencyGraphFile != null && !dependencyGraphFile.isBlank()) {
                 // write the dependency graph
                 try {

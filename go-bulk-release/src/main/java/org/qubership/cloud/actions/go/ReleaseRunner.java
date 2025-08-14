@@ -42,6 +42,7 @@ public class ReleaseRunner {
 
         Map<GA, String> dependenciesGavs = config.getGavs().stream().map(GAV::new)
                 .collect(Collectors.toMap(gav -> new GA(gav.getGroupId(), gav.getArtifactId()), GAV::getVersion));
+        log.debug("VLLA initial dependenciesGavs = {}", dependenciesGavs);
         // build dependency graph
         RepositoryService repositoryService = new RepositoryService();
         Map<Integer, List<RepositoryInfo>> dependencyGraph = repositoryService.buildDependencyGraph(config.getBaseDir(), config.getGitConfig(),
@@ -61,6 +62,7 @@ public class ReleaseRunner {
             Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                     .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
                     .collect(Collectors.toSet());
+            log.debug("VLLA gavList = {}", gavList);
 
             List<RepositoryRelease> releases = ParallelExecutor.forEachIn(reposInfoList)
                     .inParallelOn(threads)
@@ -70,20 +72,6 @@ public class ReleaseRunner {
             releases.stream().flatMap(r -> r.getGavs().stream())
                     .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
             return releases.stream();
-
-//            try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-//
-//                List<RepositoryRelease> releases = reposInfoList.stream()
-//                        .map(repo -> CompletableFuture.supplyAsync(() -> prepareRelease(config, repo, gavList), executorService))
-//                        .toList()
-//                        .stream()
-//                        .map(CompletableFuture::join)
-//                        .toList();
-//
-//                releases.stream().flatMap(r -> r.getGavs().stream())
-//                        .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
-//                return releases.stream();
-//            }
         }).toList();
 
         if (!config.isDryRun()) {
@@ -206,10 +194,8 @@ public class ReleaseRunner {
         release.setRepository(repository);
         release.setReleaseVersion(releaseVersion);
         release.setTag(releaseVersion);
-        //TODO VLLA DIRTY HACK, CALCULATE AND ADD
         List<GAV> gavs = new ArrayList<>();
-        String moduleName = repository.getModules().stream().findFirst().get().getArtifactId();
-        gavs.add(new GAV("TMP", moduleName, releaseVersion));
+        repository.getModules().forEach(gav -> gavs.add(new GAV("TMP", gav.getArtifactId(), releaseVersion)));
         release.setGavs(gavs);
         return release;
     }
