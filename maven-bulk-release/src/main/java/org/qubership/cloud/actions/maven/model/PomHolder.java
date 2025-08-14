@@ -24,17 +24,17 @@ import java.util.stream.Collectors;
 @Data
 public class PomHolder {
 
-    static Pattern commentPattern = Pattern.compile("<!--.+?-->");
+    static Pattern commentPattern = Pattern.compile("<!--.*?-->");
     static Pattern dependencyPattern = Pattern.compile("(?s)<dependency>(.*?)</dependency>");
-    static Pattern groupIdPattern = Pattern.compile("<groupId>(" + commentPattern + ")?(?<groupId>[^<>]+?)(" + commentPattern + ")?</groupId>");
-    static Pattern artifactIdPattern = Pattern.compile("<artifactId>(" + commentPattern + ")?(?<artifactId>[^<>]+?)(" + commentPattern + ")?</artifactId>");
-    static Pattern versionPattern = Pattern.compile("(<version>(" + commentPattern + ")?(?<version>[^<>]+?)(" + commentPattern + ")?</version>)?");
+    static Pattern groupIdPattern = Pattern.compile("<groupId>(<!--.*?-->)*(?<groupId>[^<>]+?)(<!--.*?-->)*</groupId>");
+    static Pattern artifactIdPattern = Pattern.compile("<artifactId>(<!--.*?-->)*(?<artifactId>[^<>]+?)(<!--.*?-->)*</artifactId>");
+    static Pattern versionPattern = Pattern.compile("<version>(<!--.*?-->)*(?<version>[^<>]+?)(<!--.*?-->)*</version>");
     static Pattern referencePattern = Pattern.compile("\\$\\{(.+?)}");
 
     static Function<List<Pattern>, Pattern> gavPatternFunction = patterns ->
             Pattern.compile("(?s)" + patterns.stream().map(Pattern::pattern)
                     // whitespaces and XML comments
-                    .collect(Collectors.joining("\\s*((<!--(.*?)-->)|(<scope>.+?</scope>)|(<classifier>.+?</classifier>))*\\s*")));
+                    .collect(Collectors.joining("(\\s+|\\s*<!--.*?-->\\s*|\\s*<(?!(?:groupId|artifactId|version)\\b)[^>]+>.+?</(?!(?:groupId|artifactId|version)\\b)[^>]+>\\s*)")));
 
     static List<Pattern> gavCombinations = List.of(
             gavPatternFunction.apply(List.of(groupIdPattern, artifactIdPattern, versionPattern)),
@@ -187,6 +187,7 @@ public class PomHolder {
         Set<GAV> gavs = new HashSet<>();
         // find GAV entries in all possible combinations
         for (Pattern pattern : gavCombinations) {
+
             Matcher matcher = pattern.matcher(pom);
             while (matcher.find()) {
                 String groupId = autoResolvePropReference(matcher.group("groupId").replaceAll(commentPattern.pattern(), ""));
