@@ -92,10 +92,10 @@ public class ReleaseRunner {
                         .stream()
                         .map(future -> {
                             RepositoryInfo repositoryInfo = future.getObject();
+                            Path repoLogDirPath = logsFolderPath.resolve(repositoryInfo.getDir());
+                            Path repoLogFilePath = repoLogDirPath.resolve("prepare.log");
                             try (PipedInputStream pipedInputStream = future.getPipedInputStream();
                                  BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                                Path repoLogDirPath = logsFolderPath.resolve(repositoryInfo.getDir());
-                                Path repoLogFilePath = repoLogDirPath.resolve("prepare.log");
                                 if (!Files.exists(repoLogDirPath)) {
                                     Files.createDirectories(repoLogDirPath);
                                 }
@@ -113,7 +113,13 @@ public class ReleaseRunner {
                                 return repositoryRelease;
                             } catch (Exception e) {
                                 if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                log.error("'prepare' process for repository '{}' has failed. Error: {}", repositoryInfo.getUrl(), e.getMessage());
+                                try {
+                                    Files.readAllLines(repoLogFilePath).forEach(log::error);
+                                } catch (IOException ioe) {
+                                    log.error("Failed to read log file: {}", repoLogFilePath, ioe);
+                                }
+                                log.error("'prepare' process for repository '{}' has failed. Error: {}.\nFor details see log content above",
+                                        repositoryInfo.getUrl(), e.getMessage());
                                 throw new RuntimeException(e);
                             }
                         })
@@ -146,10 +152,10 @@ public class ReleaseRunner {
                             .toList()
                             .forEach(future -> {
                                 RepositoryRelease repositoryRelease = future.getObject();
+                                Path repoLogDirPath = logsFolderPath.resolve(repositoryRelease.getRepository().getDir());
+                                Path repoLogFilePath = repoLogDirPath.resolve("perform.log");
                                 try (PipedInputStream pipedInputStream = future.getPipedInputStream();
                                      BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                                    Path repoLogDirPath = logsFolderPath.resolve(repositoryRelease.getRepository().getDir());
-                                    Path repoLogFilePath = repoLogDirPath.resolve("perform.log");
                                     if (!Files.exists(repoLogDirPath)) {
                                         Files.createDirectories(repoLogDirPath);
                                     }
@@ -165,7 +171,12 @@ public class ReleaseRunner {
                                             repositoryRelease.getRepository().getUrl(), repoLogFilePath);
                                 } catch (Exception e) {
                                     if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
+                                    try {
+                                        Files.readAllLines(repoLogFilePath).forEach(log::error);
+                                    } catch (IOException ioe) {
+                                        log.error("Failed to read log file: {}", repoLogFilePath, ioe);
+                                    }
+                                    log.error("'perform' process for repository '{}' has failed. Error: {}.\nFor details see log content above",
                                             repositoryRelease.getRepository().getUrl(), e.getMessage());
                                     throw new RuntimeException(e);
                                 }
@@ -282,30 +293,36 @@ public class ReleaseRunner {
         Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
                 .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
 
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
+        try {
+            printWriter.println(String.format("Repository: %s\nCmd: '%s' started", repositoryInfo.getUrl(), String.join(" ", cmd)));
 
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            process.getInputStream().transferTo(outputStream);
+            process.waitFor();
+            printWriter.println(String.format("Repository: %s\nCmd: '%s' ended with code: %d",
+                    repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue()));
+
+            if (process.exitValue() != 0) {
+                throw new RuntimeException("Failed to execute cmd");
+            }
+            List<GAV> gavs = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines()
+                    .filter(l -> l.startsWith("project.rel."))
+                    .map(l -> l.replace("project.rel.", "")
+                            .replace("\\", "")
+                            .replace("=", ":"))
+                    .map(GAV::new).toList();
+            RepositoryRelease release = new RepositoryRelease();
+            release.setRepository(repositoryInfo);
+            release.setReleaseVersion(releaseVersion);
+            release.setTag(tag);
+            release.setJavaVersion(javaVersion);
+            release.setGavs(gavs);
+            return release;
+        } finally {
+            printWriter.flush();
         }
-        List<GAV> gavs = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines()
-                .filter(l -> l.startsWith("project.rel."))
-                .map(l -> l.replace("project.rel.", "")
-                        .replace("\\", "")
-                        .replace("=", ":"))
-                .map(GAV::new).toList();
-        RepositoryRelease release = new RepositoryRelease();
-        release.setRepository(repositoryInfo);
-        release.setReleaseVersion(releaseVersion);
-        release.setTag(tag);
-        release.setJavaVersion(javaVersion);
-        release.setGavs(gavs);
-        return release;
     }
 
     String warpPropertyInQuotes(String prop) {
@@ -347,6 +364,7 @@ public class ReleaseRunner {
             if (!failedUpdates.isEmpty()) {
                 throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
             }
+            printWriter.println(String.format("Pushed to git: tag: %s", releaseVersion));
         } catch (Exception e) {
             if (e instanceof RuntimeException) throw (RuntimeException) e;
             throw new RuntimeException(e);
@@ -354,46 +372,50 @@ public class ReleaseRunner {
             // do not close because we want
             printWriter.flush();
         }
-        log.info("Pushed to git: tag: {}", releaseVersion);
         release.setPushedToGit(true);
     }
 
     void releaseDeploy(RepositoryInfo repositoryInfo, Config config,
                        RepositoryRelease release, OutputStream outputStream) throws Exception {
-        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
-        List<String> arguments = new ArrayList<>();
-        arguments.add("-DskipTests");
-        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
-        if (config.getMavenConfig().getAltDeploymentRepository() != null) {
-            arguments.add("-DaltDeploymentRepository=" + config.getMavenConfig().getAltDeploymentRepository());
-        }
-        String argsString = String.join(" ", arguments);
-        List<String> cmd = Stream.of("mvn", "-B", "release:perform",
-                        "-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath(),
-                        "-DlocalCheckout=true",
-                        "-DautoVersionSubmodules=true",
-                        warpPropertyInQuotes(String.format("-Darguments=%s", argsString)))
-                .collect(Collectors.toList());
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
+        try {
+            Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
+            List<String> arguments = new ArrayList<>();
+            arguments.add("-DskipTests");
+            arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
+            if (config.getMavenConfig().getAltDeploymentRepository() != null) {
+                arguments.add("-DaltDeploymentRepository=" + config.getMavenConfig().getAltDeploymentRepository());
+            }
+            String argsString = String.join(" ", arguments);
+            List<String> cmd = Stream.of("mvn", "-B", "release:perform",
+                            "-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath(),
+                            "-DlocalCheckout=true",
+                            "-DautoVersionSubmodules=true",
+                            warpPropertyInQuotes(String.format("-Darguments=%s", argsString)))
+                    .collect(Collectors.toList());
+            printWriter.println(String.format("Repository: %s\nCmd: '%s' started", repositoryInfo.getUrl(), String.join(" ", cmd)));
 
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-        Optional.ofNullable(release.getJavaVersion()).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
-                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
-        // maven envs
-        if (config.getMavenConfig().getUser() != null && config.getMavenConfig().getPassword() != null) {
-            processBuilder.environment().put("MAVEN_USER", config.getMavenConfig().getUser());
-            processBuilder.environment().put("MAVEN_TOKEN", config.getMavenConfig().getPassword());
+            ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
+            Optional.ofNullable(release.getJavaVersion()).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
+                    .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
+            // maven envs
+            if (config.getMavenConfig().getUser() != null && config.getMavenConfig().getPassword() != null) {
+                processBuilder.environment().put("MAVEN_USER", config.getMavenConfig().getUser());
+                processBuilder.environment().put("MAVEN_TOKEN", config.getMavenConfig().getPassword());
+            }
+            Process process = processBuilder.start();
+            process.getInputStream().transferTo(outputStream);
+            process.getErrorStream().transferTo(outputStream);
+            process.waitFor();
+            printWriter.println(String.format("Repository: %s\nCmd: '%s' ended with code: %d",
+                    repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue()));
+            if (process.exitValue() != 0) {
+                throw new RuntimeException("Failed to execute cmd");
+            }
+            release.setDeployed(true);
+        } finally {
+            printWriter.flush();
         }
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.getErrorStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
-        }
-        release.setDeployed(true);
     }
 
     String generateDotFile(Map<Integer, List<RepositoryInfo>> dependencyGraph) {
