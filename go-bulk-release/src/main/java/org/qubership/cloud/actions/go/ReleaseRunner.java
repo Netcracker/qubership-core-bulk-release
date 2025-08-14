@@ -120,6 +120,7 @@ public class ReleaseRunner {
         updateDependencies(repository, dependencies);
 
         String releaseVersion = resolveReleaseVersion(config, repository);
+        log.info("Release version: {}", releaseVersion);
 
         runGoBuild(repository, out);
         runGoTest(repository, out);

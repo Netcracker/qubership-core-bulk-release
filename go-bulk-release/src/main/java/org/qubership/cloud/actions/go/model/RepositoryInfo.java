@@ -83,8 +83,7 @@ public class RepositoryInfo extends RepositoryConfig {
         String currentVersion;
 
         try {
-            Path repoPath = Path.of(this.getBaseDir(), this.getDir());
-            currentVersion = getLastGitTag(repoPath.toFile());
+            currentVersion = getLastGitTag(getRepositoryDirFile());
         } catch (NoTagsFoundException e) {
             log.debug("No tags found -> calculate current version from go.mod");
             //todo vlla getFirst is HACK
@@ -136,6 +135,8 @@ public class RepositoryInfo extends RepositoryConfig {
             }
 
             int exitCode = process.waitFor();
+            log.debug("VLLA exitCode = {}", exitCode);
+            log.debug("VLLA output = {}", output);
             if (exitCode != 0 || output.isEmpty()) {
                 throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
             }
