@@ -115,11 +115,12 @@ public class RenovateConfigCli implements Runnable {
                                     }))
                             .entrySet().stream()
                             .flatMap(group -> {
-                                String groupId = groupNamePatternsMap.entrySet().stream()
-                                        .filter(e-> e.getValue().matcher(group.getKey()).matches())
+                                String groupId = group.getKey();
+                                String groupName = groupNamePatternsMap.entrySet().stream()
+                                        .filter(e-> e.getValue().matcher(groupId).matches())
                                         .map(Map.Entry::getKey)
                                         .findFirst()
-                                        .orElse(group.getKey());
+                                        .orElse(groupId);
                                 return group.getValue().entrySet().stream()
                                         .map(versionToArtifactIds -> {
                                             String version = versionToArtifactIds.getKey();
@@ -129,7 +130,7 @@ public class RenovateConfigCli implements Runnable {
                                                     .map(artifactId -> groupId + ":" + artifactId)
                                                     .sorted()
                                                     .toList());
-                                            rule.put("groupName", groupId);
+                                            rule.put("groupName", groupName);
                                             MavenVersion mavenVersion = new MavenVersion(version);
                                             if (type == null) {
                                                 rule.put("allowedVersions", String.format("/^%s$/", mavenVersion));
