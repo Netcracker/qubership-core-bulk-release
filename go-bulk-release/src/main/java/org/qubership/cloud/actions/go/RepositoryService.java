@@ -630,7 +630,7 @@ public class RepositoryService {
 //    }
 //
     void gitCheckout(String baseDir, GitConfig gitConf, RepositoryConfig repository, OutputStream out) {
-        try (out) {
+        try {
             Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
             boolean repositoryDirExists = Files.exists(repositoryDirPath);
             Git git;

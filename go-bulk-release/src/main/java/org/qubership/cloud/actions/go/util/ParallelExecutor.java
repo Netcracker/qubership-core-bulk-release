@@ -16,42 +16,6 @@ import java.util.function.Predicate;
 @Slf4j
 public class ParallelExecutor {
 
-//    public List<R> process(Collection<T> collection, BiFunction<T, OutputStream, R> function) {
-//        return process(collection, null, function);
-//    }
-//
-//    public List<R> process(Collection<T> collection, Predicate<T> filter, BiFunction<T, OutputStream, R> function) {
-//        try (ExecutorService executorService = Executors.newFixedThreadPool(threadsCount)) {
-//            return collection.stream()
-//                    .filter(filter == null ? element -> true : filter)
-//                    .map(element -> {
-//                        try {
-//                            PipedOutputStream out = new PipedOutputStream();
-//                            PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-//                            Future<R> future = executorService.submit(() -> function.apply(element, out));
-//                            return new TraceableFuture<>(future, pipedInputStream, element);
-//                        } catch (IOException e) {
-//                            throw new IllegalStateException(e);
-//                        }
-//                    }).toList()
-//                    .stream()
-//                    .map(future -> {
-//                        try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-//                             BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-//                            String line;
-//                            while ((line = reader.readLine()) != null) {
-//                                log.info(line);
-//                            }
-//                            return future.getFuture().get();
-//                        } catch (Exception e) {
-//                            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-//                            //todo vlla form correct exception
-//                            throw new RuntimeException(e);
-//                        }
-//                    }).toList();
-//        }
-//    }
-
     public static <T> CommandBuilder<T> forEachIn(Collection<T> collection) {
         return new CommandBuilder<>(collection);
     }
@@ -85,7 +49,11 @@ public class ParallelExecutor {
                             try {
                                 PipedOutputStream out = new PipedOutputStream();
                                 PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                                Future<R> future = executorService.submit(() -> function.apply(element, out));
+                                Future<R> future = executorService.submit(() -> {
+                                    try (out) {
+                                        return function.apply(element, out);
+                                    }
+                                });
                                 return new TraceableFuture<>(future, pipedInputStream, element);
                             } catch (IOException e) {
                                 throw new IllegalStateException(e);
