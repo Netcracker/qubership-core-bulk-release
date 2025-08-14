@@ -14,13 +14,12 @@ import org.qubership.cloud.actions.go.proxy.GoProxyPublisher;
 import org.qubership.cloud.actions.go.util.CommandRunner;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -58,39 +57,17 @@ public class ReleaseRunner {
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
 //            TODO VLLA extract to configuration file?
             int threads = config.isRunSequentially() ? 1 : /*4*/1;//todo vlla commented
-//            TODO VLLA why so complicated?..
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                         .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
                         .collect(Collectors.toSet());
                 List<RepositoryRelease> releases = reposInfoList.stream()
-                        .map(repo -> {
-                            try {
-                                PipedOutputStream out = new PipedOutputStream();
-                                PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                                Future<RepositoryRelease> future = executorService.submit(() -> prepareRelease(config, repo, gavList));
-                                return new TraceableFuture<>(future, pipedInputStream, repo);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        })
+                        .map(repo -> CompletableFuture.supplyAsync(() -> prepareRelease(config, repo, gavList), executorService))
                         .toList()
                         .stream()
-                        .map(future -> {
-                            try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-                                 BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                                String line;
-                                while ((line = reader.readLine()) != null) {
-                                    log.info(line);
-                                }
-                                return future.getFuture().get();
-                            } catch (Exception e) {
-                                if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                log.error("'prepare' process for repository '{}' has failed. Error: {}", future.getObject().getUrl(), e.getMessage());
-                                throw new RuntimeException(e);
-                            }
-                        })
+                        .map(CompletableFuture::join)
                         .toList();
+
                 releases.stream().flatMap(r -> r.getGavs().stream())
                         .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
                 return releases.stream();
@@ -139,7 +116,7 @@ public class ReleaseRunner {
         return result;
     }
 
-    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) throws Exception {
+    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) {
         log.info("releasePrepare - start. {}", repository.getUrl());
 
         updateDependencies(repository, dependencies);
@@ -199,7 +176,7 @@ public class ReleaseRunner {
         CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
     }
 
-    private void buildGoProxy(RepositoryInfo repository,  String releaseVersion) throws Exception {
+    private void buildGoProxy(RepositoryInfo repository,  String releaseVersion) {
         log.info("=== BUILD GO PROXY {} ===", repository.getUrl());
         Path goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
         GoProxyPublisher.publishToLocalGoProxy(repository.getRepositoryDirFile().toPath(), releaseVersion, goProxy, null);

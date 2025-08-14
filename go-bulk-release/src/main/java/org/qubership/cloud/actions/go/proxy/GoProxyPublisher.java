@@ -31,97 +31,97 @@ public class GoProxyPublisher {
             String version,
             Path proxyRoot,
             String moduleDir
-    ) throws Exception {
-
-        Objects.requireNonNull(srcRepo, "srcRepo");
-        Objects.requireNonNull(version, "version");
-        Objects.requireNonNull(proxyRoot, "proxyRoot");
-
-        if (moduleDir == null || moduleDir.isEmpty()) moduleDir = ".";
-        if (!version.startsWith("v")) version = "v" + version;
-
-        Path src = srcRepo.toRealPath();
-        Path proxy = proxyRoot.toRealPath();
-
-        log.debug("Params:");
-        log.debug("  SRC         = {}", src);
-        log.debug("  PROXY       = {}", proxy);
-        log.debug("  VERSION     = {}", version);
-        log.debug("  MODULE_DIR  = {}", moduleDir);
-
-        // --- repo / rev checks
-        if (!Files.isDirectory(src.resolve(".git"))) {
-            throw new IllegalStateException(src + " is not a git repository");
-        }
-        // git rev-parse --verify --quiet REV^{commit}
-        int rc = run(new ProcessBuilder("git", "-C", src.toString(),
-                "rev-parse", "--verify", "--quiet", version + "^{commit}"));
-        if (rc != 0) {
-            throw new IllegalArgumentException(
-                    "Git revision '" + version + "' not found. Ensure the tag/branch/commit exists (tip: tag should be '" + version + "').");
-        }
-
-        // --- time for .info
-        Instant infoTime = Instant.now();
-        String infoRfc3339 = DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC).format(infoTime);
-        log.debug("  INFO_TIME   = {}", infoRfc3339);
-
-        // --- read module path
-        Path goModPath = src.resolve(moduleDir).resolve("go.mod");
-        String goModFromRev = Files.isRegularFile(goModPath)
-                ? Files.readString(goModPath, StandardCharsets.UTF_8)
-                : null;
-        String modFromRev = extractModulePath(goModFromRev);
-
-        if (modFromRev == null) {
-            throw new IllegalStateException("Cannot extract module name from go.mod file");
-        }
-
-        log.debug("  MOD_FROM_REV = {}", modFromRev);
-
-        if (modFromRev.isEmpty()) {
-            throw new IllegalStateException("Cannot determine module path. go.mod not found or has no 'module' line.");
-        }
-
-        // --- escape module path for FS layout
-        String escapedModule = escapeForGoProxyFS(modFromRev);
-        log.debug("  ESCAPED_MODULE = {}", escapedModule);
-
-        Path vdir = proxy.resolve(escapedModule).resolve("@v");
-        Files.createDirectories(vdir);
-        log.debug("  VDIR        = {}", vdir);
-
-        // --- write .mod
-        Path modOut = vdir.resolve(version + ".mod");
-        log.debug("Writing .mod");
-        Files.writeString(modOut, goModFromRev, StandardCharsets.UTF_8);
-        log.debug("Wrote .mod -> {}", modOut);
-
-        // --- write .info
-        Path infoOut = vdir.resolve(version + ".info");
-        String infoJson = String.format("{\"Version\":\"%s\",\"Time\":\"%s\"}%n", version, infoRfc3339);
-        Files.writeString(infoOut, infoJson, StandardCharsets.UTF_8);
-        log.debug("Wrote .info -> {}", infoOut);
-
-        // --- create .zip from git (ONLY module dir), prefix "<module>@<version>/"
-        Path tmpDir = Files.createTempDirectory("goproxy-publish-");
+    ) {
         try {
-            String prefixPath = modFromRev + "@" + version + "/";
-            log.debug("Archiving from git:");
-            log.debug("  archive path = {} (relative to repo root)", moduleDir);
-            log.debug("  prefix       = {}", prefixPath);
+            Objects.requireNonNull(srcRepo, "srcRepo");
+            Objects.requireNonNull(version, "version");
+            Objects.requireNonNull(proxyRoot, "proxyRoot");
 
-            // Create tar via git archive
-            Path zipFile = vdir.resolve(version + ".zip");
-            String comm = String.join(" ","git", "-C", src.toString(),
-                    "archive", "--format=zip", "--prefix=" + prefixPath, "-o", zipFile.toString(), version, "--", moduleDir);
-            log.debug("VLLA comm = {}", comm);
-            ProcessBuilder pb = new ProcessBuilder("git", "-C", src.toString(),
-                    "archive", "--format=zip", "--prefix=" + prefixPath, "-o", zipFile.toString(), version, "--", moduleDir);
-            rc = run(pb);
-            if (rc != 0) {
-                throw new RuntimeException("git archive failed (rc=" + rc + ")");
+            if (moduleDir == null || moduleDir.isEmpty()) moduleDir = ".";
+            if (!version.startsWith("v")) version = "v" + version;
+
+            Path src = srcRepo.toRealPath();
+            Path proxy = proxyRoot.toRealPath();
+
+            log.debug("Params:");
+            log.debug("  SRC         = {}", src);
+            log.debug("  PROXY       = {}", proxy);
+            log.debug("  VERSION     = {}", version);
+            log.debug("  MODULE_DIR  = {}", moduleDir);
+
+            // --- repo / rev checks
+            if (!Files.isDirectory(src.resolve(".git"))) {
+                throw new IllegalStateException(src + " is not a git repository");
             }
+            // git rev-parse --verify --quiet REV^{commit}
+            int rc = run(new ProcessBuilder("git", "-C", src.toString(),
+                    "rev-parse", "--verify", "--quiet", version + "^{commit}"));
+            if (rc != 0) {
+                throw new IllegalArgumentException(
+                        "Git revision '" + version + "' not found. Ensure the tag/branch/commit exists (tip: tag should be '" + version + "').");
+            }
+
+            // --- time for .info
+            Instant infoTime = Instant.now();
+            String infoRfc3339 = DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC).format(infoTime);
+            log.debug("  INFO_TIME   = {}", infoRfc3339);
+
+            // --- read module path
+            Path goModPath = src.resolve(moduleDir).resolve("go.mod");
+            String goModFromRev = Files.isRegularFile(goModPath)
+                    ? Files.readString(goModPath, StandardCharsets.UTF_8)
+                    : null;
+            String modFromRev = extractModulePath(goModFromRev);
+
+            if (modFromRev == null) {
+                throw new IllegalStateException("Cannot extract module name from go.mod file");
+            }
+
+            log.debug("  MOD_FROM_REV = {}", modFromRev);
+
+            if (modFromRev.isEmpty()) {
+                throw new IllegalStateException("Cannot determine module path. go.mod not found or has no 'module' line.");
+            }
+
+            // --- escape module path for FS layout
+            String escapedModule = escapeForGoProxyFS(modFromRev);
+            log.debug("  ESCAPED_MODULE = {}", escapedModule);
+
+            Path vdir = proxy.resolve(escapedModule).resolve("@v");
+            Files.createDirectories(vdir);
+            log.debug("  VDIR        = {}", vdir);
+
+            // --- write .mod
+            Path modOut = vdir.resolve(version + ".mod");
+            log.debug("Writing .mod");
+            Files.writeString(modOut, goModFromRev, StandardCharsets.UTF_8);
+            log.debug("Wrote .mod -> {}", modOut);
+
+            // --- write .info
+            Path infoOut = vdir.resolve(version + ".info");
+            String infoJson = String.format("{\"Version\":\"%s\",\"Time\":\"%s\"}%n", version, infoRfc3339);
+            Files.writeString(infoOut, infoJson, StandardCharsets.UTF_8);
+            log.debug("Wrote .info -> {}", infoOut);
+
+            // --- create .zip from git (ONLY module dir), prefix "<module>@<version>/"
+            Path tmpDir = Files.createTempDirectory("goproxy-publish-");
+            try {
+                String prefixPath = modFromRev + "@" + version + "/";
+                log.debug("Archiving from git:");
+                log.debug("  archive path = {} (relative to repo root)", moduleDir);
+                log.debug("  prefix       = {}", prefixPath);
+
+                // Create tar via git archive
+                Path zipFile = vdir.resolve(version + ".zip");
+                String comm = String.join(" ", "git", "-C", src.toString(),
+                        "archive", "--format=zip", "--prefix=" + prefixPath, "-o", zipFile.toString(), version, "--", moduleDir);
+                log.debug("VLLA comm = {}", comm);
+                ProcessBuilder pb = new ProcessBuilder("git", "-C", src.toString(),
+                        "archive", "--format=zip", "--prefix=" + prefixPath, "-o", zipFile.toString(), version, "--", moduleDir);
+                rc = run(pb);
+                if (rc != 0) {
+                    throw new RuntimeException("git archive failed (rc=" + rc + ")");
+                }
 
 //            // Extract tar using system tar (consistent с оригинальным скриптом)
 //            rc = run(new ProcessBuilder("tar", "-x", "-C", tmpDir.toString(), "-f", tarFile.toString()));
@@ -152,13 +152,17 @@ public class GoProxyPublisher {
 //                    }
 //                });
 //            }
-            log.debug("Wrote .zip -> {}", zipFile);
+                log.debug("Wrote .zip -> {}", zipFile);
 
-            // List files in VDIR
-            log.debug("DONE. Published module '{}' version {} (rev: {}, dir: {})", modFromRev, version, version, moduleDir);
-        } finally {
-            // cleanup temp
-            deleteRecursive(tmpDir);
+                // List files in VDIR
+                log.debug("DONE. Published module '{}' version {} (rev: {}, dir: {})", modFromRev, version, version, moduleDir);
+            } finally {
+                // cleanup temp
+                deleteRecursive(tmpDir);
+            }
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
