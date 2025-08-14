@@ -185,7 +185,7 @@ public class ReleaseRunner {
 
     private void runGoBuild(RepositoryInfo repository) {
         log.info("=== GO BUILD {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "build", "./...", "-v");
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "build", "./...");
     }
 
     private void runGoTest(RepositoryInfo repository) {
