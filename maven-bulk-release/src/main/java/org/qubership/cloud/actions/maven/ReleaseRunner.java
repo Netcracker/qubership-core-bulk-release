@@ -7,6 +7,8 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.TextProgressMonitor;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.dot.DOTExporter;
@@ -26,6 +28,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -68,7 +71,7 @@ public class ReleaseRunner {
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
-            int threads = config.isRunSequentially() ? 1 : Math.min(config.getRunParallelism(), reposInfoList.size());
+            int threads = Math.min(config.getRunParallelism(), reposInfoList.size());
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                         .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
@@ -117,7 +120,7 @@ public class ReleaseRunner {
 
         if (!config.isDryRun()) {
             dependencyGraph.forEach((level, repos) -> {
-                int threads = config.isRunSequentially() ? 1 : Math.min(config.getRunParallelism(), repos.size());
+                int threads = Math.min(config.getRunParallelism(), repos.size());
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
                 try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
@@ -320,13 +323,19 @@ public class ReleaseRunner {
             if (tagOpt.isEmpty()) {
                 throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
             }
-            git.push()
+            Iterable<PushResult> pushResults = git.push()
                     .setProgressMonitor(new TextProgressMonitor(printWriter))
                     .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
                     .setPushAll()
                     .setPushTags()
                     .call();
+            List<PushResult> results = StreamSupport.stream(pushResults.spliterator(), false).toList();
+            List<RemoteRefUpdate> failedUpdates = results.stream().flatMap(r -> r.getRemoteUpdates().stream()).filter(r -> r.getStatus() != RemoteRefUpdate.Status.OK).toList();
+            if (!failedUpdates.isEmpty()) {
+                throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
+            }
         } catch (Exception e) {
+            if (e instanceof RuntimeException) throw (RuntimeException) e;
             throw new RuntimeException(e);
         } finally {
             // do not close because we want

@@ -23,7 +23,6 @@ public class Config {
     Map<String, String> javaVersionToJavaHomeEnv;
     boolean skipTests;
     boolean dryRun;
-    boolean runSequentially;
     int runParallelism;
     @JsonIgnore
     OutputStream summaryOutputStream;
@@ -39,7 +38,6 @@ public class Config {
                    MavenConfig mavenConfig,
                    boolean skipTests,
                    boolean dryRun,
-                   boolean runSequentially,
                    int runParallelism,
                    OutputStream summaryOutputStream) {
         this.baseDir = baseDir;
@@ -51,8 +49,7 @@ public class Config {
         this.repositoriesToReleaseFrom = repositoriesToReleaseFrom;
         this.skipTests = skipTests;
         this.dryRun = dryRun;
-        this.runSequentially = runSequentially;
-        this.runParallelism = runParallelism <= 0 ? 2 : runParallelism;
+        this.runParallelism = runParallelism <= 0 ? 1 : runParallelism;
         this.versionIncrementType = versionIncrementType;
         this.summaryOutputStream = summaryOutputStream;
     }
