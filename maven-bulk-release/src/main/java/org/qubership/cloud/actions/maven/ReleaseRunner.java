@@ -99,13 +99,18 @@ public class ReleaseRunner {
                                 if (!Files.exists(repoLogDirPath)) {
                                     Files.createDirectories(repoLogDirPath);
                                 }
-                                Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                                Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8,
+                                        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                                log.info("Started 'prepare' process for repository '{}'.\nFor details see log file: {}",
+                                        repositoryInfo.getUrl(), repoLogFilePath);
                                 String line;
                                 while ((line = reader.readLine()) != null) {
-                                    log.info(line);
                                     Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                 }
-                                return future.getFuture().get();
+                                RepositoryRelease repositoryRelease = future.getFuture().get();
+                                log.info("Finished 'prepare' process for repository '{}'.\nFor details see log file: {}",
+                                        repositoryInfo.getUrl(), repoLogFilePath);
+                                return repositoryRelease;
                             } catch (Exception e) {
                                 if (e instanceof InterruptedException) Thread.currentThread().interrupt();
                                 log.error("'prepare' process for repository '{}' has failed. Error: {}", repositoryInfo.getUrl(), e.getMessage());
@@ -149,12 +154,15 @@ public class ReleaseRunner {
                                         Files.createDirectories(repoLogDirPath);
                                     }
                                     Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                                    log.info("Started 'perform' process for repository '{}'.\nFor details see log file: {}",
+                                            repositoryRelease.getRepository().getUrl(), repoLogFilePath);
                                     String line;
                                     while ((line = reader.readLine()) != null) {
-                                        log.info(line);
                                         Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                     }
                                     future.getFuture().get();
+                                    log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
+                                            repositoryRelease.getRepository().getUrl(), repoLogFilePath);
                                 } catch (Exception e) {
                                     if (e instanceof InterruptedException) Thread.currentThread().interrupt();
                                     log.error("'perform' process for repository '{}' has failed. Error: {}",
