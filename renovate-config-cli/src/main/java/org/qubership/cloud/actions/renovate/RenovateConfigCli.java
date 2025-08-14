@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,6 +59,11 @@ public class RenovateConfigCli implements Runnable {
             converter = RenovateMapConverter.class)
     private List<RenovateMap> hostRules;
 
+    @CommandLine.Option(names = {"--groupNameMapping"},
+            description = "custom groupName to regex. Allows to combine multiple groups into one. I.e. org.spring=org.spring.+",
+            converter = RenovateParamConverter.class)
+    private List<RenovateParam> groupNameMappings = new LinkedList<>();
+
     @CommandLine.Option(names = {"--renovateConfigOutputFile"}, required = true, description = "File path to save result to")
     private String renovateConfigOutputFile;
 
@@ -89,6 +95,9 @@ public class RenovateConfigCli implements Runnable {
             if (patchGavsFile != null) {
                 Files.readAllLines(Path.of(patchGavsFile)).stream().filter(l -> !l.isBlank()).map(GAV::new).forEach(patchGavs::add);
             }
+            Map<String, Pattern> groupNamePatternsMap = groupNameMappings.stream()
+                    .collect(Collectors.toMap(RenovateParam::getKey, p-> Pattern.compile(p.getValue().toString())));
+
             List<RenovateMap> packageRules = new ArrayList<>(defaultPackageRules);
             BiFunction<Collection<GAV>, VersionIncrementType, Collection<RenovateMap>> gavsToRulesFunc =
                     (gavs, type) -> gavs.stream()
@@ -106,7 +115,11 @@ public class RenovateConfigCli implements Runnable {
                                     }))
                             .entrySet().stream()
                             .flatMap(group -> {
-                                String groupId = group.getKey();
+                                String groupId = groupNamePatternsMap.entrySet().stream()
+                                        .filter(e-> e.getValue().matcher(group.getKey()).matches())
+                                        .map(Map.Entry::getKey)
+                                        .findFirst()
+                                        .orElse(group.getKey());
                                 return group.getValue().entrySet().stream()
                                         .map(versionToArtifactIds -> {
                                             String version = versionToArtifactIds.getKey();
