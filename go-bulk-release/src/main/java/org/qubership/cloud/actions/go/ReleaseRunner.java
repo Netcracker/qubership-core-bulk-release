@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.dot.DOTExporter;
@@ -13,12 +14,13 @@ import org.qubership.cloud.actions.go.model.*;
 import org.qubership.cloud.actions.go.proxy.GoProxy;
 import org.qubership.cloud.actions.go.proxy.GoProxyPublisher;
 import org.qubership.cloud.actions.go.util.CommandRunner;
+import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -56,21 +58,32 @@ public class ReleaseRunner {
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
 //            TODO VLLA extract to configuration file?
             int threads = config.isRunSequentially() ? 1 : /*4*/1;//todo vlla commented
-            try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-                Set<GAV> gavList = dependenciesGavs.entrySet().stream()
-                        .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
-                        .collect(Collectors.toSet());
-                List<RepositoryRelease> releases = reposInfoList.stream()
-                        .map(repo -> CompletableFuture.supplyAsync(() -> prepareRelease(config, repo, gavList), executorService))
-                        .toList()
-                        .stream()
-                        .map(CompletableFuture::join)
-                        .toList();
+            Set<GAV> gavList = dependenciesGavs.entrySet().stream()
+                    .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
+                    .collect(Collectors.toSet());
 
-                releases.stream().flatMap(r -> r.getGavs().stream())
-                        .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
-                return releases.stream();
-            }
+            List<RepositoryRelease> releases = ParallelExecutor.forEachIn(reposInfoList)
+                    .inParallelOn(threads)
+                    .execute((repo, out) -> prepareRelease(config, repo, gavList, out));
+
+
+            releases.stream().flatMap(r -> r.getGavs().stream())
+                    .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
+            return releases.stream();
+
+//            try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+//
+//                List<RepositoryRelease> releases = reposInfoList.stream()
+//                        .map(repo -> CompletableFuture.supplyAsync(() -> prepareRelease(config, repo, gavList), executorService))
+//                        .toList()
+//                        .stream()
+//                        .map(CompletableFuture::join)
+//                        .toList();
+//
+//                releases.stream().flatMap(r -> r.getGavs().stream())
+//                        .forEach(gav -> dependenciesGavs.put(new GA(gav.getGroupId(), gav.getArtifactId()), gav.getVersion()));
+//                return releases.stream();
+//            }
         }).toList();
 
         if (!config.isDryRun()) {
@@ -78,34 +91,42 @@ public class ReleaseRunner {
                 int threads = config.isRunSequentially() ? 1 : repos.size();
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
-                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-                    //todo vlla выяснить, нужен ли функционал со сбором логов из стрима. В любом случае -вынести в служебный метод.
-                    allReleases.stream()
-                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
-                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
-                            .map(release -> {
-                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release));
-                                    return new TraceableFuture<>(future, null, release);
-                            })
-                            .toList()
-                            .forEach(future -> {
-                                try {
-                                    future.getFuture().get();
-                                } catch (Exception e) {
-                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
-                                            future.getObject().getRepository().getUrl(), e.getMessage());
-                                    throw new RuntimeException(e);
-                                }
-                            });
-                }
+
+                ParallelExecutor.forEachIn(allReleases)
+                        .filter(new CurrentLevelRepoFilter(repos))
+                        .inParallelOn(threads)
+                        .execute((release, out) -> performRelease(config, release, out));
+
+//                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+//
+//
+//                    //todo vlla выяснить, нужен ли функционал со сбором логов из стрима. В любом случае -вынести в служебный метод.
+//                    allReleases.stream()
+//                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
+//                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
+//                            .map(release -> {
+//                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release));
+//                                    return new TraceableFuture<>(future, null, release);
+//                            })
+//                            .toList()
+//                            .forEach(future -> {
+//                                try {
+//                                    future.getFuture().get();
+//                                } catch (Exception e) {
+//                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+//                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
+//                                            future.getObject().getRepository().getUrl(), e.getMessage());
+//                                    throw new RuntimeException(e);
+//                                }
+//                            });
+//                }
             });
         }
         result.setReleases(allReleases);
         return result;
     }
 
-    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) {
+    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream out) {
         log.info("\n\n=== PREPARE RELEASE {} ===\n\n", repository.getUrl());
 
         updateDependencies(repository, dependencies);
@@ -238,18 +259,19 @@ public class ReleaseRunner {
 //    }
 //
 
-//
-    RepositoryRelease performRelease(Config config, RepositoryRelease release) {
+    //
+    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) {
         log.info("\n\n=== PERFORM RELEASE {} ===\n\n", release.getRepository().getUrl());
         RepositoryInfo repository = release.getRepository();
-        pushChanges(config, repository, release);
+        pushChanges(config, repository, release, outputStream);
         //releaseDeploy(repository, config, release);
         return release;
     }
 
-    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release) {
+    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
         log.info("=== GIT PUSH {} ===", repositoryInfo.getUrl());
         String releaseVersion = release.getReleaseVersion();
+        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
         try (Git git = Git.open(repositoryInfo.getRepositoryDirFile())) {
             Optional<Ref> tagOpt = git.tagList().call().stream()
                     .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
@@ -258,17 +280,22 @@ public class ReleaseRunner {
                 throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
             }
             git.push()
+                    .setProgressMonitor(new TextProgressMonitor(printWriter))
                     .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
                     .setPushAll()
                     .setPushTags()
                     .call();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            // do not close because we want
+            printWriter.flush();
         }
         log.info("Pushed to git: tag: {}", releaseVersion);
         release.setPushedToGit(true);
     }
-//
+
+    //
 //    void releaseDeploy(RepositoryInfo repositoryInfo, Config config,
 //                       RepositoryRelease release, OutputStream outputStream) throws Exception {
 //        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
@@ -361,6 +388,14 @@ public class ReleaseRunner {
             GAV g = foundGav.get();
             return !Objects.equals(gav.getVersion(), g.getVersion());
 
+        }
+    }
+
+    private record CurrentLevelRepoFilter(List<RepositoryInfo> repos) implements Predicate<RepositoryRelease> {
+        @Override
+        public boolean test(RepositoryRelease release) {
+            return repos.stream().map(RepositoryConfig::getUrl)
+                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl()));
         }
     }
 }

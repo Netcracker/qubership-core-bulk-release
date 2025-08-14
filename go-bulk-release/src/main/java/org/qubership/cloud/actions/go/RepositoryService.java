@@ -42,9 +42,9 @@ public class RepositoryService {
         Set<RepositoryConfig> mergedRepositories = merge(repositories, repositoriesToReleaseFrom);
         Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = merge(repositoriesToReleaseFrom, repositories);
 
-        ParallelExecutor<RepositoryConfig, RepositoryInfo> executor = new ParallelExecutor<>(4);
-        List<RepositoryInfo> repositoryInfoList = executor.process(mergedRepositories,
-                (RepositoryConfig rc, OutputStream out) -> {
+        List<RepositoryInfo> repositoryInfoList = ParallelExecutor.forEachIn(mergedRepositories)
+                .inParallelOn(4)
+                .execute((rc, out) -> {
                     gitCheckout(baseDir, gitConfig, rc, out);
                     return new RepositoryInfo(rc, baseDir);
                 });
@@ -111,7 +111,7 @@ public class RepositoryService {
                 .collect(Collectors.toSet());
     }
 
-//    public Map<Integer, List<GoRepositoryInfo>> buildVersionedDependencyGraph(String baseDir, GitConfig gitConfig,
+    //    public Map<Integer, List<GoRepositoryInfo>> buildVersionedDependencyGraph(String baseDir, GitConfig gitConfig,
 //                                                                              MavenConfig mavenConfig,
 //                                                                              Collection<RepositoryConfig> repositories,
 //                                                                              boolean createMissingBranches,
