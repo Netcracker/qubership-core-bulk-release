@@ -133,10 +133,10 @@ public class ReleaseRunner {
 
         String releaseVersion = resolveReleaseVersion(config, repository);
 
-        runGoBuild(repository);
-        runGoTest(repository);
+        runGoBuild(repository, out);
+        runGoTest(repository, out);
 
-        createTag(repository, releaseVersion);
+        createTag(repository, releaseVersion, out);
 
         buildGoProxy(repository, releaseVersion);
 
@@ -170,20 +170,20 @@ public class ReleaseRunner {
         return repository.calculateReleaseVersion(versionIncrementType);
     }
 
-    private void runGoBuild(RepositoryInfo repository) {
+    private void runGoBuild(RepositoryInfo repository, OutputStream out) {
         log.info("=== GO BUILD {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "build", "./...");
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "go", "build", "./...");
     }
 
-    private void runGoTest(RepositoryInfo repository) {
+    private void runGoTest(RepositoryInfo repository, OutputStream out) {
         log.info("=== GO TEST {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "go", "test", "./...", "-v");
     }
 
-    private void createTag(RepositoryInfo repository, String releaseVersion) {
+    private void createTag(RepositoryInfo repository, String releaseVersion, OutputStream out) {
         //todo vlla move to separate service
         log.info("=== CREATE TAG {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
     }
 
     private void buildGoProxy(RepositoryInfo repository, String releaseVersion) {
