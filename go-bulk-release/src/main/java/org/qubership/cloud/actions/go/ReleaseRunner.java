@@ -5,6 +5,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.Ref;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.dot.DOTExporter;
@@ -17,9 +18,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -73,51 +72,41 @@ public class ReleaseRunner {
                 return releases.stream();
             }
         }).toList();
-//
-//        if (!config.isDryRun()) {
-//            dependencyGraph.forEach((level, repos) -> {
-//                int threads = config.isRunSequentially() ? 1 : repos.size();
-//                log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
-//                        String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
-//                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-//                    allReleases.stream()
-//                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
-//                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
-//                            .map(release -> {
-//                                try {
-//                                    PipedOutputStream out = new PipedOutputStream();
-//                                    PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-//                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release, out));
-//                                    return new TraceableFuture<>(future, pipedInputStream, release);
-//                                } catch (IOException e) {
-//                                    throw new RuntimeException(e);
-//                                }
-//                            })
-//                            .toList()
-//                            .forEach(future -> {
-//                                try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-//                                     BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-//                                    String line;
-//                                    while ((line = reader.readLine()) != null) {
-//                                        log.info(line);
-//                                    }
-//                                    future.getFuture().get();
-//                                } catch (Exception e) {
-//                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-//                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
-//                                            future.getObject().getRepository().getUrl(), e.getMessage());
-//                                    throw new RuntimeException(e);
-//                                }
-//                            });
-//                }
-//            });
-//        }
-//        result.setReleases(allReleases);
+
+        if (!config.isDryRun()) {
+            dependencyGraph.forEach((level, repos) -> {
+                int threads = config.isRunSequentially() ? 1 : repos.size();
+                log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
+                        String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
+                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
+                    //todo vlla выяснить, нужен ли функционал со сбором логов из стрима. В любом случае -вынести в служебный метод.
+                    allReleases.stream()
+                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
+                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
+                            .map(release -> {
+                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release));
+                                    return new TraceableFuture<>(future, null, release);
+                            })
+                            .toList()
+                            .forEach(future -> {
+                                try {
+                                    future.getFuture().get();
+                                } catch (Exception e) {
+                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+                                    log.error("'perform' process for repository '{}' has failed. Error: {}",
+                                            future.getObject().getRepository().getUrl(), e.getMessage());
+                                    throw new RuntimeException(e);
+                                }
+                            });
+                }
+            });
+        }
+        result.setReleases(allReleases);
         return result;
     }
 
     public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) {
-        log.info("releasePrepare - start. {}", repository.getUrl());
+        log.info("\n\n=== PREPARE RELEASE {} ===\n\n", repository.getUrl());
 
         updateDependencies(repository, dependencies);
 
@@ -176,7 +165,7 @@ public class ReleaseRunner {
         CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
     }
 
-    private void buildGoProxy(RepositoryInfo repository,  String releaseVersion) {
+    private void buildGoProxy(RepositoryInfo repository, String releaseVersion) {
         log.info("=== BUILD GO PROXY {} ===", repository.getUrl());
         Path goProxy;
 
@@ -184,8 +173,7 @@ public class ReleaseRunner {
         log.debug("os.name = {}", osName);
         if (osName.contains("win")) {
             goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
-        }
-        else {
+        } else {
             goProxy = Paths.get("/tmp/GOPROXY");
         }
 
@@ -251,43 +239,35 @@ public class ReleaseRunner {
 //
 
 //
-//    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
-////        TODO VLLA: the method do not creates stream and not owns it, we should not close it here
-//        try (outputStream) {
-////            TODO VLLA: why we pass repository separately, it already contains in release
-//            RepositoryInfo repository = release.getRepository();
-//            pushChanges(config, repository, release, outputStream);
-//            releaseDeploy(repository, config, release, outputStream);
-//            return release;
-//        }
-//    }
-//
-//    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
-//        Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
-//        String releaseVersion = release.getReleaseVersion();
-//        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
-//        try (Git git = Git.open(repositoryDirPath.toFile())) {
-//            Optional<Ref> tagOpt = git.tagList().call().stream()
-//                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
-//                    .findFirst();
-//            if (tagOpt.isEmpty()) {
-//                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
-//            }
-//            git.push()
-//                    .setProgressMonitor(new TextProgressMonitor(printWriter))
-//                    .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
-//                    .setPushAll()
-//                    .setPushTags()
-//                    .call();
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        } finally {
-//            // do not close because we want
-//            printWriter.flush();
-//        }
-//        log.info("Pushed to git: tag: {}", releaseVersion);
-//        release.setPushedToGit(true);
-//    }
+    RepositoryRelease performRelease(Config config, RepositoryRelease release) {
+        log.info("\n\n=== PERFORM RELEASE {} ===\n\n", release.getRepository().getUrl());
+        RepositoryInfo repository = release.getRepository();
+        pushChanges(config, repository, release);
+        //releaseDeploy(repository, config, release);
+        return release;
+    }
+
+    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release) {
+        log.info("=== GIT PUSH {} ===", repositoryInfo.getUrl());
+        String releaseVersion = release.getReleaseVersion();
+        try (Git git = Git.open(repositoryInfo.getRepositoryDirFile())) {
+            Optional<Ref> tagOpt = git.tagList().call().stream()
+                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
+                    .findFirst();
+            if (tagOpt.isEmpty()) {
+                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+            }
+            git.push()
+                    .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
+                    .setPushAll()
+                    .setPushTags()
+                    .call();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        log.info("Pushed to git: tag: {}", releaseVersion);
+        release.setPushedToGit(true);
+    }
 //
 //    void releaseDeploy(RepositoryInfo repositoryInfo, Config config,
 //                       RepositoryRelease release, OutputStream outputStream) throws Exception {

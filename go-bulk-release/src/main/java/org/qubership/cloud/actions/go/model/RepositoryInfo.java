@@ -220,9 +220,8 @@ public class RepositoryInfo extends RepositoryConfig {
 
             dependencies.stream().filter(this::isModuleContainsDependency).forEach(goModule::get);
 
-            //todo vlla temporary commented
-//            log.info("go mod tidy");
-//            goModule.tidy();
+            log.info("go mod tidy");
+            goModule.tidy();
         }
         this.resolveDependencies();
     }
