@@ -56,7 +56,7 @@ public class ReleaseRunner {
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
 //            TODO VLLA extract to configuration file?
-            int threads = config.isRunSequentially() ? 1 : /*4*/1;//todo vlla commented
+            int threads = config.isRunSequentially() ? 1 : 4;
             Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                     .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
                     .collect(Collectors.toSet());
