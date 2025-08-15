@@ -14,6 +14,7 @@ import org.qubership.cloud.actions.go.model.gomod.GoModFileFactory;
 import org.qubership.cloud.actions.go.proxy.GoModule;
 import org.qubership.cloud.actions.go.util.FilesUtils;
 import org.qubership.cloud.actions.go.util.UrlUtils;
+import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -129,7 +130,12 @@ public class RepositoryInfo extends RepositoryConfig {
                             RevObject obj = walk.parseAny(ref.getObjectId());
 
                             if (obj instanceof RevTag tag) {
+                                log.debug("VLLA obj instanceof RevTag");
                                 return new TagInfo(ref.getName(), tag.getTaggerIdent().getWhenAsInstant());
+                            }
+                            else if (obj instanceof RevCommit commit) {
+                                log.debug("VLLA obj instanceof RevCommit");
+                                return new TagInfo(ref.getName(), commit.getAuthorIdent().getWhenAsInstant());
                             }
                         } catch (Exception e) {
                             throw new RuntimeException(e);
