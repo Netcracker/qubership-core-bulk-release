@@ -15,7 +15,7 @@ public class GoProxy {
                     //todo vlla change to real one
                     {"go", "env", "-w", "GOPROXY=file:///Z:/home/user/bulk_release/GOPROXY,https://proxy.golang.org,direct"},
                     {"go", "env", "-w", "GONOPROXY="},
-                    {"go", "env", "-w", "GONOSUMDB=github.com/netcracker/*,github.com/taurmorchant/*"},
+                    {"go", "env", "-w", "GONOSUMDB=github.com/netcracker/*,github.com/taurmorchant/*,github.com/vlla-test-organization/*"},
                     {"go", "env", "-w", "GOPRIVATE="}
             };
             for (String[] cmd : commands) {
