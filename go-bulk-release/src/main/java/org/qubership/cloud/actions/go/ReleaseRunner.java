@@ -18,8 +18,6 @@ import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -127,7 +125,7 @@ public class ReleaseRunner {
 
         createTag(repository, releaseVersion, out);
 
-        buildGoProxy(repository, releaseVersion);
+        buildGoProxy(repository, releaseVersion, out);
 
         RepositoryRelease release = buildRepositoryReleaseDTO(repository, releaseVersion);
         log.info("=== PRE-RELEASE DONE FOR {} ===", repository.getUrl());
@@ -175,19 +173,19 @@ public class ReleaseRunner {
         CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
     }
 
-    private void buildGoProxy(RepositoryInfo repository, String releaseVersion) {
+    private void buildGoProxy(RepositoryInfo repository, String releaseVersion, OutputStream out) {
         log.info("=== BUILD GO PROXY {} ===", repository.getUrl());
-        Path goProxy;
+        String goProxy;
 
         String osName = System.getProperty("os.name").toLowerCase();
         log.debug("os.name = {}", osName);
         if (osName.contains("win")) {
-            goProxy = Paths.get("\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY");
+            goProxy = "\\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\bulk_release\\GOPROXY";
         } else {
-            goProxy = Paths.get("/tmp/GOPROXY");
+            goProxy = "/tmp/GOPROXY";
         }
 
-        GoProxyPublisher.publishToLocalGoProxy(repository.getRepositoryDirFile().toPath(), releaseVersion, goProxy, null);
+        GoProxyPublisher.publishToLocalGoProxy(repository.getRepositoryDirFile(), releaseVersion, goProxy, out);
     }
 
     private RepositoryRelease buildRepositoryReleaseDTO(RepositoryInfo repository, String releaseVersion) {
