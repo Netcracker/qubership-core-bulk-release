@@ -103,14 +103,17 @@ public class ReleaseRunner {
                                         repositoryInfo.getUrl(), repoLogFilePath);
                                 String line;
                                 int progressCounter = 0;
+                                boolean printedProgress = false;
                                 while ((line = reader.readLine()) != null) {
                                     Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                     progressCounter++;
                                     if (progressCounter > 100) {
                                         progressCounter = 0;
                                         System.out.print(".");
+                                        printedProgress = true;
                                     }
                                 }
+                                if (printedProgress) System.out.println();
                                 RepositoryRelease repositoryRelease = future.getFuture().get();
                                 log.info("Finished 'prepare' process for repository '{}'.\nFor details see log file: {}",
                                         repositoryInfo.getUrl(), repoLogFilePath);
@@ -168,14 +171,17 @@ public class ReleaseRunner {
                                             repositoryRelease.getRepository().getUrl(), repoLogFilePath);
                                     String line;
                                     int progressCounter = 0;
+                                    boolean printedProgress = false;
                                     while ((line = reader.readLine()) != null) {
                                         Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                         progressCounter++;
                                         if (progressCounter > 100) {
                                             progressCounter = 0;
                                             System.out.print(".");
+                                            printedProgress = true;
                                         }
                                     }
+                                    if (printedProgress) System.out.println();
                                     future.getFuture().get();
                                     log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
                                             repositoryRelease.getRepository().getUrl(), repoLogFilePath);
