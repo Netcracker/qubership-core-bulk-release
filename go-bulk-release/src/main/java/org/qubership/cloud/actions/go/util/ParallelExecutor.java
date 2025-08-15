@@ -5,13 +5,10 @@ import org.qubership.cloud.actions.go.model.TraceableFuture;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 @Slf4j
@@ -42,7 +39,47 @@ public class ParallelExecutor {
             return this;
         }
 
-        public <R> List<R> execute(BiFunction<? super T, ? super OutputStream, ? extends R> function) {
+        public <R> List<R> execute(Function<? super T, ? extends R> function) {
+            Objects.requireNonNull(function, "function must not be null");
+            if (threadsCount <= 0) throw new IllegalArgumentException("threadsCount must be > 0");
+
+            final List<T> items = collection.stream()
+                    .filter(filter != null ? filter : e -> true)
+                    .toList();
+
+            try (final ExecutorService pool = Executors.newFixedThreadPool(threadsCount);) {
+                final List<? extends CompletableFuture<? extends R>> futures = items.stream()
+                        .map(element -> {
+                            final UUID id = UUID.randomUUID();
+                            log.info("Executing command for element {}. Run id = {}", element, id);
+                            return CompletableFuture.supplyAsync(() -> {
+                                log.debug("Start function for run with id = {}", id);
+                                try {
+                                    return function.apply(element);
+                                } finally {
+                                    log.debug("Function for run with id = {} completed", id);
+                                }
+                            }, pool);
+                        }).toList();
+
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+                final List<R> results = new ArrayList<>(futures.size());
+                for (int i = 0; i < futures.size(); i++) {
+                    try {
+                        results.add(futures.get(i).join());
+                    } catch (CompletionException ce) {
+                        Throwable cause = ce.getCause() != null ? ce.getCause() : ce;
+                        T failedElement = items.get(i);
+                        throw new RuntimeException("Task failed for element " + failedElement, cause);
+                    }
+                }
+                return results;
+            }
+        }
+
+
+        public <R> List<R> executeOld(BiFunction<? super T, ? super OutputStream, ? extends R> function) {
             try (ExecutorService executorService = Executors.newFixedThreadPool(threadsCount)) {
                 return collection.stream()
                         .filter(filter == null ? element -> true : filter)

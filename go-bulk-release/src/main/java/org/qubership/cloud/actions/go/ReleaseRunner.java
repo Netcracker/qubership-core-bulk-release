@@ -14,6 +14,7 @@ import org.qubership.cloud.actions.go.model.*;
 import org.qubership.cloud.actions.go.proxy.GoProxy;
 import org.qubership.cloud.actions.go.proxy.GoProxyPublisher;
 import org.qubership.cloud.actions.go.util.CommandRunner;
+import org.qubership.cloud.actions.go.util.LoggerWriter;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
 import java.io.*;
@@ -64,7 +65,7 @@ public class ReleaseRunner {
 
             List<RepositoryRelease> releases = ParallelExecutor.forEachIn(reposInfoList)
                     .inParallelOn(threads)
-                    .execute((repo, out) -> prepareRelease(config, repo, gavList, out));
+                    .execute((repo) -> prepareRelease(config, repo, gavList));
 
 
             releases.stream().flatMap(r -> r.getGavs().stream())
@@ -81,7 +82,7 @@ public class ReleaseRunner {
                 ParallelExecutor.forEachIn(allReleases)
                         .filter(new CurrentLevelRepoFilter(repos))
                         .inParallelOn(threads)
-                        .execute((release, out) -> performRelease(config, release, out));
+                        .execute((release) -> performRelease(config, release));
 
 //                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
 //
@@ -112,7 +113,7 @@ public class ReleaseRunner {
         return result;
     }
 
-    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream out) {
+    public RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) {
         log.info("\n\n=== PREPARE RELEASE {} ===\n\n", repository.getUrl());
 
         updateDependencies(repository, dependencies);
@@ -120,12 +121,12 @@ public class ReleaseRunner {
         String releaseVersion = resolveReleaseVersion(config, repository);
         log.info("Release version: {}", releaseVersion);
 
-        runGoBuild(repository, out);
-        runGoTest(repository, out);
+        runGoBuild(repository);
+        runGoTest(repository);
 
-        createTag(repository, releaseVersion, out);
+        createTag(repository, releaseVersion);
 
-        buildGoProxy(repository, releaseVersion, out);
+        buildGoProxy(repository, releaseVersion);
 
         RepositoryRelease release = buildRepositoryReleaseDTO(repository, releaseVersion);
         log.info("=== PRE-RELEASE DONE FOR {} ===", repository.getUrl());
@@ -157,23 +158,23 @@ public class ReleaseRunner {
         return repository.calculateReleaseVersion(versionIncrementType);
     }
 
-    private void runGoBuild(RepositoryInfo repository, OutputStream out) {
+    private void runGoBuild(RepositoryInfo repository) {
         log.info("=== GO BUILD {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "go", "build", "./...");
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "build", "./...");
     }
 
-    private void runGoTest(RepositoryInfo repository, OutputStream out) {
+    private void runGoTest(RepositoryInfo repository) {
         log.info("=== GO TEST {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "go", "test", "./...", "-v");
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
     }
 
-    private void createTag(RepositoryInfo repository, String releaseVersion, OutputStream out) {
+    private void createTag(RepositoryInfo repository, String releaseVersion) {
         //todo vlla move to separate service
         log.info("=== CREATE TAG {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), out, "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
     }
 
-    private void buildGoProxy(RepositoryInfo repository, String releaseVersion, OutputStream out) {
+    private void buildGoProxy(RepositoryInfo repository, String releaseVersion) {
         log.info("=== BUILD GO PROXY {} ===", repository.getUrl());
         String goProxy;
 
@@ -185,7 +186,7 @@ public class ReleaseRunner {
             goProxy = "/tmp/GOPROXY";
         }
 
-        GoProxyPublisher.publishToLocalGoProxy(repository, releaseVersion, goProxy, out);
+        GoProxyPublisher.publishToLocalGoProxy(repository, releaseVersion, goProxy);
     }
 
     private RepositoryRelease buildRepositoryReleaseDTO(RepositoryInfo repository, String releaseVersion) {
@@ -245,18 +246,18 @@ public class ReleaseRunner {
 //
 
     //
-    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) {
+    RepositoryRelease performRelease(Config config, RepositoryRelease release) {
         log.info("\n\n=== PERFORM RELEASE {} ===\n\n", release.getRepository().getUrl());
         RepositoryInfo repository = release.getRepository();
-        pushChanges(config, repository, release, outputStream);
+        pushChanges(config, repository, release);
         //releaseDeploy(repository, config, release);
         return release;
     }
 
-    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
+    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release) {
         log.info("=== GIT PUSH {} ===", repositoryInfo.getUrl());
         String releaseVersion = release.getReleaseVersion();
-        PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
+        PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
         try (Git git = Git.open(repositoryInfo.getRepositoryDirFile())) {
             Optional<Ref> tagOpt = git.tagList().call().stream()
                     .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))

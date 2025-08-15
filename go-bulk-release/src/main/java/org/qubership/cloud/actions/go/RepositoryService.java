@@ -9,6 +9,7 @@ import org.eclipse.jgit.transport.TagOpt;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.util.LoggerWriter;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
 import java.io.*;
@@ -19,8 +20,6 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Slf4j
 public class RepositoryService {
@@ -44,8 +43,8 @@ public class RepositoryService {
 
         List<RepositoryInfo> repositoryInfoList = ParallelExecutor.forEachIn(mergedRepositories)
                 .inParallelOn(4)
-                .execute((rc, out) -> {
-                    gitCheckout(baseDir, gitConfig, rc, out);
+                .execute((rc) -> {
+                    gitCheckout(baseDir, gitConfig, rc);
                     return new RepositoryInfo(rc, baseDir);
                 });
 
@@ -629,7 +628,7 @@ public class RepositoryService {
 //        return new GoRepositoryInfo(repositoryConfig, baseDir);
 //    }
 //
-    void gitCheckout(String baseDir, GitConfig gitConf, RepositoryConfig repository, OutputStream out) {
+    void gitCheckout(String baseDir, GitConfig gitConf, RepositoryConfig repository) {
         try {
             Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
             boolean repositoryDirExists = Files.exists(repositoryDirPath);
@@ -643,10 +642,12 @@ public class RepositoryService {
                     git.checkout().setForced(true).setName("origin/" + branch).call();
                 }
             } else {
-                PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(out, UTF_8));
+                PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
                 try {
                     printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
                     Files.createDirectories(repositoryDirPath);
+
+                    TextProgressMonitor monitor = new TextProgressMonitor(printWriter);
 
                     git = Git.cloneRepository()
                             .setCredentialsProvider(gitConf.getCredentialsProvider())
@@ -656,7 +657,7 @@ public class RepositoryService {
                             .setBranch(branch)
                             .setCloneAllBranches(false)
                             .setTagOption(TagOpt.FETCH_TAGS)
-                            .setProgressMonitor(new TextProgressMonitor(printWriter))
+                            .setProgressMonitor(monitor)
                             .call();
                 } finally {
                     printWriter.flush();
