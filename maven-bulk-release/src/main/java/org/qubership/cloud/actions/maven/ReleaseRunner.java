@@ -106,11 +106,9 @@ public class ReleaseRunner {
                                 while ((line = reader.readLine()) != null) {
                                     Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                     if (++iterations % 100 == 0) {
-                                        System.out.printf(".%03d", iterations / 100);
-                                        if (iterations % 3000 == 0) System.out.println();
+                                        System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
                                     }
                                 }
-                                if (iterations > 0 && iterations % 3000 != 0) System.out.println();
                                 RepositoryRelease repositoryRelease = future.getFuture().get();
                                 log.info("Finished 'prepare' process for repository '{}'.\nFor details see log file: {}",
                                         repositoryInfo.getUrl(), repoLogFilePath);
@@ -171,11 +169,9 @@ public class ReleaseRunner {
                                     while ((line = reader.readLine()) != null) {
                                         Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
                                         if (++iterations % 100 == 0) {
-                                            System.out.printf(".%03d", iterations / 100);
-                                            if (iterations % 3000 == 0) System.out.println();
+                                            System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
                                         }
                                     }
-                                    if (iterations > 0 && iterations % 3000 != 0) System.out.println();
                                     future.getFuture().get();
                                     log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
                                             repositoryRelease.getRepository().getUrl(), repoLogFilePath);
