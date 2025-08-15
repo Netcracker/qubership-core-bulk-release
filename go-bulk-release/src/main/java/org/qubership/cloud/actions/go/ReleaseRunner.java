@@ -122,7 +122,9 @@ public class ReleaseRunner {
         log.info("Release version: {}", releaseVersion);
 
         runGoBuild(repository);
-        runGoTest(repository);
+        if (!config.isSkipTests()) {
+            runGoTest(repository);
+        }
 
         createTag(repository, releaseVersion);
 

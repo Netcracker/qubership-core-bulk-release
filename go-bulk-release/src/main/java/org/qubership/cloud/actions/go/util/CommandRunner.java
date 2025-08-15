@@ -33,29 +33,7 @@ public class CommandRunner {
             process.waitFor();
             log.info("Command: '{}' ended with code: {}", cmd, process.exitValue());
             if (process.exitValue() != 0) {
-                throw new RuntimeException("Failed to execute cmd");
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void runCommand(File directory, OutputStream out, String... command) {
-        try {
-            String cmd = String.join(" ", command);
-            log.info("Run command '{}'", cmd);
-            ProcessBuilder processBuilder = new ProcessBuilder(Arrays.asList(command));
-            if (directory != null) {
-                processBuilder.directory(directory);
-            }
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            process.getInputStream().transferTo(out);
-
-            process.waitFor();
-            log.info("Command: '{}' ended with code: {}", cmd, process.exitValue());
-            if (process.exitValue() != 0) {
-                throw new RuntimeException("Failed to execute cmd");
+                throw new RuntimeException("Failed to execute cmd: " + Arrays.toString(command) + " in directory " + directory);
             }
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
