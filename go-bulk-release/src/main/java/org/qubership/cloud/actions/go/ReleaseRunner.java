@@ -185,7 +185,7 @@ public class ReleaseRunner {
             goProxy = "/tmp/GOPROXY";
         }
 
-        GoProxyPublisher.publishToLocalGoProxy(repository.getRepositoryDirFile(), releaseVersion, goProxy, out);
+        GoProxyPublisher.publishToLocalGoProxy(repository, releaseVersion, goProxy, out);
     }
 
     private RepositoryRelease buildRepositoryReleaseDTO(RepositoryInfo repository, String releaseVersion) {
