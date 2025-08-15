@@ -53,7 +53,7 @@ public class ReleaseRunner {
         List<RepositoryRelease> allReleases = dependencyGraph.entrySet().stream().flatMap(entry -> {
             int level = entry.getKey() + 1;
             List<RepositoryInfo> reposInfoList = entry.getValue();
-            log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
+            log.info("\n\nRunning 'PREPARE RELEASE' - processing level {}/{}, {} repositories:\n{}\n\n", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
 //            TODO VLLA extract to configuration file?
             int threads = config.isRunSequentially() ? 1 : 4;
@@ -75,7 +75,7 @@ public class ReleaseRunner {
         if (!config.isDryRun()) {
             dependencyGraph.forEach((level, repos) -> {
                 int threads = config.isRunSequentially() ? 1 : repos.size();
-                log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
+                log.info("\n\nRunning 'PERFORM RELEASE' - processing level {}/{}, {} repositories:\n{}\n\n", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
 
                 ParallelExecutor.forEachIn(allReleases)

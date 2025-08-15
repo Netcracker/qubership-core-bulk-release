@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.io.PipedInputStream;
+import java.util.UUID;
 import java.util.concurrent.Future;
 
 @Data
@@ -12,4 +13,5 @@ public class TraceableFuture<T, S> {
     Future<T> future;
     PipedInputStream pipedInputStream;
     S object;
+    UUID id;
 }

@@ -7,6 +7,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -47,26 +48,34 @@ public class ParallelExecutor {
                         .filter(filter == null ? element -> true : filter)
                         .map(element -> {
                             try {
+                                UUID id = UUID.randomUUID();
+                                log.info("Executing command for element {}. Run id = {}", element, id);
                                 PipedOutputStream out = new PipedOutputStream();
                                 PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
                                 Future<R> future = executorService.submit(() -> {
                                     try (out) {
-                                        return function.apply(element, out);
+                                        log.debug("Start function for run with id = {}", id);
+                                        R result = function.apply(element, out);
+                                        log.debug("Function for run with id = {} completed", id);
+                                        return result;
                                     }
                                 });
-                                return new TraceableFuture<>(future, pipedInputStream, element);
+                                return new TraceableFuture<>(future, pipedInputStream, element, id);
                             } catch (IOException e) {
                                 throw new IllegalStateException(e);
                             }
                         }).toList()
                         .stream()
                         .map(future -> {
+                            log.debug("VLLA start map after function run");
                             try (PipedInputStream pipedInputStream = future.getPipedInputStream();
                                  BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
                                 String line;
+                                log.info("Reading logs from command {}... [START]", future.getId());
                                 while ((line = reader.readLine()) != null) {
-                                    log.info(line);
+                                    log.debug(line);
                                 }
+                                log.info("Reading logs from command {}... [FINISH]", future.getId());
                                 return future.getFuture().get();
                             } catch (Exception e) {
                                 if (e instanceof InterruptedException) Thread.currentThread().interrupt();
