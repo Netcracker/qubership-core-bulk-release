@@ -1,7 +1,6 @@
 package org.qubership.cloud.actions.maven;
 
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -37,8 +36,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class ReleaseRunner {
     static YAMLMapper yamlMapper = new YAMLMapper();
 
-    @SneakyThrows
-    public Result release(Config config) {
+    public Result release(Config config) throws Exception {
         Result result = new Result();
         log.info("Config: {}", yamlMapper.writeValueAsString(config));
         // set up git creds if necessary
@@ -104,8 +102,14 @@ public class ReleaseRunner {
                                 log.info("Started 'prepare' process for repository '{}'.\nFor details see log file: {}",
                                         repositoryInfo.getUrl(), repoLogFilePath);
                                 String line;
+                                int progressCounter = 0;
                                 while ((line = reader.readLine()) != null) {
                                     Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+                                    progressCounter++;
+                                    if (progressCounter > 100) {
+                                        progressCounter = 0;
+                                        System.out.print(".");
+                                    }
                                 }
                                 RepositoryRelease repositoryRelease = future.getFuture().get();
                                 log.info("Finished 'prepare' process for repository '{}'.\nFor details see log file: {}",
@@ -163,8 +167,14 @@ public class ReleaseRunner {
                                     log.info("Started 'perform' process for repository '{}'.\nFor details see log file: {}",
                                             repositoryRelease.getRepository().getUrl(), repoLogFilePath);
                                     String line;
+                                    int progressCounter = 0;
                                     while ((line = reader.readLine()) != null) {
                                         Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+                                        progressCounter++;
+                                        if (progressCounter > 100) {
+                                            progressCounter = 0;
+                                            System.out.print(".");
+                                        }
                                     }
                                     future.getFuture().get();
                                     log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
