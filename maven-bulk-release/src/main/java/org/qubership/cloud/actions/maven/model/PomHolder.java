@@ -5,9 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -15,34 +18,16 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.MessageFormat;
 import java.util.*;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Data
 public class PomHolder {
 
-    static Pattern commentPattern = Pattern.compile("<!--.*?-->");
-    static Pattern dependencyPattern = Pattern.compile("(?s)<dependency>(.*?)</dependency>");
-    static Pattern groupIdPattern = Pattern.compile("<groupId>(<!--.*?-->)*(?<groupId>[^<>]+?)(<!--.*?-->)*</groupId>");
-    static Pattern artifactIdPattern = Pattern.compile("<artifactId>(<!--.*?-->)*(?<artifactId>[^<>]+?)(<!--.*?-->)*</artifactId>");
-    static Pattern versionPattern = Pattern.compile("<version>(<!--.*?-->)*(?<version>[^<>]+?)(<!--.*?-->)*</version>");
     static Pattern referencePattern = Pattern.compile("\\$\\{(.+?)}");
-
-    static Function<List<Pattern>, Pattern> gavPatternFunction = patterns ->
-            Pattern.compile("(?s)" + patterns.stream().map(Pattern::pattern)
-                    // whitespaces and XML comments
-                    .collect(Collectors.joining("(\\s+|\\s*<!--.*?-->\\s*|\\s*<(?!(?:groupId|artifactId|version)\\b)[^>]+>.+?</(?!(?:groupId|artifactId|version)\\b)[^>]+>\\s*)")));
-
-    static List<Pattern> gavCombinations = List.of(
-            gavPatternFunction.apply(List.of(groupIdPattern, artifactIdPattern, versionPattern)),
-            gavPatternFunction.apply(List.of(groupIdPattern, versionPattern, artifactIdPattern)),
-            gavPatternFunction.apply(List.of(artifactIdPattern, groupIdPattern, versionPattern)),
-            gavPatternFunction.apply(List.of(artifactIdPattern, versionPattern, groupIdPattern)),
-            gavPatternFunction.apply(List.of(versionPattern, groupIdPattern, artifactIdPattern)),
-            gavPatternFunction.apply(List.of(versionPattern, artifactIdPattern, groupIdPattern)));
 
     Path path;
     PomHolder parent;
@@ -57,7 +42,7 @@ public class PomHolder {
     public void setPom(String pom) {
         try {
             this.pom = pom;
-            Model model = new MavenXpp3Reader().read(new ByteArrayInputStream(pom.getBytes()));
+            Model model = new MavenXpp3Reader().read(new StringReader(pom));
             this.setModel(model);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -137,6 +122,7 @@ public class PomHolder {
                 }));
     }
 
+    // todo re-write with Xpp3Dom approach
     public void updateProperty(String name, String version) {
         Pattern propertiesPattern = Pattern.compile("(?s)<properties>(.+?)</properties>");
         Pattern propertyPattern = Pattern.compile(MessageFormat.format("<{0}>(.+?)</{0}>", name));
@@ -159,48 +145,87 @@ public class PomHolder {
     }
 
     public void updateVersionInGAV(GAV gav) {
-        String pomContent = pom;
-        // find GAV entries in all possible combinations
-        for (Pattern pattern : gavCombinations) {
-            Matcher matcher = pattern.matcher(pomContent);
-            while (matcher.find()) {
-                String dependency = matcher.group();
-                String groupId = autoResolvePropReference(matcher.group("groupId"));
-                String artifactId = autoResolvePropReference(matcher.group("artifactId"));
-                String version = matcher.group("version");
-                if (groupId != null && artifactId != null && version != null) {
-                    groupId = groupId.trim();
-                    artifactId = artifactId.trim();
-                    version = version.trim();
-                    if (groupId.equals(gav.getGroupId()) && artifactId.equals(gav.getArtifactId())) {
-                        pomContent = pomContent.replace(dependency, dependency.replace(version, gav.getVersion()));
-                        if (!Objects.equals(gav.getVersion(), version))
-                            log.info("Updated gav: {}:{} [{} -> {}] in {}:{}", groupId, artifactId, version, gav.getVersion(), this.getGroupId(), this.getArtifactId());
-                    }
-                }
-            }
+        try (Reader reader = new StringReader(pom)) {
+            Xpp3Dom dom = Xpp3DomBuilder.build(reader, false);
+            Arrays.stream(dom.getChildren()).forEach(child -> updateGAV(child, gav));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        setPom(pomContent);
     }
 
-    public Set<GAV> getGavs() {
-        Set<GAV> gavs = new HashSet<>();
-        // find GAV entries in all possible combinations
-        for (Pattern pattern : gavCombinations) {
-
-            Matcher matcher = pattern.matcher(pom);
-            while (matcher.find()) {
-                String groupId = autoResolvePropReference(matcher.group("groupId").replaceAll(commentPattern.pattern(), ""));
-                String artifactId = autoResolvePropReference(matcher.group("artifactId").replaceAll(commentPattern.pattern(), ""));
-                String version = matcher.group("version");
-                if (groupId != null && artifactId != null && version != null) {
-                    groupId = groupId.trim();
-                    artifactId = artifactId.trim();
-                    version = version.trim().replaceAll(commentPattern.pattern(), "");
-                    gavs.add(new GAV(groupId, artifactId, version));
+    void updateGAV(Xpp3Dom container, GAV gav) {
+        Set<String> gavNames = Set.of("groupId", "artifactId", "version");
+        List<Xpp3Dom> children = Arrays.stream(container.getChildren()).toList();
+        if (gavNames.stream().allMatch(n -> children.stream().anyMatch(cn -> Objects.equals(cn.getName(), n)))) {
+            String groupId = container.getChild("groupId").getValue();
+            String artifactId = container.getChild("artifactId").getValue();
+            Xpp3Dom versionDom = container.getChild("version");
+            if (Objects.equals(gav.getGroupId(), groupId) && Objects.equals(gav.getArtifactId(), artifactId) && versionDom != null) {
+                StringBuilder sb = new StringBuilder("<").append(container.getName()).append(">");
+                children.forEach(child -> {
+                    sb.append("(\\s+|<!--.*?-->)*");
+                    sb.append("<").append(child.getName()).append(">");
+                    if (child.getValue() != null) {
+                        if (Objects.equals(child.getName(), "version")) {
+                            sb.append("(?<before>\\s+|<!--.*?-->)*").append("(?<version>").append(child.getValue()).append(")").append("(?<after>\\s+|<!--.*?-->)*");
+                        } else {
+                            sb.append("(\\s+|<!--.*?-->)*").append(child.getValue()).append("(\\s+|<!--.*?-->)*");
+                        }
+                    } else {
+                        sb.append(".*?");
+                    }
+                    sb.append("</").append(child.getName()).append(">");
+                });
+                sb.append("(\\s+|<!--.*?-->)*</").append(container.getName()).append(">");
+                Pattern pattern = Pattern.compile(sb.toString(), Pattern.DOTALL);
+                Matcher matcher = pattern.matcher(pom);
+                if (!matcher.find()) {
+                    throw new IllegalStateException(String.format("Failed to find GAV [%s] with pattern: '%s' in pom:\n%s", gav, pattern, pom));
+                } else {
+                    String originalVersion = versionDom.getValue();
+                    String newVersion = gav.getVersion();
+                    int start = matcher.start("version");
+                    int end = matcher.end("version");
+                    String updatedPom = pom.substring(0, start) + newVersion + pom.substring(end);
+                    setPom(updatedPom);
+                    log.info("Updated GAV: {}:{} {} -> {}", gav.getGroupId(), gav.getArtifactId(), originalVersion, newVersion);
                 }
             }
         }
+        children.stream()
+                .filter(child -> !Set.of("groupId", "artifactId", "version").contains(child.getName()))
+                .filter(child -> child.getChildren().length > 0)
+                .forEach(child -> updateGAV(child, gav));
+    }
+
+    public Set<GAV> getGAVs() {
+        try (Reader reader = new StringReader(pom)) {
+            Xpp3Dom dom = Xpp3DomBuilder.build(reader);
+            return Arrays.stream(dom.getChildren()).map(this::getGAVs).flatMap(Collection::stream).collect(Collectors.toSet());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    Set<GAV> getGAVs(Xpp3Dom container) {
+        Set<GAV> gavs = new HashSet<>();
+        if (container.getChild("groupId") != null && container.getChild("artifactId") != null && container.getChild("version") != null) {
+            String groupId = container.getChild("groupId").getValue();
+            String artifactId = container.getChild("artifactId").getValue();
+            String version = container.getChild("version").getValue();
+            if (groupId != null && artifactId != null && version != null) {
+                groupId = groupId.trim();
+                artifactId = artifactId.trim();
+                version = version.trim();
+                gavs.add(new GAV(groupId, artifactId, version));
+            }
+        }
+        gavs.addAll(Arrays.stream(container.getChildren())
+                .filter(child -> !Set.of("groupId", "artifactId", "version").contains(child.getName()))
+                .filter(child -> child.getChildren().length > 0)
+                .map(this::getGAVs)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet()));
         return gavs;
     }
 

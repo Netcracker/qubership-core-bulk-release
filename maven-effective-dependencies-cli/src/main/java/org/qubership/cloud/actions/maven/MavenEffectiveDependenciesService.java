@@ -212,7 +212,7 @@ public class MavenEffectiveDependenciesService {
         List<PomHolder> poms = PomHolder.parsePoms(pomDir);
         Set<GA> selfGavs = poms.stream().map(pom-> new GA(pom.getGroupId(), pom.getArtifactId())).collect(Collectors.toSet());
         return poms.stream()
-                .flatMap(pom -> pom.getGavs().stream()
+                .flatMap(pom -> pom.getGAVs().stream()
                         .filter(gav -> !selfGavs.contains(gav.toGA()))
                         .map(gav -> new GAV(pom.autoResolvePropReference(gav.getGroupId()),
                                 pom.autoResolvePropReference(gav.getArtifactId()),

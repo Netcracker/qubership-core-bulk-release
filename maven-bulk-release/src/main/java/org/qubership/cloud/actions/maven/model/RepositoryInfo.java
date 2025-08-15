@@ -262,7 +262,7 @@ public class RepositoryInfo extends RepositoryConfig {
         };
         List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
         poms.forEach(ph -> {
-            ph.getGavs().forEach(gav -> gavFunction.accept(ph, gav));
+            ph.getGAVs().forEach(gav -> gavFunction.accept(ph, gav));
             ph.getProperties().forEach((propertyName, propertyValue) -> {
                 if (propertiesToDependencies.containsKey(propertyName)) {
                     propertiesToPoms.computeIfAbsent(propertyName, k -> new HashSet<>()).add(ph);
