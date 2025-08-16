@@ -9,6 +9,7 @@ import org.qubership.cloud.actions.renovate.model.RenovateMap;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class RenovateRulesService {
 
@@ -71,10 +72,30 @@ public class RenovateRulesService {
             Object defaultMapValue = defaultMap.get(key);
             if (mapValue instanceof Map mVal && defaultMapValue instanceof Map dVal) {
                 result.put(key, mergeMaps(mVal, dVal));
+            } else if (mapValue instanceof Collection mVal && defaultMapValue instanceof Collection dVal) {
+                result.put(key, concatCollections(mVal, dVal));
             } else {
                 result.put(key, map.getOrDefault(key, defaultMap.get(key)));
             }
         }
         return result;
+    }
+
+    public Collection<Object> concatCollections(Collection<Object> collection, Collection<Object> defaultCollection) {
+        boolean isSet = collection instanceof Set || defaultCollection instanceof Set;
+        if (collection == null) {
+            collection = isSet ? new LinkedHashSet<>() : new ArrayList<>();
+        }
+        if (defaultCollection == null) {
+            defaultCollection = isSet ? new LinkedHashSet<>() : new ArrayList<>();
+        } else {
+            defaultCollection = isSet ? new LinkedHashSet<>(defaultCollection) : new ArrayList<>(defaultCollection);
+        }
+        for (Object o : collection) {
+            if (!defaultCollection.contains(o)) {
+                defaultCollection.add(o);
+            }
+        }
+        return defaultCollection;
     }
 }
