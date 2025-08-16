@@ -1,4 +1,4 @@
-package org.qubership.cloud.actions.renovate;
+package org.qubership.cloud.actions.renovate.converters;
 
 import org.qubership.cloud.actions.maven.model.GAV;
 import picocli.CommandLine;

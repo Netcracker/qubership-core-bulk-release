@@ -12,10 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,10 +41,16 @@ public class MavenEffectiveDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--gitPassword"}, required = true, description = "git password")
     private String gitPassword;
 
-    @CommandLine.Option(names = {"--repositories"}, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--repositories"}, split = ",",
             description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositories = new LinkedHashSet<>();
+
+    @CommandLine.Option(names = {"--repositoriesFile"}, split = ",", description = """
+            File with new-line seperated repositories in format: '{url}[branch={branch}]' to be used for building 'repositories' and their
+            'baseBranchPatterns' fields of the renovate config. Use multiple params to specify more than 1 repository""",
+            converter = RepositoriesFileConfigConverter.class)
+    private List<RepositoryConfig> repositoriesFromFile = new ArrayList<>();
 
     @CommandLine.Option(names = {"--checkoutParallelism"}, description = "checkout parallelism")
     private int checkoutParallelism = 1;
@@ -104,7 +107,8 @@ public class MavenEffectiveDependenciesCli implements Runnable {
             Set<GAV> gavs1 = service.resolvePomsEffectiveDependencies(type1PomPath, mavenConfig);
             Set<GAV> gavs2 = service.resolvePomsEffectiveDependencies(type2PomPath, mavenConfig);
 
-            Config config = Config.builder(Path.of(baseDir, "repositories").toString(), gitConfig, mavenConfig, repositories).build();
+            Set<RepositoryConfig> repos = Stream.concat(repositories.stream(), repositoriesFromFile.stream()).collect(Collectors.toSet());
+            Config config = Config.builder(Path.of(baseDir, "repositories").toString(), gitConfig, mavenConfig, repos).build();
             Map<Integer, List<RepositoryInfo>> graph = service.resolveRepositories(config);
 
             EffectiveDependenciesDiff diff = service.compare(type1, gavs1, type2, gavs2, graph, mavenConfig);

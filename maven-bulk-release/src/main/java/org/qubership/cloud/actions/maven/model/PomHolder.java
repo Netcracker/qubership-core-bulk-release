@@ -21,7 +21,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Data
@@ -193,7 +192,7 @@ public class PomHolder {
             }
         }
         children.stream()
-                .filter(child -> !Set.of("groupId", "artifactId", "version").contains(child.getName()))
+                .filter(child -> !gavNames.contains(child.getName()))
                 .filter(child -> child.getChildren().length > 0)
                 .forEach(child -> updateGAV(child, gav));
     }
@@ -209,10 +208,13 @@ public class PomHolder {
 
     Set<GAV> getGAVs(Xpp3Dom container) {
         Set<GAV> gavs = new HashSet<>();
-        if (container.getChild("groupId") != null && container.getChild("artifactId") != null && container.getChild("version") != null) {
-            String groupId = container.getChild("groupId").getValue();
-            String artifactId = container.getChild("artifactId").getValue();
-            String version = container.getChild("version").getValue();
+        Xpp3Dom groupIdDom = container.getChild("groupId");
+        Xpp3Dom artifactIdDom = container.getChild("artifactId");
+        Xpp3Dom versionDom = container.getChild("version");
+        if (groupIdDom != null && artifactIdDom != null && versionDom != null) {
+            String groupId = groupIdDom.getValue();
+            String artifactId = artifactIdDom.getValue();
+            String version = versionDom.getValue();
             if (groupId != null && artifactId != null && version != null) {
                 groupId = groupId.trim();
                 artifactId = artifactId.trim();
