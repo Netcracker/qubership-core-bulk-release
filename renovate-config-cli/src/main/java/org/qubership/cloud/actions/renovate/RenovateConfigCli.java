@@ -84,7 +84,7 @@ public class RenovateConfigCli implements Runnable {
             config.put("repositories", Stream.concat(repositories.stream(), repositoriesFromFile.stream())
                     .map(r-> {
                 Map<String, Object> result = new LinkedHashMap<>();
-                result.put("repository", r.getUrl());
+                result.put("repository", r.getDir());
                 result.put("baseBranchPatterns", List.of(r.getBranch()));
                 return result;
             }).toList());
