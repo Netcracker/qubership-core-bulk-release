@@ -28,7 +28,6 @@ import java.util.regex.Pattern;
 @Slf4j
 @Getter
 @EqualsAndHashCode(callSuper = true)
-//TODO VLLA why inheritance, why not composition?
 public class RepositoryInfo extends RepositoryConfig {
     String baseDir;
 
@@ -48,33 +47,6 @@ public class RepositoryInfo extends RepositoryConfig {
     public File getRepositoryDirFile() {
         return Paths.get(getBaseDir(), getDir()).toFile();
     }
-
-//    //TODO VLLA complex logic in the constructor that not only constructs the object, but also changes the file system (git.checkout)
-//    // => hard to test, hard to override => move to the service level
-//    public GoRepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
-//        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(),
-//                repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
-//        this.baseDir = baseDir;
-//        try {
-//            Path repositoryDirPath = Paths.get(baseDir, this.getDir());
-//            boolean repositoryDirExists = Files.exists(repositoryDirPath);
-//            if (!repositoryDirExists || Files.list(repositoryDirPath).findAny().isEmpty()) {
-//                throw new IllegalStateException(String.format("Repository directory '%s' does not exist or is empty", repositoryDirPath));
-//            }
-//            try (Git git = Git.open(repositoryDirPath.toFile())) {
-    ////                TODO VLLA why do checkout again if it's already done at buildDependencyGraph level?
-//                String branch = repositoryConfig.getBranch();
-//                try {
-//                    git.checkout().setName(branch).call();
-//                } catch (RefNotFoundException e)  {
-//                    git.checkout().setName("origin/" +branch).call();
-//                }
-//            }
-//            this.resolveDependencies();
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
 
     private static final Pattern SEMVER_PATTERN = Pattern.compile("v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)");
 
@@ -130,11 +102,9 @@ public class RepositoryInfo extends RepositoryConfig {
                             RevObject obj = walk.parseAny(ref.getObjectId());
 
                             if (obj instanceof RevTag tag) {
-                                log.debug("VLLA obj instanceof RevTag");
                                 return new TagInfo(ref.getName(), tag.getTaggerIdent().getWhenAsInstant());
                             }
                             else if (obj instanceof RevCommit commit) {
-                                log.debug("VLLA obj instanceof RevCommit");
                                 return new TagInfo(ref.getName(), commit.getAuthorIdent().getWhenAsInstant());
                             }
                         } catch (Exception e) {
@@ -149,31 +119,6 @@ public class RepositoryInfo extends RepositoryConfig {
                     }
                 }
             }
-
-
-//            if (!repoDir.exists() || !new File(repoDir, ".git").exists()) {
-//                throw new IllegalArgumentException("Directory is not a git repository: " + repoDir);
-//            }
-//
-//            ProcessBuilder pb = new ProcessBuilder("git", "tag", "--sort=-creatordate");
-//            pb.directory(repoDir);
-//            pb.redirectErrorStream(true);
-//
-//            Process process = pb.start();
-//
-//            String output;
-//            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-//                output = reader.readLine();
-//            }
-//
-//            int exitCode = process.waitFor();
-//            log.debug("VLLA exitCode = {}", exitCode);
-//            log.debug("VLLA output = {}", output);
-//            if (exitCode != 0 || output.isEmpty()) {
-//                throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
-//            }
-//
-//            return output;
         } catch (IOException | GitAPIException e) {
             throw new RuntimeException(e);
         }
@@ -240,19 +185,13 @@ public class RepositoryInfo extends RepositoryConfig {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        log.info("VLLA resolveDependencies {}. module deps: {}", getUrl(), moduleDependencies);
     }
-
 
     public void updateDepVersions(Collection<GAV> dependencies) {
         log.info("=== UPDATE DEPENDENCIES ===");
         for (GoModFile goModFile : goModFiles) {
             log.debug("process goModFile {}", goModFile.getFile());
             GoModule goModule = new GoModule(goModFile.getFile().getParent());
-
-            log.info("VLLA dependencies: " + dependencies);
-            log.info("VLLA getModuleDependencies: " + getModuleDependencies());
 
             dependencies.stream().filter(this::isModuleContainsDependency).forEach(goModule::get);
 

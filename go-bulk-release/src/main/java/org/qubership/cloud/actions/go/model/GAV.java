@@ -15,14 +15,6 @@ public class GAV extends GA implements Comparable<GAV> {
     static Pattern gavPattern = Pattern.compile("^(.*):(.*):(.*)$");
     String version;
 
-    public GAV(String gav) {
-        Matcher matcher = gavPattern.matcher(gav);
-        if (!matcher.matches()) throw new IllegalArgumentException("Invalid gav: " + gav);
-        this.groupId = matcher.group(1);
-        this.artifactId = matcher.group(2);
-        this.version = matcher.group(3);
-    }
-
     public GAV(String groupId, String artifactId, String version) {
         this.groupId = groupId;
         this.artifactId = artifactId;
@@ -46,5 +38,4 @@ public class GAV extends GA implements Comparable<GAV> {
     public boolean isSameArtifact(GAV another) {
         return Objects.equals(artifactId, another.artifactId) && Objects.equals(groupId, another.groupId);
     }
-
 }

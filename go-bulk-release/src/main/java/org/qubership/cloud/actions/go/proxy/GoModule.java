@@ -5,7 +5,6 @@ import org.qubership.cloud.actions.go.util.CommandRunner;
 
 import java.nio.file.Path;
 
-//todo vlla merge with GoModFile
 public class GoModule {
     private final Path repo;
 

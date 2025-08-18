@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class GoModFileFactory {
+    //todo vlla parse dependencies with go lib?
     public static GoModFile create(Path path) {
         try {
             boolean inRequireBlock = false;
@@ -25,7 +26,6 @@ public class GoModFileFactory {
                     continue;
                 }
 
-                // Обработка блока require (... )
                 if (line.startsWith("require (")) {
                     inRequireBlock = true;
                     continue;
