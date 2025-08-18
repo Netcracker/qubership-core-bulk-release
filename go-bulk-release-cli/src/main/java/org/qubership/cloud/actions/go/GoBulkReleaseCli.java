@@ -103,88 +103,11 @@ public class GoBulkReleaseCli implements Runnable {
     @Override
     public void run() {
         try {
-            if (repositories.stream()
-                    .filter(Objects::nonNull)
-                    .toList().isEmpty()) {
-                throw new IllegalArgumentException("--repositories property cannot be empty");
-            }
-
-            GitConfig gitConfig = GitConfig.builder()
-                    .url(gitURL)
-                    .username(gitUsername)
-                    .email(gitEmail)
-                    .password(gitPassword)
-                    .build();
-
-//            MavenConfig mavenConfig = MavenConfig.builder()
-//                    .user(mavenUser)
-//                    .password(mavenPassword)
-//                    .altDeploymentRepository(mavenAltDeploymentRepository)
-//                    .localRepositoryPath(mavenLocalRepoPath)
-//                    .build();
-
-//            gavs = this.gavs.stream().filter(gav -> !gav.isBlank()).collect(Collectors.toSet());
-
-            repositoriesToReleaseFrom = repositoriesToReleaseFrom.stream()
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            Config config = Config.builder(baseDir, gitConfig, repositories)
-                    .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
-                    .versionIncrementType(versionIncrementType)
-//                    .javaVersionToJavaHomeEnv(javaVersionToJavaHomeEnv)
-//                    .gavs(gavs)
-                    .skipTests(skipTests)
-                    .dryRun(dryRun)
-                    .build();
+            Config config = prepareConfig();
 
             Result result = new ReleaseRunner().release(config);
-            if (summaryFile != null && !summaryFile.isBlank()) {
-                // write summary
-                try {
-                    Path summaryPath = Paths.get(summaryFile);
-                    String md = ReleaseSummary.md(result);
-                    //TODO VLLA it writes huge amount of text in logs, here and below
-                    log.info("Writing to {} summary:\n{}", summaryPath, md);
-                    Files.writeString(summaryPath, md, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (Exception e) {
-                    log.error("Failed to write summary to file {}", summaryFile, e);
-                }
-            }
-//            if (resultOutputFile != null && !resultOutputFile.isBlank()) {
-//                // write the result
-//                try {
-//                    Path resultPath = Paths.get(resultOutputFile);
-//                    String gavsResult = ReleaseSummary.gavs(result);
-//                    log.info("Writing to {} result:\n{}", resultPath, gavsResult.replaceAll(",", "\n"));
-//                    Files.writeString(resultPath, String.format("result=%s", gavsResult), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-//                } catch (Exception e) {
-//                    log.error("Failed to write result to file {}", resultOutputFile, e);
-//                }
-//            }
-            if (gavsResultFile != null && !gavsResultFile.isBlank()) {
-                // write GAVs
-                try {
-                    Path resultPath = Paths.get(gavsResultFile);
-                    // TODO VLLA ReleaseSummary.gavs(result) called twice
-                    String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
-                    log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
-                    Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (Exception e) {
-                    log.error("Failed to write GAVs to file {}", gavsResultFile, e);
-                }
-            }
-            if (dependencyGraphFile != null && !dependencyGraphFile.isBlank()) {
-                // write the dependency graph
-                try {
-                    Path resultPath = Paths.get(dependencyGraphFile);
-                    String graph = ReleaseSummary.dependencyGraphDOT(result);
-                    log.info("Writing to {} graph:\n{}", resultPath, graph);
-                    Files.writeString(resultPath, graph, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                } catch (Exception e) {
-                    log.error("Failed to write dependency graph to file {}", dependencyGraphFile, e);
-                }
-            }
+
+            publishResult(result);
         } catch (Exception e) {
             if (summaryFile != null && !summaryFile.isBlank()) {
                 // write summary
@@ -199,5 +122,80 @@ public class GoBulkReleaseCli implements Runnable {
             }
             throw new IllegalStateException("Failed to perform maven bulk release", e);
         }
+    }
+
+    private void publishResult(Result result) {
+        if (summaryFile != null && !summaryFile.isBlank()) {
+            // write summary
+            try {
+                Path summaryPath = Paths.get(summaryFile);
+                String md = ReleaseSummary.md(result);
+                //TODO VLLA it writes huge amount of text in logs, here and below
+                log.info("Writing to {} summary:\n{}", summaryPath, md);
+                Files.writeString(summaryPath, md, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            } catch (Exception e) {
+                log.error("Failed to write summary to file {}", summaryFile, e);
+            }
+        }
+//            if (resultOutputFile != null && !resultOutputFile.isBlank()) {
+//                // write the result
+//                try {
+//                    Path resultPath = Paths.get(resultOutputFile);
+//                    String gavsResult = ReleaseSummary.gavs(result);
+//                    log.info("Writing to {} result:\n{}", resultPath, gavsResult.replaceAll(",", "\n"));
+//                    Files.writeString(resultPath, String.format("result=%s", gavsResult), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+//                } catch (Exception e) {
+//                    log.error("Failed to write result to file {}", resultOutputFile, e);
+//                }
+//            }
+        if (gavsResultFile != null && !gavsResultFile.isBlank()) {
+            // write GAVs
+            try {
+                Path resultPath = Paths.get(gavsResultFile);
+                // TODO VLLA ReleaseSummary.gavs(result) called twice
+                String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
+                log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
+                Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            } catch (Exception e) {
+                log.error("Failed to write GAVs to file {}", gavsResultFile, e);
+            }
+        }
+        if (dependencyGraphFile != null && !dependencyGraphFile.isBlank()) {
+            // write the dependency graph
+            try {
+                Path resultPath = Paths.get(dependencyGraphFile);
+                String graph = ReleaseSummary.dependencyGraphDOT(result);
+                log.info("Writing to {} graph:\n{}", resultPath, graph);
+                Files.writeString(resultPath, graph, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            } catch (Exception e) {
+                log.error("Failed to write dependency graph to file {}", dependencyGraphFile, e);
+            }
+        }
+    }
+
+    private Config prepareConfig() {
+        if (repositories.stream()
+                .filter(Objects::nonNull)
+                .toList().isEmpty()) {
+            throw new IllegalArgumentException("--repositories property cannot be empty");
+        }
+
+        GitConfig gitConfig = GitConfig.builder()
+                .url(gitURL)
+                .username(gitUsername)
+                .email(gitEmail)
+                .password(gitPassword)
+                .build();
+
+        repositoriesToReleaseFrom = repositoriesToReleaseFrom.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        return Config.builder(baseDir, gitConfig, repositories)
+                .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
+                .versionIncrementType(versionIncrementType)
+                .skipTests(skipTests)
+                .dryRun(dryRun)
+                .build();
     }
 }
