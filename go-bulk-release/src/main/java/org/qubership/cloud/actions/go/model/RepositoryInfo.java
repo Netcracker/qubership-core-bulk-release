@@ -58,7 +58,7 @@ public class RepositoryInfo extends RepositoryConfig {
         } catch (NoTagsFoundException e) {
             log.debug("No tags found -> calculate current version from go.mod");
             //todo vlla getFirst is HACK
-            String moduleName = getGoModFiles().getFirst().getModuleName();
+            String moduleName = getGoModFiles().getFirst().moduleName();
             String moduleVersion = extractGoModuleVersion(moduleName);
             currentVersion = moduleVersion + ".0.0";
         }
@@ -171,12 +171,12 @@ public class RepositoryInfo extends RepositoryConfig {
             this.goModFiles = goModFiles;
 
             for (GoModFile goModFile : goModFiles) {
-                String moduleName = goModFile.getModuleName();
+                String moduleName = goModFile.moduleName();
                 GAV moduleGAV = new GAV("TMP", moduleName, "");
                 modules.add(moduleGAV);
                 perModuleDependencies.put(moduleGAV, new HashSet<>());
 
-                goModFile.getDependencies().forEach(goDependency -> {
+                goModFile.dependencies().forEach(goDependency -> {
                     GAV gav = new GAV("TMP", goDependency.getModule(), goDependency.getVersion());
                     moduleDependencies.add(gav);
                     perModuleDependencies.get(moduleGAV).add(gav);
@@ -190,8 +190,8 @@ public class RepositoryInfo extends RepositoryConfig {
     public void updateDepVersions(Collection<GAV> dependencies) {
         log.info("=== UPDATE DEPENDENCIES ===");
         for (GoModFile goModFile : goModFiles) {
-            log.debug("process goModFile {}", goModFile.getFile());
-            GoModule goModule = new GoModule(goModFile.getFile().getParent());
+            log.debug("process goModFile {}", goModFile.file());
+            GoModule goModule = new GoModule(goModFile.file().getParent());
 
             dependencies.stream().filter(this::isModuleContainsDependency).forEach(goModule::get);
 

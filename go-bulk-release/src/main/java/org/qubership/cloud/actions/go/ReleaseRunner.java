@@ -7,12 +7,14 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.TextProgressMonitor;
+import org.qubership.cloud.actions.go.gh.GitHubReleaser;
 import org.qubership.cloud.actions.go.model.*;
 import org.qubership.cloud.actions.go.proxy.GoProxy;
 import org.qubership.cloud.actions.go.proxy.GoProxyPublisher;
 import org.qubership.cloud.actions.go.util.CommandRunner;
 import org.qubership.cloud.actions.go.util.LoggerWriter;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
+import org.kohsuke.github.*;
 
 import java.io.PrintWriter;
 import java.util.*;
@@ -199,7 +201,7 @@ public class ReleaseRunner {
         log.info("\n\n=== PERFORM RELEASE {} ===\n\n", release.getRepository().getUrl());
         RepositoryInfo repository = release.getRepository();
         pushChanges(config, repository, release);
-        //releaseDeploy(repository, config, release);
+        deployRelease(repository, config, release);
         return release;
     }
 
@@ -228,6 +230,23 @@ public class ReleaseRunner {
         }
         log.info("Pushed to git: tag: {}", releaseVersion);
         release.setPushedToGit(true);
+    }
+
+    void deployRelease(RepositoryInfo repository, Config config, RepositoryRelease release){
+        log.info("=== DEPLOY RELEASE {} ===", repository.getUrl());
+        try {
+            CommandRunner.runCommand(repository.getRepositoryDirFile(), "pwd");
+            CommandRunner.runCommand(repository.getRepositoryDirFile(), "ls", "-la");
+            CommandRunner.runCommand("pwd");
+            CommandRunner.runCommand("ls", "-la");
+            CommandRunner.runCommand(repository.getRepositoryDirFile(), "goreleaser", "-f", "../../.github/goreleaser.yaml", "release");
+
+//            GitHubReleaser gitHubReleaser = new GitHubReleaser(config.getGitConfig().getPassword());
+//            GHRelease ghRelease = gitHubReleaser.createOrUpdate(repository.getRepositoryDirFile(), repository.getDir(), release.getTag());
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private record DifferentVersionDependencyPredicate(Collection<GAV> dependencies) implements Predicate<GAV> {
