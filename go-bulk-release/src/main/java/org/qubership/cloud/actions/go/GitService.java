@@ -145,7 +145,7 @@ public class GitService {
             List<DiffEntry> diff = git.diff().call();
             List<String> addedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.ADD).map(DiffEntry::getNewPath).toList();
             if (!addedFiles.isEmpty()) {
-                git.add().call();
+                git.add().addFilepattern(".").call();
                 git.commit().setMessage(msg).call();
                 log.info("Commited '{}', added files:\n{}", msg, String.join("\n", addedFiles));
             }
