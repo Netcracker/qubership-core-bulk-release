@@ -239,7 +239,7 @@ public class ReleaseRunner {
             CommandRunner.runCommand(repository.getRepositoryDirFile(), "ls", "-la");
             CommandRunner.runCommand("pwd");
             CommandRunner.runCommand("ls", "-la");
-            CommandRunner.runCommand(repository.getRepositoryDirFile(), "goreleaser", "-f", "../../.github/goreleaser.yaml", "release");
+            CommandRunner.runCommand(repository.getRepositoryDirFile(), "goreleaser", "-f", "/tmp/goreleaser.yaml", "release");
 
 //            GitHubReleaser gitHubReleaser = new GitHubReleaser(config.getGitConfig().getPassword());
 //            GHRelease ghRelease = gitHubReleaser.createOrUpdate(repository.getRepositoryDirFile(), repository.getDir(), release.getTag());
