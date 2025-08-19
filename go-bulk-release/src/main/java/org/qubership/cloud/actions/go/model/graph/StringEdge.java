@@ -1,4 +1,4 @@
-package org.qubership.cloud.actions.go.model;
+package org.qubership.cloud.actions.go.model.graph;
 
 import org.jgrapht.graph.DefaultEdge;
 

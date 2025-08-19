@@ -9,6 +9,9 @@ import org.eclipse.jgit.transport.TagOpt;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.model.graph.DependencyGraph;
+import org.qubership.cloud.actions.go.model.graph.RepositoryInfoLinker;
+import org.qubership.cloud.actions.go.model.graph.StringEdge;
 import org.qubership.cloud.actions.go.util.LoggerWriter;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
@@ -23,9 +26,9 @@ import java.util.stream.IntStream;
 @Slf4j
 public class RepositoryService {
     public DependencyGraph buildDependencyGraph(String baseDir,
-                                                                   GitConfig gitConfig,
-                                                                   Set<RepositoryConfig> repositories,
-                                                                   Set<RepositoryConfig> repositoriesToReleaseFrom) {
+                                                GitConfig gitConfig,
+                                                Set<RepositoryConfig> repositories,
+                                                Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
         Set<RepositoryConfig> mergedRepositories = merge(repositories, repositoriesToReleaseFrom);
         Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = merge(repositoriesToReleaseFrom, repositories);

@@ -1,18 +1,20 @@
 package org.qubership.cloud.actions.go.model.gomod;
 
+import org.qubership.cloud.actions.go.model.GoGAV;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 
-public class GoModFileFactory {
+public class GoModuleFactory {
     //todo vlla parse dependencies with go lib?
-    public static GoModFile create(Path path) {
+    public static GoModule create(Path path) {
         try {
             boolean inRequireBlock = false;
 
             String moduleName = null;
-            Set<GoDependency> dependencies = new HashSet<>();
+            Set<GoGAV> dependencies = new HashSet<>();
 
             for (String line : Files.readAllLines(path)) {
                 line = line.trim();
@@ -44,7 +46,7 @@ public class GoModFileFactory {
             }
 
             if (moduleName != null) {
-                return new GoModFile(moduleName, dependencies, path);
+                return new GoModule(moduleName, dependencies, path);
             } else {
                 throw new RuntimeException("TBD module name not found");
             }
@@ -54,7 +56,7 @@ public class GoModFileFactory {
         }
     }
 
-    private static GoDependency parseDependencyLine(String line) {
+    private static GoGAV parseDependencyLine(String line) {
         int commentIndex = line.indexOf("//");
         if (commentIndex != -1) {
             line = line.substring(0, commentIndex).trim();
@@ -62,7 +64,7 @@ public class GoModFileFactory {
 
         String[] parts = line.split("\\s+");
         if (parts.length >= 2) {
-            return new GoDependency(parts[0], parts[1]);
+            return new GoGAV(parts[0], parts[1]);
         }
 
         throw new IllegalArgumentException("Invalid dependency: " + line);

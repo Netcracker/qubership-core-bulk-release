@@ -1,8 +1,9 @@
-package org.qubership.cloud.actions.go.model;
+package org.qubership.cloud.actions.go.model.graph;
 
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.dot.DOTExporter;
+import org.qubership.cloud.actions.go.model.RepositoryInfo;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

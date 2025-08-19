@@ -1,6 +1,7 @@
 package org.qubership.cloud.actions.go;
 
 import lombok.extern.slf4j.Slf4j;
+import org.qubership.cloud.actions.go.doc.ReleaseSummary;
 import org.qubership.cloud.actions.go.model.*;
 import picocli.CommandLine;
 
@@ -8,8 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,6 +31,9 @@ public class GoBulkReleaseCli implements Runnable {
 
     @CommandLine.Option(names = {"--baseDir"}, required = true, description = "base directory to write result to")
     private String baseDir;
+
+    @CommandLine.Option(names = {"--goProxyDir"}, required = false, description = "GOPROXY directory", defaultValue = "/tmp/GOPROXY")
+    private String goProxyDir;
 
     @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
             description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
@@ -191,7 +193,7 @@ public class GoBulkReleaseCli implements Runnable {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        return Config.builder(baseDir, gitConfig, repositories)
+        return Config.builder(baseDir, goProxyDir, gitConfig, repositories)
                 .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
                 .versionIncrementType(versionIncrementType)
                 .skipTests(skipTests)

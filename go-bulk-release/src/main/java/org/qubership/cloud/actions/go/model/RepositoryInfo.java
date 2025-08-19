@@ -3,24 +3,17 @@ package org.qubership.cloud.actions.go.model;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.revwalk.RevObject;
-import org.eclipse.jgit.revwalk.RevTag;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.qubership.cloud.actions.go.model.gomod.GoModFile;
-import org.qubership.cloud.actions.go.model.gomod.GoModFileFactory;
-import org.qubership.cloud.actions.go.proxy.GoModule;
+import org.qubership.cloud.actions.go.GitService;
+import org.qubership.cloud.actions.go.model.gomod.GoModule;
+import org.qubership.cloud.actions.go.model.gomod.GoModuleFactory;
 import org.qubership.cloud.actions.go.util.FilesUtils;
 import org.qubership.cloud.actions.go.util.UrlUtils;
-import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.io.*;
+import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,7 +28,9 @@ public class RepositoryInfo extends RepositoryConfig {
     Set<GAV> moduleDependencies = new HashSet<>();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
 
-    List<GoModFile> goModFiles;
+    List<GoModule> goModFiles;
+
+    private final GitService gitService = new GitService();
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
         super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(), repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
@@ -54,10 +49,10 @@ public class RepositoryInfo extends RepositoryConfig {
         String currentVersion;
 
         try {
-            currentVersion = getLastGitTag(getRepositoryDirFile());
+            currentVersion = gitService.getLastGitTag(this);
         } catch (NoTagsFoundException e) {
             log.debug("No tags found -> calculate current version from go.mod");
-            //todo vlla getFirst is HACK
+            //todo vlla getFirst is HACK - we need to support several modules structure
             String moduleName = getGoModFiles().getFirst().moduleName();
             String moduleVersion = extractGoModuleVersion(moduleName);
             currentVersion = moduleVersion + ".0.0";
@@ -85,50 +80,6 @@ public class RepositoryInfo extends RepositoryConfig {
             }
         }
         return String.format("v%d.%d.%d", major, minor, patch);
-    }
-
-    public static String getLastGitTag(File repoDir) throws NoTagsFoundException {
-        try {
-            if (!repoDir.exists() || !new File(repoDir, ".git").exists()) {
-                throw new IllegalArgumentException("Directory is not a git repository: " + repoDir);
-            }
-
-            try (Git git = Git.open(repoDir)) {
-                List<Ref> tagRefs = git.tagList().call();
-
-                try (RevWalk walk = new RevWalk(git.getRepository())) {
-                    Optional<TagInfo> lastTag = tagRefs.stream().map(ref -> {
-                        try {
-                            RevObject obj = walk.parseAny(ref.getObjectId());
-
-                            if (obj instanceof RevTag tag) {
-                                return new TagInfo(ref.getName(), tag.getTaggerIdent().getWhenAsInstant());
-                            }
-                            else if (obj instanceof RevCommit commit) {
-                                return new TagInfo(ref.getName(), commit.getAuthorIdent().getWhenAsInstant());
-                            }
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                        return null;
-                    }).filter(Objects::nonNull).max(Comparator.comparing(TagInfo::date));
-                    if (lastTag.isPresent()) {
-                        return lastTag.get().name();
-                    } else {
-                        throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
-                    }
-                }
-            }
-        } catch (IOException | GitAPIException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    record TagInfo(String name, Instant date) {
-        @Override
-        public String name() {
-            return name.replace("refs/tags/", "");
-        }
     }
 
     public static String extractGoModuleVersion(String moduleName) {
@@ -164,20 +115,21 @@ public class RepositoryInfo extends RepositoryConfig {
             }
 
             List<Path> goModFilePaths = FilesUtils.findAll(Path.of(baseDir, dir), "go.mod");
+            if (goModFilePaths.size() != 1) {
+                throw new UnsupportedEncodingException("Repositories with several go.mod files do not supported yet");
+            }
 
-            //todo vlla collect all, not only first
-            List<GoModFile> goModFiles = goModFilePaths.stream().map(path -> GoModFileFactory.create(goModFilePaths.getFirst())).toList();
+            List<GoModule> goModules = goModFilePaths.stream().map(GoModuleFactory::create).toList();
 
-            this.goModFiles = goModFiles;
+            this.goModFiles = goModules;
 
-            for (GoModFile goModFile : goModFiles) {
-                String moduleName = goModFile.moduleName();
-                GAV moduleGAV = new GAV("TMP", moduleName, "");
+            for (GoModule goModule : goModules) {
+                String moduleName = goModule.moduleName();
+                GAV moduleGAV = new GoGAV(moduleName, "");
                 modules.add(moduleGAV);
                 perModuleDependencies.put(moduleGAV, new HashSet<>());
 
-                goModFile.dependencies().forEach(goDependency -> {
-                    GAV gav = new GAV("TMP", goDependency.getModule(), goDependency.getVersion());
+                goModule.dependencies().forEach(gav -> {
                     moduleDependencies.add(gav);
                     perModuleDependencies.get(moduleGAV).add(gav);
                 });
@@ -189,9 +141,8 @@ public class RepositoryInfo extends RepositoryConfig {
 
     public void updateDepVersions(Collection<GAV> dependencies) {
         log.info("=== UPDATE DEPENDENCIES ===");
-        for (GoModFile goModFile : goModFiles) {
-            log.debug("process goModFile {}", goModFile.file());
-            GoModule goModule = new GoModule(goModFile.file().getParent());
+        for (GoModule goModule : goModFiles) {
+            log.debug("process goModFile {}", goModule.file());
 
             dependencies.stream().filter(this::isModuleContainsDependency).forEach(goModule::get);
 

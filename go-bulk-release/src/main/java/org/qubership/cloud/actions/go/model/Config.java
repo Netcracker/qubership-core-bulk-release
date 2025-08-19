@@ -10,9 +10,9 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Data
-@ToString(exclude = "mavenPassword")
 public class Config {
     final String baseDir;
+    final String goProxyDir;
     final GitConfig gitConfig;
     // all repositories
     final Set<RepositoryConfig> repositories;
@@ -26,6 +26,7 @@ public class Config {
 
     @Builder(builderMethodName = "")
     private Config(String baseDir,
+                   String goProxyDir,
                    GitConfig gitConfig,
                    Set<RepositoryConfig> repositories,
                    Set<RepositoryConfig> repositoriesToReleaseFrom,
@@ -35,6 +36,7 @@ public class Config {
                    boolean dryRun,
                    boolean runSequentially) {
         this.baseDir = baseDir;
+        this.goProxyDir = goProxyDir;
         this.gitConfig = gitConfig;
         this.gavs = gavs;
         this.repositories = repositories;
@@ -46,10 +48,12 @@ public class Config {
     }
 
     public static ConfigBuilder builder(String baseDir,
+                                        String goProxyDir,
                                         GitConfig gitConfig,
                                         Set<RepositoryConfig> repositories) {
         return new ConfigBuilder()
                 .baseDir(baseDir)
+                .goProxyDir(goProxyDir)
                 .gitConfig(gitConfig)
                 .repositories(repositories);
     }

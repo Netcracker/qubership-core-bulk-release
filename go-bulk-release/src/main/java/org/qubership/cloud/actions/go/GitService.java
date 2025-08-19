@@ -1,12 +1,27 @@
 package org.qubership.cloud.actions.go;
 
 import lombok.extern.slf4j.Slf4j;
-import org.qubership.cloud.actions.go.model.GitConfig;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.TextProgressMonitor;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevTag;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.util.CommandRunner;
+import org.qubership.cloud.actions.go.util.LoggerWriter;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,6 +71,93 @@ public class GitService {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public void commitChanges(RepositoryInfo repository, String msg) {
+        log.info("commitChanges. {}", repository.getUrl());
+        try (Git git = Git.open(repository.getRepositoryDirFile())) {
+            List<DiffEntry> diff = git.diff().call();
+            List<String> modifiedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY).map(DiffEntry::getNewPath).toList();
+            if (!modifiedFiles.isEmpty()) {
+                git.add().setUpdate(true).call();
+                git.commit().setMessage(msg).call();
+                log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void createTag(RepositoryInfo repository, String releaseVersion) {
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+    }
+
+    public String getLastGitTag(RepositoryInfo repository) throws NoTagsFoundException {
+        File repoDir = repository.getRepositoryDirFile();
+        try {
+            if (!repoDir.exists() || !new File(repoDir, ".git").exists()) {
+                throw new IllegalArgumentException("Directory is not a git repository: " + repoDir);
+            }
+
+            try (Git git = Git.open(repoDir)) {
+                List<Ref> tagRefs = git.tagList().call();
+
+                try (RevWalk walk = new RevWalk(git.getRepository())) {
+                    Optional<TagInfo> lastTag = tagRefs.stream().map(ref -> {
+                        try {
+                            RevObject obj = walk.parseAny(ref.getObjectId());
+
+                            if (obj instanceof RevTag tag) {
+                                return new TagInfo(ref.getName(), tag.getTaggerIdent().getWhenAsInstant());
+                            }
+                            else if (obj instanceof RevCommit commit) {
+                                return new TagInfo(ref.getName(), commit.getAuthorIdent().getWhenAsInstant());
+                            }
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                        return null;
+                    }).filter(Objects::nonNull).max(Comparator.comparing(TagInfo::date));
+                    if (lastTag.isPresent()) {
+                        return lastTag.get().name();
+                    } else {
+                        throw new NoTagsFoundException("No tags found in the repository " + repoDir.getAbsolutePath());
+                    }
+                }
+            }
+        } catch (IOException | GitAPIException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void pushChanges(GitConfig config, RepositoryInfo repository, String releaseVersion) {
+        PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
+        try (Git git = Git.open(repository.getRepositoryDirFile())) {
+            Optional<Ref> tagOpt = git.tagList().call().stream()
+                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
+                    .findFirst();
+            if (tagOpt.isEmpty()) {
+                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+            }
+            git.push()
+                    .setProgressMonitor(new TextProgressMonitor(printWriter))
+                    .setCredentialsProvider(config.getCredentialsProvider())
+                    .setPushAll()
+                    .setPushTags()
+                    .call();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            printWriter.flush();
+        }
+        log.info("Pushed to git: tag: {}", releaseVersion);
+    }
+
+    record TagInfo(String name, Instant date) {
+        @Override
+        public String name() {
+            return name.replace("refs/tags/", "");
         }
     }
 }

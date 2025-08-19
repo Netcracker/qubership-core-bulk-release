@@ -12,7 +12,6 @@ import java.util.regex.Pattern;
 @Data
 public class GAV extends GA implements Comparable<GAV> {
 
-    static Pattern gavPattern = Pattern.compile("^(.*):(.*):(.*)$");
     String version;
 
     public GAV(String groupId, String artifactId, String version) {
