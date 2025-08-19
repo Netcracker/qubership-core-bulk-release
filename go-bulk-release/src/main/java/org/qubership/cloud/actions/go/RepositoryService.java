@@ -124,7 +124,6 @@ public class RepositoryService {
                             .setCredentialsProvider(gitConf.getCredentialsProvider())
                             .setURI(repository.getUrl())
                             .setDirectory(repositoryDirPath.toFile())
-                            .setDepth(1)
                             .setBranch(branch)
                             .setCloneAllBranches(false)
                             .setTagOption(TagOpt.FETCH_TAGS)
