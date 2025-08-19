@@ -1,30 +1,27 @@
 package org.qubership.cloud.actions.go;
 
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.RefNotFoundException;
-import org.eclipse.jgit.lib.StoredConfig;
-import org.eclipse.jgit.lib.TextProgressMonitor;
-import org.eclipse.jgit.transport.TagOpt;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
-import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.model.GitConfig;
+import org.qubership.cloud.actions.go.model.RepositoryConfig;
+import org.qubership.cloud.actions.go.model.RepositoryInfo;
 import org.qubership.cloud.actions.go.model.graph.DependencyGraph;
 import org.qubership.cloud.actions.go.model.graph.RepositoryInfoLinker;
 import org.qubership.cloud.actions.go.model.graph.StringEdge;
-import org.qubership.cloud.actions.go.util.LoggerWriter;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Slf4j
 public class RepositoryService {
+    private final GitService gitService = new GitService();
+
     public DependencyGraph buildDependencyGraph(String baseDir,
                                                 GitConfig gitConfig,
                                                 Set<RepositoryConfig> repositories,
@@ -36,7 +33,7 @@ public class RepositoryService {
         List<RepositoryInfo> repositoryInfoList = ParallelExecutor.forEachIn(mergedRepositories)
                 .inParallelOn(4)
                 .execute((rc) -> {
-                    gitCheckout(baseDir, gitConfig, rc);
+                    gitService.gitCheckout(baseDir, gitConfig, rc);
                     return new RepositoryInfo(rc, baseDir);
                 });
 
@@ -100,52 +97,5 @@ public class RepositoryService {
                             return repository;
                         }).orElse(repositoryToReleaseFrom))
                 .collect(Collectors.toSet());
-    }
-
-    void gitCheckout(String baseDir, GitConfig gitConf, RepositoryConfig repository) {
-        try {
-            Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
-            boolean repositoryDirExists = Files.exists(repositoryDirPath);
-            Git git;
-            String branch = repository.getBranch();
-            if (repositoryDirExists && Files.list(repositoryDirPath).findAny().isPresent()) {
-                git = Git.open(repositoryDirPath.toFile());
-                try {
-                    git.checkout().setForced(true).setName(branch).call();
-                } catch (RefNotFoundException e) {
-                    git.checkout().setForced(true).setName("origin/" + branch).call();
-                }
-            } else {
-                PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
-                try {
-                    printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
-                    Files.createDirectories(repositoryDirPath);
-
-                    TextProgressMonitor monitor = new TextProgressMonitor(printWriter);
-
-                    git = Git.cloneRepository()
-                            .setCredentialsProvider(gitConf.getCredentialsProvider())
-                            .setURI(repository.getUrl())
-                            .setDirectory(repositoryDirPath.toFile())
-                            .setBranch(branch)
-                            .setCloneAllBranches(false)
-                            .setTagOption(TagOpt.FETCH_TAGS)
-                            .setProgressMonitor(monitor)
-                            .call();
-                } finally {
-                    printWriter.flush();
-                }
-            }
-            try (git; org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
-                StoredConfig gitConfig = rep.getConfig();
-                gitConfig.setString("user", null, "name", gitConf.getUsername());
-                gitConfig.setString("user", null, "email", gitConf.getEmail());
-                gitConfig.setString("credential", null, "helper", "store");
-                gitConfig.save();
-                log.debug("Saved git config:\n{}", gitConfig.toText());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

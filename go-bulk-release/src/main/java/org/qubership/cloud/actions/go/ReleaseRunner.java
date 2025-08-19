@@ -115,7 +115,7 @@ public class ReleaseRunner {
 
         checkIsAllDependenciesUpdated(repositoryInfo, dependencies);
 
-        gitService.commitChanges(repositoryInfo, "updating dependencies before release");
+        gitService.commitModified(repositoryInfo, "updating dependencies before release");
     }
 
     private void checkIsAllDependenciesUpdated(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
@@ -168,7 +168,7 @@ public class ReleaseRunner {
     void pushChanges(Config config, RepositoryInfo repository, RepositoryRelease release) {
         log.info("=== GIT PUSH {} ===", repository.getUrl());
 
-        gitService.pushChanges(config.getGitConfig(), repository, release.getReleaseVersion());
+        gitService.pushChanges(config.getGitConfig(), repository.getRepositoryDirFile(), release.getReleaseVersion());
         release.setPushedToGit(true);
     }
 

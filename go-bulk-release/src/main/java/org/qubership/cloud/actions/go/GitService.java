@@ -3,13 +3,16 @@ package org.qubership.cloud.actions.go;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.transport.TagOpt;
 import org.qubership.cloud.actions.go.model.*;
 import org.qubership.cloud.actions.go.util.CommandRunner;
 import org.qubership.cloud.actions.go.util.LoggerWriter;
@@ -74,7 +77,55 @@ public class GitService {
         }
     }
 
-    public void commitChanges(RepositoryInfo repository, String msg) {
+    public void gitCheckout(String baseDir, GitConfig config, RepositoryConfig repository) {
+        try {
+            Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
+            boolean repositoryDirExists = Files.exists(repositoryDirPath);
+            Git git;
+            String branch = repository.getBranch();
+            if (repositoryDirExists && Files.list(repositoryDirPath).findAny().isPresent()) {
+                git = Git.open(repositoryDirPath.toFile());
+                try {
+                    git.checkout().setForced(true).setName(branch).call();
+                } catch (RefNotFoundException e) {
+                    git.checkout().setForced(true).setName("origin/" + branch).call();
+                }
+            } else {
+                PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
+                try {
+                    printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
+                    Files.createDirectories(repositoryDirPath);
+
+                    TextProgressMonitor monitor = new TextProgressMonitor(printWriter);
+
+                    git = Git.cloneRepository()
+                            .setCredentialsProvider(config.getCredentialsProvider())
+                            .setURI(repository.getUrl())
+                            .setDirectory(repositoryDirPath.toFile())
+                            .setBranch(branch)
+                            .setCloneAllBranches(false)
+                            .setTagOption(TagOpt.FETCH_TAGS)
+                            .setProgressMonitor(monitor)
+                            .call();
+                } finally {
+                    printWriter.flush();
+                }
+            }
+            try (git; org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
+                StoredConfig gitConfig = rep.getConfig();
+                gitConfig.setString("user", null, "name", config.getUsername());
+                gitConfig.setString("user", null, "email", config.getEmail());
+                gitConfig.setString("credential", null, "helper", "store");
+                gitConfig.save();
+                log.debug("Saved git config:\n{}", gitConfig.toText());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    //todo vlla get rid of duplicate code
+    public void commitModified(RepositoryInfo repository, String msg) {
         log.info("commitChanges. {}", repository.getUrl());
         try (Git git = Git.open(repository.getRepositoryDirFile())) {
             List<DiffEntry> diff = git.diff().call();
@@ -83,6 +134,20 @@ public class GitService {
                 git.add().setUpdate(true).call();
                 git.commit().setMessage(msg).call();
                 log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void commitAdded(File repository, String msg) {
+        try (Git git = Git.open(repository)) {
+            List<DiffEntry> diff = git.diff().call();
+            List<String> addedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.ADD).map(DiffEntry::getNewPath).toList();
+            if (!addedFiles.isEmpty()) {
+                git.add().call();
+                git.commit().setMessage(msg).call();
+                log.info("Commited '{}', added files:\n{}", msg, String.join("\n", addedFiles));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -131,14 +196,16 @@ public class GitService {
         }
     }
 
-    public void pushChanges(GitConfig config, RepositoryInfo repository, String releaseVersion) {
+    public void pushChanges(GitConfig config, File repository, String releaseVersion) {
         PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
-        try (Git git = Git.open(repository.getRepositoryDirFile())) {
-            Optional<Ref> tagOpt = git.tagList().call().stream()
-                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
-                    .findFirst();
-            if (tagOpt.isEmpty()) {
-                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+        try (Git git = Git.open(repository)) {
+            if (releaseVersion != null) {
+                Optional<Ref> tagOpt = git.tagList().call().stream()
+                        .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
+                        .findFirst();
+                if (tagOpt.isEmpty()) {
+                    throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+                }
             }
             git.push()
                     .setProgressMonitor(new TextProgressMonitor(printWriter))

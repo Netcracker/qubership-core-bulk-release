@@ -34,7 +34,7 @@ public class RepositoryConfig {
         this.dir = matcher.group("dir");
         this.skipTests = skipTests;
         this.version = version;
-        this.branch = Optional.ofNullable(branch).orElse(HEAD);;
+        this.branch = Optional.ofNullable(branch).orElse(HEAD);
         this.versionIncrementType = Optional.ofNullable(versionIncrementType).orElse(VersionIncrementType.PATCH);
     }
 

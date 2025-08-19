@@ -110,6 +110,8 @@ public class GoBulkReleaseCli implements Runnable {
             Result result = new ReleaseRunner().release(config);
 
             publishResult(result);
+
+            new ReleaseSummaryService().publishReleaseSummary(config, result);
         } catch (Exception e) {
             if (summaryFile != null && !summaryFile.isBlank()) {
                 // write summary
