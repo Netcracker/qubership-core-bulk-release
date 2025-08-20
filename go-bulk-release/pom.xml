@@ -86,12 +86,6 @@
             <version>5.11.4</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.kohsuke</groupId>
-            <artifactId>github-api</artifactId>
-            <version>1.327</version>
-            <scope>compile</scope>
-        </dependency>
     </dependencies>
 
     <build>
