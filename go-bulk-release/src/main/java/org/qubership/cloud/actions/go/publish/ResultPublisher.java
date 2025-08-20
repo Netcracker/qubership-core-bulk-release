@@ -22,7 +22,9 @@ public class ResultPublisher {
     public void publish(final Result result) {
         publishResultFiles(result);
 
-        releaseSummaryService.publishReleaseSummary(result);
+        if (!config.isDryRun()) {
+            releaseSummaryService.publishReleaseSummary(result);
+        }
     }
 
     private void publishResultFiles(Result result) {
