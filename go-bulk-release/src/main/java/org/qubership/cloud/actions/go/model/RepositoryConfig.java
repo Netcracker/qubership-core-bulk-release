@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.go.model;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Data
 public class RepositoryConfig {
     public static final String HEAD = "HEAD";
@@ -59,6 +61,7 @@ public class RepositoryConfig {
     public static Function<String, String> normalizeGitUrl = url -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
 
     public static RepositoryConfig fromConfig(String repositoryConfig) {
+        log.debug("VLLA FROM CONFIG {}", repositoryConfig);
         Matcher matcher = pattern.matcher(repositoryConfig);
         if (!matcher.matches())
             throw new IllegalArgumentException(String.format("Invalid repository config [%s], must match pattern: %s",

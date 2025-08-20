@@ -59,7 +59,7 @@ public class GoBulkReleaseCli implements Runnable {
 
     @CommandLine.Option(names = {"--versionIncrementType"}, type = VersionIncrementType.class,
             description = "'altDeploymentRepository' to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
-    private VersionIncrementType versionIncrementType = VersionIncrementType.PATCH;
+    private VersionIncrementType versionIncrementType;
 
     @CommandLine.Option(names = {"--summaryFile"}, description = "File path to save summary to")
     private String summaryFile;
