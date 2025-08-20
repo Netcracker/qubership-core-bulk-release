@@ -70,6 +70,6 @@ public class ReleaseSummaryService {
     }
 
     private Path getSummaryFilePath(Path repository, String summaryFileName) {
-        return repository.resolve("/releases/" + summaryFileName);
+        return repository.resolve("releases/" + summaryFileName);
     }
 }
