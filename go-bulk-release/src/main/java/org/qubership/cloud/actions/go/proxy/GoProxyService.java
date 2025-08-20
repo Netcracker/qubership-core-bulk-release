@@ -7,8 +7,13 @@ import org.qubership.cloud.actions.go.util.CommandRunner;
 
 @Slf4j
 public class GoProxyService {
+    private final Config config;
 
-    public void enableGoProxy(Config config) {
+    public GoProxyService(Config config) {
+        this.config = config;
+    }
+
+    public void enableGoProxy() {
         String goproxy = String.format("GOPROXY=file://%s,https://proxy.golang.org,direct", config.getGoProxyDir());
         String[][] commands = {
                 {"go", "env", "-w", goproxy},

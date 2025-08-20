@@ -1,14 +1,10 @@
 package org.qubership.cloud.actions.go;
 
 import lombok.extern.slf4j.Slf4j;
-import org.qubership.cloud.actions.go.doc.ReleaseSummary;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.publish.ResultPublisher;
 import picocli.CommandLine;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -61,27 +57,9 @@ public class GoBulkReleaseCli implements Runnable {
             """)
     private boolean dryRun;
 
-//    @CommandLine.Option(names = {"--mavenAltDeploymentRepository"},
-//            description = "altDeploymentRepository to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
-//    private String mavenAltDeploymentRepository;
-
     @CommandLine.Option(names = {"--versionIncrementType"}, type = VersionIncrementType.class,
             description = "'altDeploymentRepository' to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
     private VersionIncrementType versionIncrementType = VersionIncrementType.PATCH;
-
-//    TODO VLLA: restore functionality for go versions
-//    @CommandLine.Option(names = {"--javaVersionToJavaHomeEnv"}, split = "\\s*,\\s*",
-//            description = "comma seperated list of javaVersion=JAVA_HOME mappings")
-//    private Map<String, String> javaVersionToJavaHomeEnv = Map.of();
-
-//    @CommandLine.Option(names = {"--mavenUser"}, description = "maven username to use to login to remote repository")
-//    private String mavenUser;
-
-//    @CommandLine.Option(names = {"--mavenPassword"}, description = "maven password to use to login to remote repository")
-//    private String mavenPassword;
-
-//    @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
-//    private String mavenLocalRepoPath = "${user.home}/.m2/repository";
 
     @CommandLine.Option(names = {"--summaryFile"}, description = "File path to save summary to")
     private String summaryFile;
@@ -107,73 +85,11 @@ public class GoBulkReleaseCli implements Runnable {
         try {
             Config config = prepareConfig();
 
-            Result result = new ReleaseRunner().release(config);
+            Result result = new ReleaseRunner(config).release();
 
-            publishResult(result);
-
-            new ReleaseSummaryService().publishReleaseSummary(config, result);
+            new ResultPublisher(config).publish(result);
         } catch (Exception e) {
-            if (summaryFile != null && !summaryFile.isBlank()) {
-                // write summary
-                try {
-                    Path summaryPath = Paths.get(summaryFile);
-                    String msg = String.format("Failed to perform maven bulk release: %s", e.getMessage());
-                    log.info("Writing to {} summary:\n{}", summaryPath, msg);
-                    Files.writeString(summaryPath, msg, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                } catch (Exception we) {
-                    log.error("Failed to write summary to file {}", summaryFile, we);
-                }
-            }
-            throw new IllegalStateException("Failed to perform maven bulk release", e);
-        }
-    }
-
-    private void publishResult(Result result) {
-        if (summaryFile != null && !summaryFile.isBlank()) {
-            // write summary
-            try {
-                Path summaryPath = Paths.get(summaryFile);
-                String md = ReleaseSummary.md(result);
-                //TODO VLLA it writes huge amount of text in logs, here and below
-                log.info("Writing to {} summary:\n{}", summaryPath, md);
-                Files.writeString(summaryPath, md, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (Exception e) {
-                log.error("Failed to write summary to file {}", summaryFile, e);
-            }
-        }
-//            if (resultOutputFile != null && !resultOutputFile.isBlank()) {
-//                // write the result
-//                try {
-//                    Path resultPath = Paths.get(resultOutputFile);
-//                    String gavsResult = ReleaseSummary.gavs(result);
-//                    log.info("Writing to {} result:\n{}", resultPath, gavsResult.replaceAll(",", "\n"));
-//                    Files.writeString(resultPath, String.format("result=%s", gavsResult), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-//                } catch (Exception e) {
-//                    log.error("Failed to write result to file {}", resultOutputFile, e);
-//                }
-//            }
-        if (gavsResultFile != null && !gavsResultFile.isBlank()) {
-            // write GAVs
-            try {
-                Path resultPath = Paths.get(gavsResultFile);
-                // TODO VLLA ReleaseSummary.gavs(result) called twice
-                String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
-                log.info("Writing to {} gavs:\n{}", resultPath, gavsResult);
-                Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (Exception e) {
-                log.error("Failed to write GAVs to file {}", gavsResultFile, e);
-            }
-        }
-        if (dependencyGraphFile != null && !dependencyGraphFile.isBlank()) {
-            // write the dependency graph
-            try {
-                Path resultPath = Paths.get(dependencyGraphFile);
-                String graph = ReleaseSummary.dependencyGraphDOT(result);
-                log.info("Writing to {} graph:\n{}", resultPath, graph);
-                Files.writeString(resultPath, graph, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            } catch (Exception e) {
-                log.error("Failed to write dependency graph to file {}", dependencyGraphFile, e);
-            }
+            throw new IllegalStateException("Failed to perform go bulk release", e);
         }
     }
 
@@ -200,6 +116,10 @@ public class GoBulkReleaseCli implements Runnable {
                 .versionIncrementType(versionIncrementType)
                 .skipTests(skipTests)
                 .dryRun(dryRun)
+                .summaryFile(summaryFile)
+                .resultOutputFile(resultOutputFile)
+                .dependencyGraphFile(dependencyGraphFile)
+                .gavsResultFile(gavsResultFile)
                 .build();
     }
 }

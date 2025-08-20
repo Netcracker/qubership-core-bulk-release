@@ -33,12 +33,18 @@ import java.util.regex.Pattern;
 
 @Slf4j
 public class GitService {
-    public void setupGit(GitConfig gitConfig) {
+    private final GitConfig config;
+
+    public GitService(GitConfig config) {
+        this.config = config;
+    }
+
+    public void setupGit() {
         Pattern urlPattern = Pattern.compile("^https://(?<host>.+)(:\\d+)?$");
         Pattern gitHostCredsPattern = Pattern.compile("^https://(?<username>.+):(?<password>.+)@(?<host>.+)$");
 
         Path credentialsFilePath = Paths.get(System.getProperty("user.home"), "/.git-credentials");
-        String url = gitConfig.getUrl();
+        String url = config.getUrl();
         Matcher urlMatcher = urlPattern.matcher(url);
         if (!urlMatcher.matches()) {
             throw new IllegalArgumentException(String.format("Invalid git url: %s, must match pattern: %s", url, urlPattern.pattern()));
@@ -59,11 +65,11 @@ public class GitService {
                 Matcher existingGitHostMatcher = existingHostMatcher.get();
                 String username = existingGitHostMatcher.group("username");
                 String password = existingGitHostMatcher.group("password");
-                gitConfig.setUsername(username);
-                gitConfig.setPassword(password);
+                config.setUsername(username);
+                config.setPassword(password);
             } else {
-                String username = gitConfig.getUsername();
-                String password = gitConfig.getPassword();
+                String username = config.getUsername();
+                String password = config.getPassword();
                 String newEntry = String.format("https://%s:%s@%s", username, password, host);
                 lines.add(newEntry);
                 updated = true;
@@ -77,14 +83,13 @@ public class GitService {
         }
     }
 
-    public void gitCheckout(String baseDir, GitConfig config, RepositoryConfig repository) {
+    public void gitCheckout(Path repositoryPath, RepositoryConfig repository) {
         try {
-            Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
-            boolean repositoryDirExists = Files.exists(repositoryDirPath);
+            boolean repositoryDirExists = Files.exists(repositoryPath);
             Git git;
             String branch = repository.getBranch();
-            if (repositoryDirExists && Files.list(repositoryDirPath).findAny().isPresent()) {
-                git = Git.open(repositoryDirPath.toFile());
+            if (repositoryDirExists && Files.list(repositoryPath).findAny().isPresent()) {
+                git = Git.open(repositoryPath.toFile());
                 try {
                     git.checkout().setForced(true).setName(branch).call();
                 } catch (RefNotFoundException e) {
@@ -94,14 +99,14 @@ public class GitService {
                 PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
                 try {
                     printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
-                    Files.createDirectories(repositoryDirPath);
+                    Files.createDirectories(repositoryPath);
 
                     TextProgressMonitor monitor = new TextProgressMonitor(printWriter);
 
                     git = Git.cloneRepository()
                             .setCredentialsProvider(config.getCredentialsProvider())
                             .setURI(repository.getUrl())
-                            .setDirectory(repositoryDirPath.toFile())
+                            .setDirectory(repositoryPath.toFile())
                             .setBranch(branch)
                             .setCloneAllBranches(false)
                             .setTagOption(TagOpt.FETCH_TAGS)
@@ -124,12 +129,10 @@ public class GitService {
         }
     }
 
-    //todo vlla get rid of duplicate code
-    public void commitModified(RepositoryInfo repository, String msg) {
-        log.info("commitChanges. {}", repository.getUrl());
-        try (Git git = Git.open(repository.getRepositoryDirFile())) {
-            List<DiffEntry> diff = git.diff().call();
-            List<String> modifiedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY).map(DiffEntry::getNewPath).toList();
+    public void commitModified(File repository, String msg) {
+        log.debug("Commit modified files for {}", repository.getAbsoluteFile());
+        try (Git git = Git.open(repository)) {
+            List<String> modifiedFiles = getDiff(git, DiffEntry.ChangeType.MODIFY);
             if (!modifiedFiles.isEmpty()) {
                 git.add().setUpdate(true).call();
                 git.commit().setMessage(msg).call();
@@ -141,9 +144,9 @@ public class GitService {
     }
 
     public void commitAdded(File repository, String msg) {
+        log.debug("Commit added files for {}", repository.getAbsoluteFile());
         try (Git git = Git.open(repository)) {
-            List<DiffEntry> diff = git.diff().call();
-            List<String> addedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.ADD).map(DiffEntry::getNewPath).toList();
+            List<String> addedFiles = getDiff(git, DiffEntry.ChangeType.ADD);
             if (!addedFiles.isEmpty()) {
                 git.add().addFilepattern(".").call();
                 git.commit().setMessage(msg).call();
@@ -196,7 +199,7 @@ public class GitService {
         }
     }
 
-    public void pushChanges(GitConfig config, File repository, String releaseVersion) {
+    public void pushChanges(File repository, String releaseVersion) {
         PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
         try (Git git = Git.open(repository)) {
             if (releaseVersion != null) {
@@ -226,5 +229,10 @@ public class GitService {
         public String name() {
             return name.replace("refs/tags/", "");
         }
+    }
+
+    private List<String> getDiff(Git git, DiffEntry.ChangeType changeType) throws GitAPIException {
+        List<DiffEntry> diff = git.diff().call();
+        return diff.stream().filter(d -> d.getChangeType() == changeType).map(DiffEntry::getNewPath).toList();
     }
 }

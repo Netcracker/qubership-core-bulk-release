@@ -4,6 +4,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.go.GitService;
+import org.qubership.cloud.actions.go.ReleaseRunner;
 import org.qubership.cloud.actions.go.model.gomod.GoModule;
 import org.qubership.cloud.actions.go.model.gomod.GoModuleFactory;
 import org.qubership.cloud.actions.go.util.FilesUtils;
@@ -15,8 +16,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Getter
@@ -30,7 +33,7 @@ public class RepositoryInfo extends RepositoryConfig {
 
     List<GoModule> goModFiles;
 
-    private final GitService gitService = new GitService();
+    private final GitService gitService = new GitService(null);
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
         super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(), repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
@@ -140,7 +143,6 @@ public class RepositoryInfo extends RepositoryConfig {
     }
 
     public void updateDepVersions(Collection<GAV> dependencies) {
-        log.info("=== UPDATE DEPENDENCIES ===");
         for (GoModule goModule : goModFiles) {
             log.debug("process goModFile {}", goModule.file());
 
@@ -149,7 +151,18 @@ public class RepositoryInfo extends RepositoryConfig {
             log.info("go mod tidy");
             goModule.tidy();
         }
-        this.resolveDependencies();
+        resolveDependencies();
+        checkIsAllDependenciesUpdated(dependencies);
+    }
+
+    public void checkIsAllDependenciesUpdated(Collection<GAV> dependencies) {
+        Set<GAV> updatedModuleDependencies = getModuleDependencies();
+        Set<GAV> missedDependencies = updatedModuleDependencies.stream()
+                .filter(new DifferentVersionDependencyPredicate(dependencies))
+                .collect(Collectors.toSet());
+        if (!missedDependencies.isEmpty()) {
+            throw new RuntimeException("Some dependencies does not updated: " + missedDependencies.stream().map(GAV::toString).collect(Collectors.joining("\n")));
+        }
     }
 
     private boolean isModuleContainsDependency(GAV dependency) {
@@ -159,5 +172,17 @@ public class RepositoryInfo extends RepositoryConfig {
     @Override
     public String toString() {
         return getUrl();
+    }
+
+    private record DifferentVersionDependencyPredicate(Collection<GAV> dependencies) implements Predicate<GAV> {
+        @Override
+        public boolean test(GAV gav) {
+            Optional<GAV> foundGav = dependencies.stream()
+                    .filter(dGav -> dGav.isSameArtifact(gav))
+                    .findFirst();
+            if (foundGav.isEmpty()) return false;
+            GAV g = foundGav.get();
+            return !Objects.equals(gav.getVersion(), g.getVersion());
+        }
     }
 }

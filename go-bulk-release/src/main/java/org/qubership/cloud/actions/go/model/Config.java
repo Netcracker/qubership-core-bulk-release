@@ -20,6 +20,10 @@ public class Config {
     Set<RepositoryConfig> repositoriesToReleaseFrom = new LinkedHashSet<>();
     Collection<String> gavs;
     VersionIncrementType versionIncrementType;
+    String summaryFile;
+    String resultOutputFile;
+    String dependencyGraphFile;
+    String gavsResultFile;
     boolean skipTests;
     boolean dryRun;
     boolean runSequentially;
@@ -32,6 +36,10 @@ public class Config {
                    Set<RepositoryConfig> repositoriesToReleaseFrom,
                    Collection<String> gavs,
                    VersionIncrementType versionIncrementType,
+                   String summaryFile,
+                   String resultOutputFile,
+                   String dependencyGraphFile,
+                   String gavsResultFile,
                    boolean skipTests,
                    boolean dryRun,
                    boolean runSequentially) {
@@ -41,6 +49,10 @@ public class Config {
         this.gavs = gavs;
         this.repositories = repositories;
         this.repositoriesToReleaseFrom = repositoriesToReleaseFrom;
+        this.summaryFile = summaryFile;
+        this.resultOutputFile = resultOutputFile;
+        this.dependencyGraphFile = dependencyGraphFile;
+        this.gavsResultFile = gavsResultFile;
         this.skipTests = skipTests;
         this.dryRun = dryRun;
         this.runSequentially = runSequentially;

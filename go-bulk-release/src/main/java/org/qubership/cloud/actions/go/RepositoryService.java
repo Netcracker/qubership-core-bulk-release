@@ -3,6 +3,7 @@ package org.qubership.cloud.actions.go;
 import lombok.extern.slf4j.Slf4j;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
+import org.qubership.cloud.actions.go.model.Config;
 import org.qubership.cloud.actions.go.model.GitConfig;
 import org.qubership.cloud.actions.go.model.RepositoryConfig;
 import org.qubership.cloud.actions.go.model.RepositoryInfo;
@@ -11,6 +12,8 @@ import org.qubership.cloud.actions.go.model.graph.RepositoryInfoLinker;
 import org.qubership.cloud.actions.go.model.graph.StringEdge;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -20,10 +23,13 @@ import java.util.stream.IntStream;
 
 @Slf4j
 public class RepositoryService {
-    private final GitService gitService = new GitService();
+    private final GitService gitService;
+
+    public RepositoryService(Config config) {
+        this.gitService = new GitService(config.getGitConfig());
+    }
 
     public DependencyGraph buildDependencyGraph(String baseDir,
-                                                GitConfig gitConfig,
                                                 Set<RepositoryConfig> repositories,
                                                 Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
@@ -33,7 +39,8 @@ public class RepositoryService {
         List<RepositoryInfo> repositoryInfoList = ParallelExecutor.forEachIn(mergedRepositories)
                 .inParallelOn(4)
                 .execute((rc) -> {
-                    gitService.gitCheckout(baseDir, gitConfig, rc);
+                    Path repository = Paths.get(baseDir, rc.getDir());
+                    gitService.gitCheckout(repository, rc);
                     return new RepositoryInfo(rc, baseDir);
                 });
 

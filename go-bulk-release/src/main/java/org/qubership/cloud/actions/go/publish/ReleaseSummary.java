@@ -1,4 +1,4 @@
-package org.qubership.cloud.actions.go.doc;
+package org.qubership.cloud.actions.go.publish;
 
 import org.qubership.cloud.actions.go.model.GAV;
 import org.qubership.cloud.actions.go.model.RepositoryConfig;
