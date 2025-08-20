@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 
 public class ReleaseSummaryService {
     public static final String RELEASE_SUMMARY_FILE_NAME_PATTERN = "Release %s.md";
-    public static final String DATE_PATTERN = "MM.dd.yyyy HH:mm";
+    public static final String DATE_PATTERN = "MM.dd.yyyy HH.mm";
 
     private final GitService gitService;
     private final Config config;
