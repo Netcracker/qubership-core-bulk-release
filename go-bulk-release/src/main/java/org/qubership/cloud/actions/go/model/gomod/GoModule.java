@@ -13,8 +13,10 @@ public record GoModule(String moduleName, Set<GoGAV> dependencies, Path file) {
         get(lib);
     }
 
+
+    //todo vlla JUST FOR TEST gomajor
     public void get(String lib) {
-        CommandRunner.runCommand(file.getParent().toFile(), "go", "get", lib);
+        CommandRunner.runCommand(file.getParent().toFile(), "gomajor", "get", lib);
     }
 
     public void tidy() {

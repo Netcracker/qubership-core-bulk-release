@@ -101,8 +101,12 @@ public class ReleaseRunner {
 
         updateDependencies(repository, dependencies);
 
-        String releaseVersion = resolveReleaseVersion(config, repository);
+        ReleaseVersion releaseVersion = resolveReleaseVersion(config, repository);
         log.info("Release version: {}", releaseVersion);
+
+        if (releaseVersion.isMajorUpdate()){
+            updateMajorVersion(repository, releaseVersion);
+        }
 
         runGoBuild(repository);
         if (!config.isSkipTests()) {
@@ -126,7 +130,14 @@ public class ReleaseRunner {
         gitService.commitModified(repositoryInfo.getRepositoryDirFile(), "chore: updating dependencies before release");
     }
 
-    private String resolveReleaseVersion(Config config, RepositoryInfo repository) {
+    private void updateMajorVersion(RepositoryInfo repository, ReleaseVersion releaseVersion) {
+        log.info("=== UPDATE MAJOR VERSION FOR {} ===", repository.getUrl());
+
+        String newMajorVersion = "v" + releaseVersion.getNewMajorVersion();
+        CommandRunner.runCommand(repository.getRepositoryDirFile(), "gomajor" , "path", "-version", newMajorVersion);
+    }
+
+    private ReleaseVersion resolveReleaseVersion(Config config, RepositoryInfo repository) {
         log.info("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
         VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
         return repository.calculateReleaseVersion(versionIncrementType);
@@ -142,15 +153,15 @@ public class ReleaseRunner {
         CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
     }
 
-    private void createTag(RepositoryInfo repository, String releaseVersion) {
+    private void createTag(RepositoryInfo repository, ReleaseVersion releaseVersion) {
         log.info("=== CREATE TAG {} ===", repository.getUrl());
-        gitService.createTag(repository, releaseVersion);
+        gitService.createTag(repository, releaseVersion.getNewVersion().getValue());
     }
 
-    private void publishToGoProxy(Config config, RepositoryInfo repository, String releaseVersion) {
+    private void publishToGoProxy(Config config, RepositoryInfo repository, ReleaseVersion releaseVersion) {
         log.info("=== PUBLISH TO GO PROXY {} ===", repository.getUrl());
 
-        goProxyService.publishToLocalGoProxy(repository, releaseVersion, config.getGoProxyDir());
+        goProxyService.publishToLocalGoProxy(repository, releaseVersion.getNewVersion().getValue(), config.getGoProxyDir());
     }
 
     RepositoryRelease performRelease(RepositoryRelease release) {

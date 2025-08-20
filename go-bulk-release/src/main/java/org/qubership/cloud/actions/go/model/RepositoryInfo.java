@@ -4,7 +4,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.go.GitService;
-import org.qubership.cloud.actions.go.ReleaseRunner;
 import org.qubership.cloud.actions.go.model.gomod.GoModule;
 import org.qubership.cloud.actions.go.model.gomod.GoModuleFactory;
 import org.qubership.cloud.actions.go.util.FilesUtils;
@@ -17,8 +16,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,9 +43,7 @@ public class RepositoryInfo extends RepositoryConfig {
         return Paths.get(getBaseDir(), getDir()).toFile();
     }
 
-    private static final Pattern SEMVER_PATTERN = Pattern.compile("v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)");
-
-    public String calculateReleaseVersion(VersionIncrementType versionIncrementType) {
+    public ReleaseVersion calculateReleaseVersion(VersionIncrementType versionIncrementType) {
         String currentVersion;
 
         try {
@@ -61,31 +56,10 @@ public class RepositoryInfo extends RepositoryConfig {
             currentVersion = moduleVersion + ".0.0";
         }
 
-        Matcher matcher = SEMVER_PATTERN.matcher(currentVersion);
-        if (!matcher.matches()) {
-            throw new IllegalArgumentException(String.format("Non-semver version: %s. Must match pattern: '%s'", currentVersion, SEMVER_PATTERN.pattern()));
-        }
-        int major = Integer.parseInt(matcher.group("major"));
-        int minor = Integer.parseInt(matcher.group("minor"));
-        int patch = Integer.parseInt(matcher.group("patch"));
-        switch (versionIncrementType) {
-            case MAJOR -> {
-                major++;
-                minor = 0;
-                patch = 0;
-            }
-            case MINOR -> {
-                minor++;
-                patch = 0;
-            }
-            case PATCH -> {
-                patch++;
-            }
-        }
-        return String.format("v%d.%d.%d", major, minor, patch);
+        return new ReleaseVersion(currentVersion, versionIncrementType);
     }
 
-    public static String extractGoModuleVersion(String moduleName) {
+    public String extractGoModuleVersion(String moduleName) {
         if (moduleName == null || moduleName.isEmpty()) {
             return null;
         }

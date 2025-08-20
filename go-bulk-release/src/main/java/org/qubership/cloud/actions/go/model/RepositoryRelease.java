@@ -16,13 +16,14 @@ public class RepositoryRelease {
     boolean deployed;
     Exception exception;
 
-    public static RepositoryRelease from(RepositoryInfo repository, String releaseVersion) {
+    public static RepositoryRelease from(RepositoryInfo repository, ReleaseVersion releaseVersion) {
+        String newReleaseVersion = releaseVersion.getNewVersion().getValue();
         RepositoryRelease release = new RepositoryRelease();
         release.setRepository(repository);
-        release.setReleaseVersion(releaseVersion);
-        release.setTag(releaseVersion);
+        release.setReleaseVersion(newReleaseVersion);
+        release.setTag(newReleaseVersion);
         List<GAV> gavs = new ArrayList<>();
-        repository.getModules().forEach(gav -> gavs.add(new GoGAV(gav.getArtifactId(), releaseVersion)));
+        repository.getModules().forEach(gav -> gavs.add(new GoGAV(gav.getArtifactId(), newReleaseVersion)));
         release.setGavs(gavs);
         return release;
     }
