@@ -70,9 +70,7 @@ public class ReleaseRunner {
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
-//            TODO VLLA extract to configuration file?
             int threads = Math.min(config.getRunParallelism(), reposInfoList.size());
-//            TODO VLLA why so complicated?..
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                         .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
@@ -285,9 +283,7 @@ public class ReleaseRunner {
         } else {
             arguments.add("-Dsurefire.rerunFailingTestsCount=1");
         }
-//        TODO VLLA is this var needed?
         String tag = releaseVersion;
-//        TODO VLLA extract script to file template?
         List<String> cmd = List.of("mvn", "-B", "release:prepare",
                 "-Dresume=true",
                 "-DautoVersionSubmodules=true",
@@ -340,9 +336,7 @@ public class ReleaseRunner {
     }
 
     RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
-//        TODO VLLA: the method do not creates stream and not owns it, we should not close it here
         try (outputStream) {
-//            TODO VLLA: why we pass repository separately, it already contains in release
             RepositoryInfo repository = release.getRepository();
             pushChanges(config, repository, release, outputStream);
             releaseDeploy(repository, config, release, outputStream);
