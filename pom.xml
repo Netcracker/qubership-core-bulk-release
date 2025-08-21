@@ -21,13 +21,8 @@
     </properties>
 
     <modules>
-        <module>maven-bulk-release</module>
-        <module>maven-bulk-release-cli</module>
         <module>go-bulk-release</module>
         <module>go-bulk-release-cli</module>
-        <module>maven-effective-dependencies-cli</module>
-        <module>maven-version-dependencies-cli</module>
-        <module>renovate-config-cli</module>
     </modules>
 
     <build>
