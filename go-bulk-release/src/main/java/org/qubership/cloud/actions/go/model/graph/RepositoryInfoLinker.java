@@ -1,6 +1,7 @@
 package org.qubership.cloud.actions.go.model.graph;
 
 import org.qubership.cloud.actions.go.model.GAV;
+import org.qubership.cloud.actions.go.model.GoGAV;
 import org.qubership.cloud.actions.go.model.RepositoryInfo;
 
 import java.util.*;
@@ -16,8 +17,8 @@ public class RepositoryInfoLinker {
     public List<RepositoryInfo> getRepositoriesUsedByThis(RepositoryInfo thisRepository) {
         return this.repositories.stream()
                 .filter(r ->
-                        r.getModules().stream().map(GAV::toGA).anyMatch(module ->
-                                thisRepository.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module::equals)))
+                        r.getModules().stream().anyMatch(first ->
+                                thisRepository.getModuleDependencies().stream().anyMatch(second -> isSameArtifact(first, second))))
                 .filter(r -> !Objects.equals(r.getUrl(), thisRepository.getUrl()))
                 .toList();
     }
@@ -25,8 +26,8 @@ public class RepositoryInfoLinker {
     public List<RepositoryInfo> getRepositoriesUsingThis(RepositoryInfo thisRepository) {
         return this.repositories.stream()
                 .filter(r ->
-                        r.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module ->
-                                thisRepository.getModules().stream().map(GAV::toGA).anyMatch(module::equals)))
+                        r.getModuleDependencies().stream().anyMatch(first ->
+                                thisRepository.getModules().stream().anyMatch(second -> isSameArtifact(first, second))))
                 .filter(r -> !Objects.equals(r.getUrl(), thisRepository.getUrl()))
                 .toList();
     }
@@ -36,5 +37,14 @@ public class RepositoryInfoLinker {
         Set<RepositoryInfo> result = new HashSet<>(repositoryList);
         repositoryList.forEach(ri -> result.addAll(this.getRepositoriesUsedByThisFlatSet(ri)));
         return result;
+    }
+
+    private boolean isSameArtifact(GAV first, GAV second) {
+        if (first instanceof GoGAV goFirst && second instanceof GoGAV goSecond) {
+            return Objects.equals(goFirst.getArtifactIdWithoutVersion(), goSecond.getArtifactIdWithoutVersion());
+        }
+        else {
+            return Objects.equals(first.getGroupId(), second.getGroupId()) && Objects.equals(first.getArtifactId(), second.getArtifactId());
+        }
     }
 }

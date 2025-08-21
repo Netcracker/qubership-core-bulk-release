@@ -78,7 +78,7 @@ public class ReleaseRunner {
     private void performRelease(Config config, DependencyGraph dependencyGraph, List<RepositoryRelease> allReleases) {
         dependencyGraph.forEach((level, repos) -> {
             int threads = config.isRunSequentially() ? 1 : repos.size();
-            log.info("\n\nRunning 'PERFORM RELEASE' - processing level {}/{}, {} repositories:\n{}\n\n", level + 1, dependencyGraph.size(), threads,
+            log.info("Running 'PERFORM RELEASE' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                     String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
 
             ParallelExecutor.forEachIn(allReleases)
@@ -120,7 +120,7 @@ public class ReleaseRunner {
         publishToGoProxy(config, repository, releaseVersion);
 
         RepositoryRelease release = RepositoryRelease.from(repository, releaseVersion);
-        log.info("\n\n=== PRE-RELEASE DONE FOR {} ===\n\n", repository.getUrl());
+        log.info("=== PRE-RELEASE DONE FOR {} ===", repository.getUrl());
         return release;
     }
 
