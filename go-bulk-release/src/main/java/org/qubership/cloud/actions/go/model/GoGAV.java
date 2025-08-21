@@ -7,7 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GoGAV extends GAV {
-    private static final Pattern VERSION_SUFFIX = Pattern.compile("/v\\d+$");
+    private static final Pattern VERSION_SUFFIX = Pattern.compile("(/v(\\d+))$");
 
     @Getter
     String artifactIdWithoutVersion;

@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.go.model;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -61,6 +62,7 @@ public class RepositoryConfig {
 
     public static Function<String, String> normalizeGitUrl = url -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
 
+    //todo vlla do we need this logic? It does not used in workflow
     public static RepositoryConfig fromConfig(String repositoryConfig) {
         log.debug("VLLA FROM CONFIG {}", repositoryConfig);
         Matcher matcher = pattern.matcher(repositoryConfig);
@@ -76,7 +78,10 @@ public class RepositoryConfig {
         Optional.ofNullable(params.getOrDefault("branch", params.get("from"))).ifPresent(builder::branch);
         Optional.ofNullable(params.get("version")).ifPresent(builder::version);
         Optional.ofNullable(params.get("skipTests")).map(Boolean::parseBoolean).ifPresent(builder::skipTests);
-        Optional.ofNullable(params.get("versionIncrementType")).map(String::toUpperCase).map(VersionIncrementType::valueOf).ifPresent(builder::versionIncrementType);
+        Optional.ofNullable(params.get("versionIncrementType")).map(String::toUpperCase).map(VersionIncrementType::valueOf).ifPresent(versionIncrementType1 -> {
+            log.debug("VLLA RepositoryConfig from config. versionIncrementType1 = {}", versionIncrementType1);
+            builder.versionIncrementType(versionIncrementType1);
+        });
         return builder.build();
     }
 }
