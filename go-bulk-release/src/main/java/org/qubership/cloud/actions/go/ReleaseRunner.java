@@ -50,7 +50,7 @@ public class ReleaseRunner {
     }
 
     private List<RepositoryRelease> prepareReleases(Config config, DependencyGraph dependencyGraph) {
-        Set<GAV> gavList = new HashSet<>();
+        Set<GoGAV> gavList = new HashSet<>();
         return dependencyGraph.entrySet().stream().flatMap(entry -> {
             int level = entry.getKey() + 1;
             List<RepositoryInfo> reposInfoList = entry.getValue();
@@ -71,7 +71,7 @@ public class ReleaseRunner {
         }).toList();
     }
 
-    private void saveReleaseGAV(List<RepositoryRelease> releases, Set<GAV> gavList) {
+    private void saveReleaseGAV(List<RepositoryRelease> releases, Set<GoGAV> gavList) {
         releases.forEach(release -> gavList.addAll(release.getGavs()));
     }
 
@@ -98,7 +98,7 @@ public class ReleaseRunner {
         return result;
     }
 
-    private RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) {
+    private RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GoGAV> dependencies) {
         log.info("=== PREPARE RELEASE {} ===", repository.getUrl());
 
         updateDependencies(repository, dependencies);
@@ -124,7 +124,7 @@ public class ReleaseRunner {
         return release;
     }
 
-    private void updateDependencies(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
+    private void updateDependencies(RepositoryInfo repositoryInfo, Collection<GoGAV> dependencies) {
         log.info("=== UPDATE DEPENDENCIES FOR {} ===", repositoryInfo.getUrl());
 
         repositoryInfo.updateDepVersions(dependencies);

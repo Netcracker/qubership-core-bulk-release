@@ -1,16 +1,18 @@
 package org.qubership.cloud.actions.go.model;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Data
 public class RepositoryRelease {
     RepositoryInfo repository;
     String releaseVersion;
     String tag;
-    List<GAV> gavs;
+    List<GoGAV> gavs;
     String javaVersion;
     boolean pushedToGit;
     boolean deployed;
@@ -22,8 +24,20 @@ public class RepositoryRelease {
         release.setRepository(repository);
         release.setReleaseVersion(newReleaseVersion);
         release.setTag(newReleaseVersion);
-        List<GAV> gavs = new ArrayList<>();
-        repository.getModules().forEach(gav -> gavs.add(new GoGAV(gav.getArtifactId(), newReleaseVersion)));
+        List<GoGAV> gavs = new ArrayList<>();
+        repository.getModules().forEach(gav -> {
+            //todo vlla check is it major update - refactor
+            GoGAV goGAV;
+            if (gav.majorVersionFromArtifactId == releaseVersion.getNewMajorVersion())
+            {
+                goGAV = new GoGAV(gav.getArtifactId(), newReleaseVersion);
+            }
+            else {
+                goGAV = new GoGAV(gav.getArtifactIdWithoutVersion() + "/v" + releaseVersion.getNewMajorVersion(), newReleaseVersion);
+            }
+            log.debug("VLLA goGAV = {}", goGAV);
+            gavs.add(goGAV);
+        });
         release.setGavs(gavs);
         return release;
     }

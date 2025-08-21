@@ -24,9 +24,9 @@ import java.util.stream.Collectors;
 public class RepositoryInfo extends RepositoryConfig {
     String baseDir;
 
-    Set<GAV> modules = new HashSet<>();
-    Set<GAV> moduleDependencies = new HashSet<>();
-    Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
+    Set<GoGAV> modules = new HashSet<>();
+    Set<GoGAV> moduleDependencies = new HashSet<>();
+    Map<GA, Set<GoGAV>> perModuleDependencies = new HashMap<>();
 
     List<GoModule> goModFiles;
 
@@ -102,7 +102,7 @@ public class RepositoryInfo extends RepositoryConfig {
 
             for (GoModule goModule : goModules) {
                 String moduleName = goModule.moduleName();
-                GAV moduleGAV = new GoGAV(moduleName, "");
+                GoGAV moduleGAV = new GoGAV(moduleName, "");
                 modules.add(moduleGAV);
                 perModuleDependencies.put(moduleGAV, new HashSet<>());
 
@@ -116,7 +116,7 @@ public class RepositoryInfo extends RepositoryConfig {
         }
     }
 
-    public void updateDepVersions(Collection<GAV> dependencies) {
+    public void updateDepVersions(Collection<GoGAV> dependencies) {
         for (GoModule goModule : goModFiles) {
             log.debug("process goModFile {}", goModule.file());
 
@@ -129,9 +129,9 @@ public class RepositoryInfo extends RepositoryConfig {
         checkIsAllDependenciesUpdated(dependencies);
     }
 
-    public void checkIsAllDependenciesUpdated(Collection<GAV> dependencies) {
-        Set<GAV> updatedModuleDependencies = getModuleDependencies();
-        Set<GAV> missedDependencies = updatedModuleDependencies.stream()
+    public void checkIsAllDependenciesUpdated(Collection<GoGAV> dependencies) {
+        Set<GoGAV> updatedModuleDependencies = getModuleDependencies();
+        Set<GoGAV> missedDependencies = updatedModuleDependencies.stream()
                 .filter(new DifferentVersionDependencyPredicate(dependencies))
                 .collect(Collectors.toSet());
         if (!missedDependencies.isEmpty()) {
@@ -148,10 +148,10 @@ public class RepositoryInfo extends RepositoryConfig {
         return getUrl();
     }
 
-    private record DifferentVersionDependencyPredicate(Collection<GAV> dependencies) implements Predicate<GAV> {
+    private record DifferentVersionDependencyPredicate(Collection<GoGAV> dependencies) implements Predicate<GoGAV> {
         @Override
-        public boolean test(GAV gav) {
-            Optional<GAV> foundGav = dependencies.stream()
+        public boolean test(GoGAV gav) {
+            Optional<GoGAV> foundGav = dependencies.stream()
                     .filter(dGav -> dGav.isSameArtifact(gav))
                     .findFirst();
             if (foundGav.isEmpty()) return false;

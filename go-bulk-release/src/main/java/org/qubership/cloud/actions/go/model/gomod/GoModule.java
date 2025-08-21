@@ -8,7 +8,8 @@ import java.nio.file.Path;
 import java.util.Set;
 
 public record GoModule(String moduleName, Set<GoGAV> dependencies, Path file) {
-    public void get(GAV gav) {
+    public void get(GoGAV gav) {
+
         String lib = gav.getArtifactId() + "@" + gav.getVersion();
         get(lib);
     }

@@ -3,6 +3,7 @@ package org.qubership.cloud.actions.go.model;
 import lombok.Getter;
 
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GoGAV extends GAV {
@@ -10,17 +11,20 @@ public class GoGAV extends GAV {
 
     @Getter
     String artifactIdWithoutVersion;
+    @Getter
+    int majorVersionFromArtifactId;
 
     public GoGAV(String artifactId, String version) {
         super("GO", artifactId, version);
-        artifactIdWithoutVersion = stripVersion(artifactId);
-    }
 
-    public String stripVersion(String s) {
-        if (s == null) {
-            return null;
+        Matcher m = VERSION_SUFFIX.matcher(artifactId);
+        if (m.find()) {
+            majorVersionFromArtifactId = Integer.parseInt(m.group(2));
+            artifactIdWithoutVersion = artifactId.substring(0, m.start(1));
+        } else {
+            majorVersionFromArtifactId = 1;
+            artifactIdWithoutVersion = artifactId;
         }
-        return VERSION_SUFFIX.matcher(s).replaceFirst("");
     }
 
     @Override
