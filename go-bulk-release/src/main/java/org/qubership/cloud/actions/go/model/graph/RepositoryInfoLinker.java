@@ -18,7 +18,7 @@ public class RepositoryInfoLinker {
         return this.repositories.stream()
                 .filter(r ->
                         r.getModules().stream().anyMatch(first ->
-                                thisRepository.getModuleDependencies().stream().anyMatch(second -> isSameArtifact(first, second))))
+                                thisRepository.getModuleDependencies().stream().anyMatch(first::isSameArtifact)))
                 .filter(r -> !Objects.equals(r.getUrl(), thisRepository.getUrl()))
                 .toList();
     }
@@ -27,7 +27,7 @@ public class RepositoryInfoLinker {
         return this.repositories.stream()
                 .filter(r ->
                         r.getModuleDependencies().stream().anyMatch(first ->
-                                thisRepository.getModules().stream().anyMatch(second -> isSameArtifact(first, second))))
+                                thisRepository.getModules().stream().anyMatch(first::isSameArtifact)))
                 .filter(r -> !Objects.equals(r.getUrl(), thisRepository.getUrl()))
                 .toList();
     }
