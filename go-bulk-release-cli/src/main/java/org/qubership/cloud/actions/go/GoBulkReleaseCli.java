@@ -75,10 +75,10 @@ public class GoBulkReleaseCli implements Runnable {
 
     public static void main(String... args) {
         CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
-//        commandLine.registerConverter(VersionIncrementType.class, v -> {
-//            log.debug("VLLA VersionIncrementType converter. v = {}, VersionIncrementType.valueOf(v.toUpperCase()) = {}", v, VersionIncrementType.valueOf(v.toUpperCase()));
-//            return VersionIncrementType.valueOf(v.toUpperCase());
-//        });
+        commandLine.registerConverter(VersionIncrementType.class, v -> {
+            log.debug("VLLA VersionIncrementType converter. v = {}, VersionIncrementType.valueOf(v.toUpperCase()) = {}", v, VersionIncrementType.valueOf(v.toUpperCase()));
+            return VersionIncrementType.valueOf(v.toUpperCase());
+        });
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);
     }
