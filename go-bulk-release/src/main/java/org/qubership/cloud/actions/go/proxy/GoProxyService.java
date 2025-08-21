@@ -14,7 +14,15 @@ public class GoProxyService {
     }
 
     public void enableGoProxy() {
-        String goproxy = String.format("GOPROXY=file://%s,https://proxy.golang.org,direct", config.getGoProxyDir());
+        //todo vlla tmp hack
+        String goProxyDir;
+        if (config.getGoProxyDir().startsWith("/")) {
+            goProxyDir = config.getGoProxyDir().substring(1);
+        }
+        else {
+            goProxyDir = config.getGoProxyDir();
+        }
+        String goproxy = String.format("GOPROXY=file:///%s,https://proxy.golang.org,direct", goProxyDir);
         String[][] commands = {
                 {"go", "env", "-w", goproxy},
                 {"go", "env", "-w", "GONOPROXY="},
@@ -28,7 +36,7 @@ public class GoProxyService {
     }
 
     public void publishToLocalGoProxy(RepositoryInfo srcRepo, String version, String proxyRoot) {
-        String[] command = {"./gopack", "-out", proxyRoot, "-src", srcRepo.getRepositoryDirFile().getAbsolutePath(), "-version", version};
+        String[] command = {"go-pack", "-out", proxyRoot, "-src", srcRepo.getRepositoryDirFile().getAbsolutePath(), "-version", version};
         CommandRunner.runCommand(null, command);
     }
 }
