@@ -3,10 +3,7 @@ package org.qubership.cloud.actions.go.util;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -38,7 +35,7 @@ public class ParallelExecutor {
             return this;
         }
 
-        public <R> List<R> execute(Function<? super T, ? extends R> function) {
+        public <R> List<R> execute(Function<T, R> function) {
             Objects.requireNonNull(function, "function must not be null");
             if (threadsCount <= 0) throw new IllegalArgumentException("threadsCount must be > 0");
 
@@ -46,8 +43,8 @@ public class ParallelExecutor {
                     .filter(filter != null ? filter : e -> true)
                     .toList();
 
-            try (final ExecutorService pool = Executors.newFixedThreadPool(threadsCount);) {
-                final List<? extends CompletableFuture<? extends R>> futures = items.stream()
+            try (ExecutorService pool = Executors.newFixedThreadPool(threadsCount)) {
+                final List<CompletableFuture<R>> futures = items.stream()
                         .map(element -> {
                             final UUID id = UUID.randomUUID();
                             log.info("Executing command for element {}. Run id = {}", element, id);
@@ -60,8 +57,6 @@ public class ParallelExecutor {
                                 }
                             }, pool);
                         }).toList();
-
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
                 final List<R> results = new ArrayList<>(futures.size());
                 for (int i = 0; i < futures.size(); i++) {

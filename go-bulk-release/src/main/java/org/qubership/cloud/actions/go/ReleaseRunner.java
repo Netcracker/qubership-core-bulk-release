@@ -54,7 +54,7 @@ public class ReleaseRunner {
         return dependencyGraph.entrySet().stream().flatMap(entry -> {
             int level = entry.getKey() + 1;
             List<RepositoryInfo> reposInfoList = entry.getValue();
-            log.info("\n\nRunning 'PREPARE RELEASE' - processing level {}/{}, {} repositories:\n{}\n\n", level, dependencyGraph.size(), reposInfoList.size(),
+            log.info("Running 'PREPARE RELEASE' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
                     String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
 
             int threads = getThreads();
@@ -62,6 +62,8 @@ public class ReleaseRunner {
             List<RepositoryRelease> releases = ParallelExecutor.forEachIn(reposInfoList)
                     .inParallelOn(threads)
                     .execute((repo) -> prepareRelease(config, repo, gavList));
+
+            log.info("'PREPARE RELEASE' - for level {}/{} completed", level, dependencyGraph.size());
 
             saveReleaseGAV(releases, gavList);
 
@@ -97,7 +99,7 @@ public class ReleaseRunner {
     }
 
     private RepositoryRelease prepareRelease(Config config, RepositoryInfo repository, Collection<GAV> dependencies) {
-        log.info("\n\n=== PREPARE RELEASE {} ===\n\n", repository.getUrl());
+        log.info("=== PREPARE RELEASE {} ===", repository.getUrl());
 
         updateDependencies(repository, dependencies);
 
