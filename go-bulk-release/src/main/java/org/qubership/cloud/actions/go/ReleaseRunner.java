@@ -141,7 +141,9 @@ public class ReleaseRunner {
 
     private ReleaseVersion resolveReleaseVersion(Config config, RepositoryInfo repository) {
         log.info("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
-        VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
+        //todo vlla TMP
+//        VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
+        VersionIncrementType versionIncrementType = config.getVersionIncrementType();
         return repository.calculateReleaseVersion(versionIncrementType);
     }
 

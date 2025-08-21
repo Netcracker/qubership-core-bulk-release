@@ -38,6 +38,7 @@ public class RepositoryConfig {
         this.version = version;
         this.branch = Optional.ofNullable(branch).orElse(HEAD);
         this.versionIncrementType = Optional.ofNullable(versionIncrementType).orElse(VersionIncrementType.PATCH);
+        log.debug("VLLA RepositoryConfig {}. versionIncrementType = {}", url, versionIncrementType);
     }
 
     public static RepositoryConfigBuilder builder(String url) {

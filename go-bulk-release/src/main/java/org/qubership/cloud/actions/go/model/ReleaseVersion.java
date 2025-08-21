@@ -1,7 +1,9 @@
 package org.qubership.cloud.actions.go.model;
 
 import lombok.Getter;
+import lombok.ToString;
 
+@ToString
 @Getter
 public class ReleaseVersion {
     private final Semver currentVersion;

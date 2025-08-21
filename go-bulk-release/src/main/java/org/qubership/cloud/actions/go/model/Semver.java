@@ -50,4 +50,9 @@ public class Semver {
         }
         return new Semver(String.format("v%d.%d.%d", newMajor, newMinor, newPatch));
     }
+
+    @Override
+    public String toString() {
+        return value;
+    }
 }

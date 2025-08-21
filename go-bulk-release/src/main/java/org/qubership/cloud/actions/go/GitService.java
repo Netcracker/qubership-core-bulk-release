@@ -110,8 +110,9 @@ public class GitService {
                             .setBranch(branch)
                             .setCloneAllBranches(false)
                             .setTagOption(TagOpt.FETCH_TAGS)
-                            .setProgressMonitor(monitor)
+                            //.setProgressMonitor(monitor)
                             .call();
+                    //todo vlla tmp commented - generates too many logs
                 } finally {
                     printWriter.flush();
                 }
