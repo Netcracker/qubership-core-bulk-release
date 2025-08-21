@@ -137,6 +137,8 @@ public class ReleaseRunner {
 
         String newMajorVersion = "v" + releaseVersion.getNewMajorVersion();
         CommandRunner.runCommand(repository.getRepositoryDirFile(), "gomajor" , "path", "-version", newMajorVersion);
+
+        gitService.commitModified(repository.getRepositoryDirFile(), "chore: update major version to " + newMajorVersion);
     }
 
     private ReleaseVersion resolveReleaseVersion(Config config, RepositoryInfo repository) {
