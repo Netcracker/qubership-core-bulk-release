@@ -15,6 +15,8 @@ import java.util.function.Predicate;
 
 @Slf4j
 public class ReleaseRunner {
+    public static final String GO_SEMANTIC_RELEASE_CURRENT_VERSION = "found version: ";
+    public static final String GO_SEMANTIC_RELEASE_NEW_VERSION = "new version: ";
     static YAMLMapper yamlMapper = new YAMLMapper();
 
     private final Config config;
@@ -103,7 +105,7 @@ public class ReleaseRunner {
 
         updateDependencies(repository, dependencies);
 
-        ReleaseVersion releaseVersion = resolveReleaseVersion(config, repository);
+        ReleaseVersion releaseVersion = resolveReleaseVersion2(repository);
         log.info("Release version: {}", releaseVersion);
 
         if (releaseVersion.isMajorUpdate()){
@@ -115,8 +117,6 @@ public class ReleaseRunner {
             runGoTest(repository);
         }
 
-        createTag(repository, releaseVersion);
-
         publishToGoProxy(config, repository, releaseVersion);
 
         RepositoryRelease release = RepositoryRelease.from(repository, releaseVersion);
@@ -124,7 +124,7 @@ public class ReleaseRunner {
         return release;
     }
 
-    private void updateDependencies(RepositoryInfo repositoryInfo, Collection<GoGAV> dependencies) {
+    void updateDependencies(RepositoryInfo repositoryInfo, Collection<GoGAV> dependencies) {
         log.info("=== UPDATE DEPENDENCIES FOR {} ===", repositoryInfo.getUrl());
 
         repositoryInfo.updateDepVersions(dependencies);
@@ -132,37 +132,63 @@ public class ReleaseRunner {
         gitService.commitModified(repositoryInfo.getRepositoryDirFile(), "chore: updating dependencies before release");
     }
 
-    private void updateMajorVersion(RepositoryInfo repository, ReleaseVersion releaseVersion) {
+    void updateMajorVersion(RepositoryInfo repository, ReleaseVersion releaseVersion) {
         log.info("=== UPDATE MAJOR VERSION FOR {} ===", repository.getUrl());
 
         String newMajorVersion = "v" + releaseVersion.getNewMajorVersion();
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "gomajor" , "path", "-version", newMajorVersion);
+        CommandRunner.exec(repository.getRepositoryDirFile(), "gomajor" , "path", "-version", newMajorVersion);
 
         gitService.commitModified(repository.getRepositoryDirFile(), "chore: update major version to " + newMajorVersion);
     }
 
-    private ReleaseVersion resolveReleaseVersion(Config config, RepositoryInfo repository) {
+    ReleaseVersion resolveReleaseVersion2(RepositoryInfo repository) {
         log.info("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
-        //todo vlla TMP
-//        VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
-        VersionIncrementType versionIncrementType = config.getVersionIncrementType();
-        return repository.calculateReleaseVersion(versionIncrementType);
+
+        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--dry", "--allow-no-changes");
+
+        String currentVersion = null;
+        String newVersion = null;
+
+        for (String line: result) {
+            if (line.contains(GO_SEMANTIC_RELEASE_CURRENT_VERSION)) {
+                currentVersion = "v" + getSubstringAfter(line, GO_SEMANTIC_RELEASE_CURRENT_VERSION);
+                continue;
+            }
+            if (line.contains(GO_SEMANTIC_RELEASE_NEW_VERSION)) {
+                newVersion = "v" + getSubstringAfter(line, GO_SEMANTIC_RELEASE_NEW_VERSION);
+            }
+        }
+        if (currentVersion != null && newVersion != null) {
+            return new ReleaseVersion(currentVersion, newVersion);
+        }
+        else {
+            //todo vlla надо как-то разрезолвить ситуацию, что тега нет. Может создать вручную?
+            //todo vlla getFirst is HACK - we need to support several modules structure
+            String moduleName = repository.getGoModFiles().getFirst().moduleName();
+            String moduleVersion = repository.extractGoModuleVersion(moduleName);
+            newVersion = moduleVersion + ".0.0";
+            return new ReleaseVersion(newVersion, newVersion);
+        }
+    }
+
+    private static String getSubstringAfter(String line, String substring) {
+        return line.substring(line.indexOf(substring) + substring.length());
     }
 
     private void runGoBuild(RepositoryInfo repository) {
         log.info("=== GO BUILD {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "build", "./...");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "go", "build", "./...");
     }
 
     private void runGoTest(RepositoryInfo repository) {
         log.info("=== GO TEST {} ===", repository.getUrl());
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
     }
 
-    private void createTag(RepositoryInfo repository, ReleaseVersion releaseVersion) {
-        log.info("=== CREATE TAG {} ===", repository.getUrl());
-        gitService.createTag(repository, releaseVersion.getNewVersion().getValue());
-    }
+//    private void createTag(RepositoryInfo repository, ReleaseVersion releaseVersion) {
+//        log.info("=== CREATE TAG {} ===", repository.getUrl());
+//        gitService.createTag(repository, releaseVersion.getNewVersion().getValue());
+//    }
 
     private void publishToGoProxy(Config config, RepositoryInfo repository, ReleaseVersion releaseVersion) {
         log.info("=== PUBLISH TO GO PROXY {} ===", repository.getUrl());
@@ -181,16 +207,17 @@ public class ReleaseRunner {
     }
 
     void pushChanges(RepositoryInfo repository, RepositoryRelease release) {
-        log.info("=== GIT PUSH {} ===", repository.getUrl());
+        log.info("=== GIT PUSH {} ===", repository.getDir());
 
-        gitService.pushChanges(repository.getRepositoryDirFile(), release.getReleaseVersion());
+        gitService.pushChanges(repository.getRepositoryDirFile());
         release.setPushedToGit(true);
     }
 
     void deployRelease(RepositoryInfo repository) {
-        log.info("=== DEPLOY RELEASE {} ===", repository.getUrl());
+        log.info("=== DEPLOY RELEASE {} ===", repository.getDir());
 
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "goreleaser", "-f", "/tmp/goreleaser.yaml", "release");
+        //CommandRunner.exec(repository.getRepositoryDirFile(), "goreleaser", "-f", "/tmp/goreleaser.yaml", "release");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes");
     }
 
     private int getThreads() {

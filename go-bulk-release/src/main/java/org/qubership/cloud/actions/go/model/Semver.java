@@ -26,31 +26,6 @@ public class Semver {
         patch = Integer.parseInt(matcher.group("patch"));
     }
 
-    public Semver getNext(VersionIncrementType versionIncrementType) {
-        int newMajor;
-        int newMinor;
-        int newPatch;
-        switch (versionIncrementType) {
-            case MAJOR -> {
-                newMajor = major + 1;
-                newMinor = 0;
-                newPatch = 0;
-            }
-            case MINOR -> {
-                newMajor = major;
-                newMinor = minor + 1;
-                newPatch = 0;
-            }
-            case PATCH -> {
-                newMajor = major;
-                newMinor = minor;
-                newPatch = patch + 1;
-            }
-            default -> throw new IllegalArgumentException("Unsupported version increment type: " + versionIncrementType);
-        }
-        return new Semver(String.format("v%d.%d.%d", newMajor, newMinor, newPatch));
-    }
-
     @Override
     public String toString() {
         return value;

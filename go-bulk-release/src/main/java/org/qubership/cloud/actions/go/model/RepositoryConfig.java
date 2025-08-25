@@ -2,13 +2,11 @@ package org.qubership.cloud.actions.go.model;
 
 import lombok.Builder;
 import lombok.Data;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -17,29 +15,25 @@ import java.util.stream.Collectors;
 @Data
 public class RepositoryConfig {
     public static final String HEAD = "HEAD";
-    public static Pattern pattern = Pattern.compile("^(?<url>https://[^/]+/(?<dir>[^\\[]+))(\\[(?<params>.*)])?$");
+    public static Pattern URL_PATTERN = Pattern.compile("^(?<url>https://[^/]+/(?<dir>[^\\[]+))(\\[(?<params>.*)])?$");
 
     final String url;
     final String dir;
     final String branch;
     final String version;
     final boolean skipTests;
-    final VersionIncrementType versionIncrementType;
 
     @Builder(builderMethodName = "")
-    protected RepositoryConfig(String url, String branch, boolean skipTests, String version,
-                               VersionIncrementType versionIncrementType) {
-        this.url = normalizeGitUrl.apply(url);
-        Matcher matcher = pattern.matcher(url);
+    protected RepositoryConfig(String url, String branch, boolean skipTests, String version) {
+        this.url = normalizeGitUrl(url);
+        Matcher matcher = URL_PATTERN.matcher(url);
         if (!matcher.matches()) {
-            throw new IllegalArgumentException(String.format("Invalid repository url: %s. Must match pattern: '%s'", url, pattern));
+            throw new IllegalArgumentException(String.format("Invalid repository url: %s. Must match pattern: '%s'", url, URL_PATTERN));
         }
         this.dir = matcher.group("dir");
         this.skipTests = skipTests;
         this.version = version;
         this.branch = Optional.ofNullable(branch).orElse(HEAD);
-        this.versionIncrementType = Optional.ofNullable(versionIncrementType).orElse(VersionIncrementType.PATCH);
-        log.debug("VLLA RepositoryConfig {}. versionIncrementType = {}", url, versionIncrementType);
     }
 
     public static RepositoryConfigBuilder builder(String url) {
@@ -51,8 +45,7 @@ public class RepositoryConfig {
                 .url(repositoryConfig.getUrl())
                 .branch(repositoryConfig.getBranch())
                 .skipTests(repositoryConfig.isSkipTests())
-                .version(repositoryConfig.getVersion())
-                .versionIncrementType(repositoryConfig.getVersionIncrementType());
+                .version(repositoryConfig.getVersion());
     }
 
     @Override
@@ -60,15 +53,16 @@ public class RepositoryConfig {
         return String.format("%s [%s]", url, branch);
     }
 
-    public static Function<String, String> normalizeGitUrl = url -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
+    String normalizeGitUrl(String url) {
+        return url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
+    }
 
     //todo vlla do we need this logic? It does not used in workflow
     public static RepositoryConfig fromConfig(String repositoryConfig) {
-        log.debug("VLLA FROM CONFIG {}", repositoryConfig);
-        Matcher matcher = pattern.matcher(repositoryConfig);
+        Matcher matcher = URL_PATTERN.matcher(repositoryConfig);
         if (!matcher.matches())
             throw new IllegalArgumentException(String.format("Invalid repository config [%s], must match pattern: %s",
-                    repositoryConfig, pattern));
+                    repositoryConfig, URL_PATTERN));
         String url = matcher.group("url");
         Map<String, String> params = Arrays.stream(Optional.ofNullable(matcher.group("params")).orElse("").split(","))
                 .map(entry -> entry.split("="))
@@ -78,10 +72,6 @@ public class RepositoryConfig {
         Optional.ofNullable(params.getOrDefault("branch", params.get("from"))).ifPresent(builder::branch);
         Optional.ofNullable(params.get("version")).ifPresent(builder::version);
         Optional.ofNullable(params.get("skipTests")).map(Boolean::parseBoolean).ifPresent(builder::skipTests);
-        Optional.ofNullable(params.get("versionIncrementType")).map(String::toUpperCase).map(VersionIncrementType::valueOf).ifPresent(versionIncrementType1 -> {
-            log.debug("VLLA RepositoryConfig from config. versionIncrementType1 = {}", versionIncrementType1);
-            builder.versionIncrementType(versionIncrementType1);
-        });
         return builder.build();
     }
 }

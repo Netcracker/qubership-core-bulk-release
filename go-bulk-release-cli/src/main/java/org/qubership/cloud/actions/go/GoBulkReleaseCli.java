@@ -57,10 +57,6 @@ public class GoBulkReleaseCli implements Runnable {
             """)
     private boolean dryRun;
 
-    @CommandLine.Option(names = {"--versionIncrementType"}, type = VersionIncrementType.class,
-            description = "'altDeploymentRepository' to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
-    private VersionIncrementType versionIncrementType;
-
     @CommandLine.Option(names = {"--summaryFile"}, description = "File path to save summary to")
     private String summaryFile;
 
@@ -75,7 +71,7 @@ public class GoBulkReleaseCli implements Runnable {
 
     public static void main(String... args) {
         CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
-        commandLine.registerConverter(VersionIncrementType.class, v -> VersionIncrementType.valueOf(v.toUpperCase()));
+//        commandLine.registerConverter(VersionIncrementType.class, v -> VersionIncrementType.valueOf(v.toUpperCase()));
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);
     }
@@ -111,11 +107,9 @@ public class GoBulkReleaseCli implements Runnable {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        log.debug("VLLA versionIncrementType = {}", versionIncrementType);
 
         return Config.builder(baseDir, goProxyDir, gitConfig, repositories)
                 .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
-                .versionIncrementType(versionIncrementType)
                 .skipTests(skipTests)
                 .dryRun(dryRun)
                 .summaryFile(summaryFile)

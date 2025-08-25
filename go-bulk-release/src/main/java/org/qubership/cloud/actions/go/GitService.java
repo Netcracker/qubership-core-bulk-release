@@ -159,7 +159,7 @@ public class GitService {
     }
 
     public void createTag(RepositoryInfo repository, String releaseVersion) {
-        CommandRunner.runCommand(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
+        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "tag", "-a", releaseVersion, "-m", "Release " + releaseVersion);
     }
 
     public String getLastGitTag(RepositoryInfo repository) throws NoTagsFoundException {
@@ -200,29 +200,28 @@ public class GitService {
         }
     }
 
-    public void pushChanges(File repository, String releaseVersion) {
+    public void pushChanges(File repository /*String releaseVersion*/) {
         PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
         try (Git git = Git.open(repository)) {
-            if (releaseVersion != null) {
-                Optional<Ref> tagOpt = git.tagList().call().stream()
-                        .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
-                        .findFirst();
-                if (tagOpt.isEmpty()) {
-                    throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
-                }
-            }
+//            if (releaseVersion != null) {
+//                Optional<Ref> tagOpt = git.tagList().call().stream()
+//                        .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
+//                        .findFirst();
+//                if (tagOpt.isEmpty()) {
+//                    throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+//                }
+//            }
             git.push()
                     .setProgressMonitor(new TextProgressMonitor(printWriter))
                     .setCredentialsProvider(config.getCredentialsProvider())
                     .setPushAll()
-                    .setPushTags()
                     .call();
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             printWriter.flush();
         }
-        log.info("Pushed to git: tag: {}", releaseVersion);
+        log.info("Pushed to git: repo: {}", repository.getAbsoluteFile());
     }
 
     record TagInfo(String name, Instant date) {

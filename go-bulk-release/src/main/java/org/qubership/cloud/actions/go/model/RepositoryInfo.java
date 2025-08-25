@@ -33,7 +33,7 @@ public class RepositoryInfo extends RepositoryConfig {
     private final GitService gitService = new GitService(null);
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
-        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(), repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
+        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(), repositoryConfig.getVersion());
         this.baseDir = baseDir;
 
         resolveDependencies();
@@ -41,22 +41,6 @@ public class RepositoryInfo extends RepositoryConfig {
 
     public File getRepositoryDirFile() {
         return Paths.get(getBaseDir(), getDir()).toFile();
-    }
-
-    public ReleaseVersion calculateReleaseVersion(VersionIncrementType versionIncrementType) {
-        String currentVersion;
-
-        try {
-            currentVersion = gitService.getLastGitTag(this);
-        } catch (NoTagsFoundException e) {
-            log.debug("No tags found -> calculate current version from go.mod");
-            //todo vlla getFirst is HACK - we need to support several modules structure
-            String moduleName = getGoModFiles().getFirst().moduleName();
-            String moduleVersion = extractGoModuleVersion(moduleName);
-            currentVersion = moduleVersion + ".0.0";
-        }
-
-        return new ReleaseVersion(currentVersion, versionIncrementType);
     }
 
     public String extractGoModuleVersion(String moduleName) {

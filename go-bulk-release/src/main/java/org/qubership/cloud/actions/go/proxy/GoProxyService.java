@@ -31,13 +31,13 @@ public class GoProxyService {
         };
         //todo VLLA remove extra GONOSUMDB
         for (String[] cmd : commands) {
-            CommandRunner.runCommand(cmd);
+            CommandRunner.exec(cmd);
         }
     }
 
     public void publishToLocalGoProxy(RepositoryInfo srcRepo, String version, String proxyRoot) {
         String[] command = {"go-pack", "-out", proxyRoot, "-src", srcRepo.getRepositoryDirFile().getAbsolutePath(), "-version", version};
-        CommandRunner.runCommand(null, command);
+        CommandRunner.exec(null, command);
     }
 }
 

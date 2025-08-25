@@ -3,16 +3,35 @@ package org.qubership.cloud.actions.go.util;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 public class CommandRunner {
 
-    public static void runCommand(String... command) {
-        runCommand(null, command);
+    public static void exec(String... command) {
+        exec(null, new LoggingOutputProcessor(), command);
     }
 
-    public static void runCommand(File directory, String... command) {
+    public static void exec(File directory, String... command) {
+        exec(directory, new LoggingOutputProcessor(), command);
+    }
+
+    public static List<String> execWithResult(String... command) {
+        CollectingOutputProcessor outputProcessor = new CollectingOutputProcessor();
+        exec(null, outputProcessor, command);
+        return outputProcessor.getResult();
+    }
+
+    public static List<String> execWithResult(File directory, String... command) {
+        CollectingOutputProcessor outputProcessor = new CollectingOutputProcessor();
+        exec(directory, outputProcessor, command);
+        return outputProcessor.getResult();
+    }
+
+    static void exec(File directory, OutputProcessor processor, String... command) {
         try {
             String cmd = String.join(" ", command);
             log.info("Run command '{}'", cmd);
@@ -26,17 +45,57 @@ public class CommandRunner {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log.info("cmd out: {}", line);
+                    processor.onLine(line);
                 }
             }
 
             process.waitFor();
             log.info("Command: '{}' ended with code: {}", cmd, process.exitValue());
             if (process.exitValue() != 0) {
+                processor.onFail();
                 throw new RuntimeException("Failed to execute cmd: " + Arrays.toString(command) + " in directory " + directory);
             }
         } catch (IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            processor.onFail();
             throw new RuntimeException(e);
+        }
+    }
+
+    private interface OutputProcessor {
+        void onLine(String line);
+
+        void onFail();
+    }
+
+    private static class LoggingOutputProcessor implements OutputProcessor {
+        @Override
+        public void onLine(String line) {
+            log.debug("cmd out: {}", line);
+        }
+
+        @Override
+        public void onFail() {
+            //do nothing
+        }
+    }
+
+    private static class CollectingOutputProcessor extends LoggingOutputProcessor {
+        private final List<String> result = new ArrayList<>();
+
+        @Override
+        public void onLine(String line) {
+            result.add(line);
+            super.onLine(line);
+        }
+
+        List<String> getResult() {
+            return Collections.unmodifiableList(result);
+        }
+
+        @Override
+        public void onFail() {
+            result.forEach(log::warn);
         }
     }
 }

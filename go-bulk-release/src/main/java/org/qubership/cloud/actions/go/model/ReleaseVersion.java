@@ -8,16 +8,14 @@ import lombok.ToString;
 public class ReleaseVersion {
     private final Semver currentVersion;
     private final Semver newVersion;
-    private final VersionIncrementType versionIncrementType;
 
-    public ReleaseVersion(String currentVersion, VersionIncrementType versionIncrementType) {
+    public ReleaseVersion(String currentVersion, String newVersion) {
         this.currentVersion = new Semver(currentVersion);
-        this.newVersion = this.currentVersion.getNext(versionIncrementType);
-        this.versionIncrementType = versionIncrementType;
+        this.newVersion = new Semver(newVersion);
     }
 
     public boolean isMajorUpdate() {
-        return versionIncrementType == VersionIncrementType.MAJOR;
+        return currentVersion.getMajor() != newVersion.getMajor();
     }
 
     public int getNewMajorVersion() {

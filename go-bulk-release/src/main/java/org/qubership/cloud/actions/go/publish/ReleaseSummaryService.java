@@ -25,51 +25,51 @@ public class ReleaseSummaryService {
         this.gitService = new GitService(config.getGitConfig());
     }
 
-    public void publishReleaseSummary(Result result) {
-        try {
-            //todo vlla change URL
-            RepositoryConfig repositoryConfig = RepositoryConfig.builder("https://github.com/TaurMorchant/infra")
-                    .build();
+//    public void publishReleaseSummary(Result result) {
+//        try {
+//            //todo vlla change URL
+//            RepositoryConfig repositoryConfig = RepositoryConfig.builder("https://github.com/TaurMorchant/infra")
+//                    .build();
+//
+//            Path repository = Paths.get(config.getBaseDir(), repositoryConfig.getDir());
+//
+//            gitService.gitCheckout(repository, repositoryConfig);
+//
+//            String summaryFileName = getSummaryFileName();
+//            writeSummaryFile(repository, summaryFileName, result);
+//
+//            gitService.commitAdded(repository.toFile(), "Added " + summaryFileName);
+//            gitService.pushChanges(repository.toFile());
+//        }
+//        catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
 
-            Path repository = Paths.get(config.getBaseDir(), repositoryConfig.getDir());
+//    private void writeSummaryFile(Path repository, String summaryFileName, Result result) throws Exception {
+//        Path summaryFilePath = getSummaryFilePath(repository, summaryFileName);
+//        String summaryFileContent = ReleaseSummary.md(result);
+//
+//        Path parent = summaryFilePath.getParent();
+//        if (parent != null) {
+//            Files.createDirectories(parent);
+//        }
+//
+//        Files.writeString(
+//                summaryFilePath,
+//                summaryFileContent,
+//                StandardCharsets.UTF_8,
+//                StandardOpenOption.CREATE,
+//                StandardOpenOption.TRUNCATE_EXISTING
+//        );
+//    }
+//
+//    private String getSummaryFileName() {
+//        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_PATTERN));
+//        return RELEASE_SUMMARY_FILE_NAME_PATTERN.formatted(time);
+//    }
 
-            gitService.gitCheckout(repository, repositoryConfig);
-
-            String summaryFileName = getSummaryFileName();
-            writeSummaryFile(repository, summaryFileName, result);
-
-            gitService.commitAdded(repository.toFile(), "Added " + summaryFileName);
-            gitService.pushChanges(repository.toFile(), null);
-        }
-        catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void writeSummaryFile(Path repository, String summaryFileName, Result result) throws Exception {
-        Path summaryFilePath = getSummaryFilePath(repository, summaryFileName);
-        String summaryFileContent = ReleaseSummary.md(result);
-
-        Path parent = summaryFilePath.getParent();
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
-
-        Files.writeString(
-                summaryFilePath,
-                summaryFileContent,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING
-        );
-    }
-
-    private String getSummaryFileName() {
-        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_PATTERN));
-        return RELEASE_SUMMARY_FILE_NAME_PATTERN.formatted(time);
-    }
-
-    private Path getSummaryFilePath(Path repository, String summaryFileName) {
-        return repository.resolve("releases/" + summaryFileName);
-    }
+//    private Path getSummaryFilePath(Path repository, String summaryFileName) {
+//        return repository.resolve("releases/" + summaryFileName);
+//    }
 }

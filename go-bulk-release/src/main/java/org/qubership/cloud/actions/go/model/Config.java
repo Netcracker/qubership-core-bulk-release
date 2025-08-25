@@ -19,7 +19,6 @@ public class Config {
     // particular repository(ies) to start release from (the rest of the tree will be calculated automatically)
     Set<RepositoryConfig> repositoriesToReleaseFrom = new LinkedHashSet<>();
     Collection<String> gavs;
-    VersionIncrementType versionIncrementType;
     String summaryFile;
     String resultOutputFile;
     String dependencyGraphFile;
@@ -35,7 +34,6 @@ public class Config {
                    Set<RepositoryConfig> repositories,
                    Set<RepositoryConfig> repositoriesToReleaseFrom,
                    Collection<String> gavs,
-                   VersionIncrementType versionIncrementType,
                    String summaryFile,
                    String resultOutputFile,
                    String dependencyGraphFile,
@@ -56,7 +54,6 @@ public class Config {
         this.skipTests = skipTests;
         this.dryRun = dryRun;
         this.runSequentially = runSequentially;
-        this.versionIncrementType = versionIncrementType;
     }
 
     public static ConfigBuilder builder(String baseDir,
