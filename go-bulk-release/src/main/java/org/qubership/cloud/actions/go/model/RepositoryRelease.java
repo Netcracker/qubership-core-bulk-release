@@ -19,6 +19,7 @@ public class RepositoryRelease {
     Exception exception;
 
     public static RepositoryRelease from(RepositoryInfo repository, ReleaseVersion releaseVersion) {
+        String oldReleaseVersion = releaseVersion.getCurrentVersion().getValue();
         String newReleaseVersion = releaseVersion.getNewVersion().getValue();
         RepositoryRelease release = new RepositoryRelease();
         release.setRepository(repository);
@@ -30,10 +31,10 @@ public class RepositoryRelease {
             GoGAV goGAV;
             if (gav.majorVersionFromArtifactId == releaseVersion.getNewMajorVersion())
             {
-                goGAV = new GoGAV(gav.getArtifactId(), newReleaseVersion);
+                goGAV = new GoGAV(gav.getArtifactId(), oldReleaseVersion, newReleaseVersion);
             }
             else {
-                goGAV = new GoGAV(gav.getArtifactIdWithoutVersion() + "/v" + releaseVersion.getNewMajorVersion(), newReleaseVersion);
+                goGAV = new GoGAV(gav.getArtifactIdWithoutVersion() + "/v" + releaseVersion.getNewMajorVersion(), oldReleaseVersion, newReleaseVersion);
             }
             log.debug("VLLA goGAV = {}", goGAV);
             gavs.add(goGAV);

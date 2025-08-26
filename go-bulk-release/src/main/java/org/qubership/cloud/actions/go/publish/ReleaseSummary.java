@@ -1,6 +1,7 @@
 package org.qubership.cloud.actions.go.publish;
 
 import org.qubership.cloud.actions.go.model.GAV;
+import org.qubership.cloud.actions.go.model.GoGAV;
 import org.qubership.cloud.actions.go.model.RepositoryConfig;
 import org.qubership.cloud.actions.go.model.Result;
 
@@ -23,7 +24,7 @@ public class ReleaseSummary {
                     String tagUrl = r.isPushedToGit() ?
                             String.format("%s/releases/tag/%s", r.getRepository().getUrl(), r.getTag()) :
                             r.getRepository().getUrl();
-                    String gavs = r.getGavs().stream().map(GAV::toString).collect(Collectors.joining("\n"));
+                    String gavs = r.getGavs().stream().map(GoGAV::getUpdatedVersionStr).collect(Collectors.joining("\n"));
                     String urlName = r.getRepository().getUrl();
                     if (!RepositoryConfig.HEAD.equals(r.getRepository().getBranch())) {
                         urlName += String.format(" [%s]", r.getRepository().getBranch());

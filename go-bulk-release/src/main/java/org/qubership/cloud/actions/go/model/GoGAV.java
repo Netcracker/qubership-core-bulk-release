@@ -9,13 +9,19 @@ import java.util.regex.Pattern;
 public class GoGAV extends GAV {
     private static final Pattern VERSION_SUFFIX = Pattern.compile("(/v(\\d+))$");
 
+    String oldVersion;
     @Getter
     String artifactIdWithoutVersion;
     @Getter
     int majorVersionFromArtifactId;
 
     public GoGAV(String artifactId, String version) {
+        this(artifactId, null, version);
+    }
+
+    public GoGAV(String artifactId, String oldVersion, String version) {
         super("GO", artifactId, version);
+        this.oldVersion = oldVersion;
 
         Matcher m = VERSION_SUFFIX.matcher(artifactId);
         if (m.find()) {
@@ -40,5 +46,9 @@ public class GoGAV extends GAV {
     @Override
     public String toString() {
         return String.format("%s:%s", artifactId, version);
+    }
+
+    public String getUpdatedVersionStr() {
+        return String.format("%s:%s -> %s", artifactId, oldVersion, version);
     }
 }
