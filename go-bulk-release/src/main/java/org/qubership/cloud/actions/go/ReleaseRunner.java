@@ -154,7 +154,7 @@ public class ReleaseRunner {
         CommandRunner.exec(repository.getRepositoryDirFile(), "git", "tag", "--list", "--sort=-creatordate");
         CommandRunner.exec(repository.getRepositoryDirFile(), "git", "log", "--oneline", "--decorate", "--graph", "-20");
 
-        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main");
+        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--no-ci", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main");
 
         String currentVersion = null;
         String newVersion = null;
@@ -227,7 +227,7 @@ public class ReleaseRunner {
         log.info("=== DEPLOY RELEASE {} ===", repository.getDir());
 
         //CommandRunner.exec(repository.getRepositoryDirFile(), "goreleaser", "-f", "/tmp/goreleaser.yaml", "release");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes", "--no-ci");
     }
 
     private int getThreads() {
