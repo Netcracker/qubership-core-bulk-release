@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @Data
 public class RepositoryConfig {
     public static final String HEAD = "HEAD";
-    public static Pattern URL_PATTERN = Pattern.compile("^(?<url>https://[^/]+/(?<dir>[^\\[]+))(\\[(?<params>.*)])?$");
+    public static final Pattern URL_PATTERN = Pattern.compile("^(?<url>https://[^/]+/(?<dir>[^\\[]+))(\\[(?<params>.*)])?$");
 
     final String url;
     final String dir;
@@ -57,7 +57,6 @@ public class RepositoryConfig {
         return url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
     }
 
-    //todo vlla do we need this logic? It does not used in workflow
     public static RepositoryConfig fromConfig(String repositoryConfig) {
         Matcher matcher = URL_PATTERN.matcher(repositoryConfig);
         if (!matcher.matches())

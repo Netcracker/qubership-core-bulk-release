@@ -17,7 +17,7 @@ public class Config {
     // all repositories
     final Set<RepositoryConfig> repositories;
     // particular repository(ies) to start release from (the rest of the tree will be calculated automatically)
-    Set<RepositoryConfig> repositoriesToReleaseFrom = new LinkedHashSet<>();
+    Set<RepositoryConfig> repositoriesToReleaseFrom;
     Collection<String> gavs;
     String summaryFile;
     String resultOutputFile;

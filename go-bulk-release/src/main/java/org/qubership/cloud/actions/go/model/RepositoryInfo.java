@@ -43,25 +43,6 @@ public class RepositoryInfo extends RepositoryConfig {
         return Paths.get(getBaseDir(), getDir()).toFile();
     }
 
-    public String extractGoModuleVersion(String moduleName) {
-        if (moduleName == null || moduleName.isEmpty()) {
-            return null;
-        }
-
-        int lastSlash = moduleName.lastIndexOf('/');
-        if (lastSlash == -1) {
-            return "v1";
-        }
-
-        String lastSegment = moduleName.substring(lastSlash + 1);
-
-        if (lastSegment.matches("v\\d+")) {
-            return lastSegment;
-        }
-
-        return "v1";
-    }
-
     void resolveDependencies() {
         this.modules.clear();
         this.moduleDependencies.clear();

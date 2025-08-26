@@ -159,20 +159,32 @@ public class ReleaseRunner {
                 newVersion = "v" + getSubstringAfter(line, GO_SEMANTIC_RELEASE_NEW_VERSION);
             }
         }
-        if (currentVersion != null && newVersion != null) {
-            return new ReleaseVersion(currentVersion, newVersion);
+        if (currentVersion == null || currentVersion.equals("v0.0.0"))
+        {
+            String msg = "Cannot find any valid tag for repository %s. Please, create at least one tag".formatted(repository.getUrl());
+            throw new UnsupportedOperationException(msg);
         }
-        else if (currentVersion != null) {
+        else if (newVersion == null) {
             return new ReleaseVersion(currentVersion, currentVersion);
         }
         else {
-            //todo vlla надо как-то разрезолвить ситуацию, что тега нет. Может создать вручную?
-            //todo vlla getFirst is HACK - we need to support several modules structure
-            String moduleName = repository.getGoModFiles().getFirst().moduleName();
-            String moduleVersion = repository.extractGoModuleVersion(moduleName);
-            newVersion = moduleVersion + ".0.0";
-            return new ReleaseVersion(newVersion, newVersion);
+            return new ReleaseVersion(currentVersion, newVersion);
         }
+
+//        if (currentVersion != null && newVersion != null) {
+//            return new ReleaseVersion(currentVersion, newVersion);
+//        }
+//        else if (currentVersion != null) {
+//            return new ReleaseVersion(currentVersion, currentVersion);
+//        }
+//        else {
+//            //todo vlla надо как-то разрезолвить ситуацию, что тега нет. Может создать вручную?
+//            //todo vlla getFirst is HACK - we need to support several modules structure
+//            String moduleName = repository.getGoModFiles().getFirst().moduleName();
+//            String moduleVersion = repository.extractGoModuleVersion(moduleName);
+//            newVersion = moduleVersion + ".0.0";
+//            return new ReleaseVersion(newVersion, newVersion);
+//        }
     }
 
     private static String getSubstringAfter(String line, String substring) {
@@ -220,7 +232,6 @@ public class ReleaseRunner {
     }
 
     private int getThreads() {
-//      TODO VLLA extract thread number to configuration file?
 //      TODO VLLA it fails if we try to 'go test' in parallel -> sequential build for now
 //      return config.isRunSequentially() ? 1 : 4;
         return 1;
