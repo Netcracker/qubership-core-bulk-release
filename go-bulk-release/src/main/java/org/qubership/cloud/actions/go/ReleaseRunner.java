@@ -149,7 +149,10 @@ public class ReleaseRunner {
 
         //todo vlla tmp
         CommandRunner.exec(repository.getRepositoryDirFile(), "git", "describe", "--tags", "--abbrev=0");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "log", "--graph", "--oneline", "--all");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "rev-parse", "HEAD");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "show", "-s", "--format=%D", "HEAD");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "tag", "--list", "--sort=-creatordate");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "log", "--oneline", "--decorate", "--graph", "-20");
 
         List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main");
 
