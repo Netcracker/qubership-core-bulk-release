@@ -37,13 +37,6 @@ public class CommandRunner {
                 processBuilder.directory(directory);
             }
             processBuilder.redirectErrorStream(true);
-            Map<String, String> env = processBuilder.environment();
-            log.debug("VLLA before env = {}", env);
-            env.remove("GITHUB_ACTIONS");
-            env.remove("GITHUB_SHA");
-            env.remove("GITHUB_REF");
-            env.remove("CI");
-            log.debug("VLLA after env = {}", processBuilder.environment());
             Process process = processBuilder.start();
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {

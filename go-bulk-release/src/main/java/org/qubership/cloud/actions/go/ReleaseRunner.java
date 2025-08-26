@@ -129,8 +129,8 @@ public class ReleaseRunner {
 
         repositoryInfo.updateDepVersions(dependencies);
 
-        //todo vlla TMP!!!!!
-        CommandRunner.exec(repositoryInfo.getRepositoryDirFile(), "go", "get", "github.com/google/uuid");
+//        //todo vlla TMP!!!!!
+//        CommandRunner.exec(repositoryInfo.getRepositoryDirFile(), "go", "get", "github.com/google/uuid");
 
         gitService.commitModified(repositoryInfo.getRepositoryDirFile(), "chore: updating dependencies before release");
     }
@@ -154,7 +154,8 @@ public class ReleaseRunner {
         CommandRunner.exec(repository.getRepositoryDirFile(), "git", "tag", "--list", "--sort=-creatordate");
         CommandRunner.exec(repository.getRepositoryDirFile(), "git", "log", "--oneline", "--decorate", "--graph", "-20");
 
-        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--no-ci", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main", "--ci-condition", "default");
+        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--no-ci", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main", "--ci-condition", "default",
+                "--commit-analyzer-opt", "patch_release_rules=*");
 
         String currentVersion = null;
         String newVersion = null;
@@ -170,6 +171,9 @@ public class ReleaseRunner {
         }
         if (currentVersion != null && newVersion != null) {
             return new ReleaseVersion(currentVersion, newVersion);
+        }
+        else if (currentVersion != null) {
+            return new ReleaseVersion(currentVersion, currentVersion);
         }
         else {
             //todo vlla надо как-то разрезолвить ситуацию, что тега нет. Может создать вручную?
@@ -227,7 +231,8 @@ public class ReleaseRunner {
         log.info("=== DEPLOY RELEASE {} ===", repository.getDir());
 
         //CommandRunner.exec(repository.getRepositoryDirFile(), "goreleaser", "-f", "/tmp/goreleaser.yaml", "release");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes", "--no-ci", "--ci-condition", "default");
+        CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes", "--no-ci", "--ci-condition", "default",
+                "--commit-analyzer-opt", "patch_release_rules=*");
     }
 
     private int getThreads() {
