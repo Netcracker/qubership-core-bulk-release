@@ -84,18 +84,25 @@ public class GitService {
     }
 
     public void gitCheckout(Path repositoryPath, RepositoryConfig repository) {
+        log.info("Gei checkout for {} [START]", repository.getUrl());
         try {
             boolean repositoryDirExists = Files.exists(repositoryPath);
+            log.debug("VLLA repositoryDirExists = {}", repositoryDirExists);
             Git git;
             String branch = repository.getBranch();
+            //todo vlla do we need this if?
             if (repositoryDirExists && Files.list(repositoryPath).findAny().isPresent()) {
+                log.debug("VLLA gitCheckout 1");
                 git = Git.open(repositoryPath.toFile());
                 try {
+                    log.debug("VLLA gitCheckout 2");
                     git.checkout().setForced(true).setName(branch).call();
                 } catch (RefNotFoundException e) {
+                    log.debug("VLLA gitCheckout 3");
                     git.checkout().setForced(true).setName("origin/" + branch).call();
                 }
             } else {
+                log.debug("VLLA gitCheckout 4");
                 PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
                 try {
                     printWriter.println(String.format("Checking out %s from: [%s]", repository.getUrl(), branch));
@@ -108,7 +115,7 @@ public class GitService {
                             .setURI(repository.getUrl())
                             .setDirectory(repositoryPath.toFile())
                             .setBranch(branch)
-                            .setCloneAllBranches(false)
+                            .setCloneAllBranches(true)
                             .setTagOption(TagOpt.FETCH_TAGS)
                             //.setProgressMonitor(monitor)
                             .call();
