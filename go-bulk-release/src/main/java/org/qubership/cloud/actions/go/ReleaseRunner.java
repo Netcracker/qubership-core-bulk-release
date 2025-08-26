@@ -144,7 +144,7 @@ public class ReleaseRunner {
     ReleaseVersion resolveReleaseVersion2(RepositoryInfo repository) {
         log.info("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
 
-        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--dry", "--allow-no-changes");
+        List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main");
 
         String currentVersion = null;
         String newVersion = null;
