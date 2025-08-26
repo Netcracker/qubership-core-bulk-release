@@ -12,7 +12,6 @@ public class RepositoryConfigConverter implements CommandLine.ITypeConverter<Rep
         if (value == null || value.isBlank()) return null;
         try{
             RepositoryConfig repositoryConfig = RepositoryConfig.fromConfig(value);
-            log.debug("VLLA RepositoryConfig: {}", repositoryConfig);
             return repositoryConfig;
         } catch (IllegalArgumentException e) {
             throw new CommandLine.TypeConversionException(e.getMessage());

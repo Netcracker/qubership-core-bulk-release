@@ -129,9 +129,6 @@ public class ReleaseRunner {
 
         repositoryInfo.updateDepVersions(dependencies);
 
-//        //todo vlla TMP!!!!!
-//        CommandRunner.exec(repositoryInfo.getRepositoryDirFile(), "go", "get", "github.com/google/uuid");
-
         gitService.commitModified(repositoryInfo.getRepositoryDirFile(), "chore: updating dependencies before release");
     }
 
@@ -146,13 +143,6 @@ public class ReleaseRunner {
 
     ReleaseVersion resolveReleaseVersion2(RepositoryInfo repository) {
         log.info("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
-
-        //todo vlla tmp
-        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "describe", "--tags", "--abbrev=0");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "rev-parse", "HEAD");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "show", "-s", "--format=%D", "HEAD");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "tag", "--list", "--sort=-creatordate");
-        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "log", "--oneline", "--decorate", "--graph", "-20");
 
         List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--no-ci", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main", "--ci-condition", "default",
                 "--commit-analyzer-opt", "patch_release_rules=*");
@@ -199,11 +189,6 @@ public class ReleaseRunner {
         CommandRunner.exec(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
     }
 
-//    private void createTag(RepositoryInfo repository, ReleaseVersion releaseVersion) {
-//        log.info("=== CREATE TAG {} ===", repository.getUrl());
-//        gitService.createTag(repository, releaseVersion.getNewVersion().getValue());
-//    }
-
     private void publishToGoProxy(Config config, RepositoryInfo repository, ReleaseVersion releaseVersion) {
         log.info("=== PUBLISH TO GO PROXY {} ===", repository.getUrl());
 
@@ -230,7 +215,6 @@ public class ReleaseRunner {
     void deployRelease(RepositoryInfo repository) {
         log.info("=== DEPLOY RELEASE {} ===", repository.getDir());
 
-        //CommandRunner.exec(repository.getRepositoryDirFile(), "goreleaser", "-f", "/tmp/goreleaser.yaml", "release");
         CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes", "--no-ci", "--ci-condition", "default",
                 "--commit-analyzer-opt", "patch_release_rules=*");
     }

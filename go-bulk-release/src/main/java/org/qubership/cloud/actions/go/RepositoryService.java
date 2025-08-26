@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.qubership.cloud.actions.go.model.Config;
-import org.qubership.cloud.actions.go.model.GitConfig;
 import org.qubership.cloud.actions.go.model.RepositoryConfig;
 import org.qubership.cloud.actions.go.model.RepositoryInfo;
 import org.qubership.cloud.actions.go.model.graph.DependencyGraph;

@@ -36,7 +36,6 @@ public class RepositoryRelease {
             else {
                 goGAV = new GoGAV(gav.getArtifactIdWithoutVersion() + "/v" + releaseVersion.getNewMajorVersion(), oldReleaseVersion, newReleaseVersion);
             }
-            log.debug("VLLA goGAV = {}", goGAV);
             gavs.add(goGAV);
         });
         release.setGavs(gavs);

@@ -12,19 +12,13 @@ import java.nio.file.StandardOpenOption;
 @Slf4j
 public class ResultPublisher {
     private final Config config;
-//    private final ReleaseSummaryService releaseSummaryService;
 
     public ResultPublisher(Config config) {
         this.config = config;
-//        this.releaseSummaryService = new ReleaseSummaryService(config);
     }
 
     public void publish(final Result result) {
         publishResultFiles(result);
-
-//        if (!config.isDryRun()) {
-//            releaseSummaryService.publishReleaseSummary(result);
-//        }
     }
 
     private void publishResultFiles(Result result) {
