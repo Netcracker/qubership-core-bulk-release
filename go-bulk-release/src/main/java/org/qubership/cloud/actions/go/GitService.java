@@ -142,7 +142,8 @@ public class GitService {
         try (Git git = Git.open(repository)) {
             List<String> modifiedFiles = getDiff(git, DiffEntry.ChangeType.MODIFY);
             if (!modifiedFiles.isEmpty()) {
-                git.add().setUpdate(true).call();
+                log.debug("VLLA !modifiedFiles.isEmpty()");
+                git.add().addFilepattern(".").setUpdate(true).call();
                 git.commit().setMessage(msg).call();
                 log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
             }
@@ -240,6 +241,7 @@ public class GitService {
 
     private List<String> getDiff(Git git, DiffEntry.ChangeType changeType) throws GitAPIException {
         List<DiffEntry> diff = git.diff().call();
+        log.debug("VLLA getDiff = {}", diff);
         return diff.stream().filter(d -> d.getChangeType() == changeType).map(DiffEntry::getNewPath).toList();
     }
 }

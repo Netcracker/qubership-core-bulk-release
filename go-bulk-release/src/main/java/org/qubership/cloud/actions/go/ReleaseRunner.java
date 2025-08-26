@@ -129,6 +129,9 @@ public class ReleaseRunner {
 
         repositoryInfo.updateDepVersions(dependencies);
 
+        //todo vlla TMP!!!!!
+        CommandRunner.exec(repositoryInfo.getRepositoryDirFile(), "go", "get", "github.com/google/uuid");
+
         gitService.commitModified(repositoryInfo.getRepositoryDirFile(), "chore: updating dependencies before release");
     }
 
@@ -143,6 +146,9 @@ public class ReleaseRunner {
 
     ReleaseVersion resolveReleaseVersion2(RepositoryInfo repository) {
         log.info("=== CALCULATE RELEASE VERSION {} ===", repository.getUrl());
+
+        //todo vlla tmp
+        CommandRunner.exec(repository.getRepositoryDirFile(), "git", "describe", "--tags", "--abbrev=0");
 
         List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), "semantic-release", "--provider", "git", "--dry", "--allow-no-changes", "--provider-opt", "default_branch=main");
 
