@@ -5,7 +5,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.go.model.*;
 import org.qubership.cloud.actions.go.model.graph.DependencyGraph;
-
 import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
 import org.qubership.cloud.actions.go.model.repository.RepositoryInfo;
 import org.qubership.cloud.actions.go.model.repository.RepositoryRelease;
@@ -21,6 +20,7 @@ import java.util.function.Predicate;
 public class ReleaseRunner {
     public static final String GO_SEMANTIC_RELEASE_CURRENT_VERSION = "found version: ";
     public static final String GO_SEMANTIC_RELEASE_NEW_VERSION = "new version: ";
+    public static final String CHANGELOG_FORMAT_TEMPLATE = "* {{with .Scope -}} **{{.}}:** {{end}} {{- .Message}} ({{trimSHA .SHA}}) {{- with index .Annotations \"author_login\" }} - by @{{.}} {{- end}}";
     private static final YAMLMapper YAML_MAPPER = new YAMLMapper();
 
     private final Config config;
@@ -194,8 +194,7 @@ public class ReleaseRunner {
         log.info("=== GO TEST {} ===", repository.getUrl());
         try {
             CommandRunner.exec(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
-        }
-        catch (CommandExecutionException e) {
+        } catch (CommandExecutionException e) {
             String msg = "Tests failed for repository %s. See logs for more info".formatted(repository.getUrl());
             throw new ReleaseTerminationException(msg, e);
         }
@@ -210,8 +209,7 @@ public class ReleaseRunner {
     void cleanupLocalCopy(RepositoryInfo repository) {
         try {
             CommandRunner.exec(repository.getRepositoryDirFile(), "git", "clean", "-fdx");
-        }
-        catch (CommandExecutionException e) {
+        } catch (CommandExecutionException e) {
             String msg = "Cannot cleanup directory '%s'".formatted(repository.getRepositoryDirFile());
             throw new ReleaseTerminationException(msg, e);
         }
@@ -238,10 +236,14 @@ public class ReleaseRunner {
         log.info("=== DEPLOY RELEASE {} ===", repository.getDir());
 
         try {
-            CommandRunner.exec(repository.getRepositoryDirFile(), "semantic-release", "--provider", "github", "--provider-opt", "slug=" + repository.getDir(), "--allow-no-changes", "--no-ci", "--ci-condition", "default",
-                    "--commit-analyzer-opt", "patch_release_rules=*");
-        }
-        catch (CommandExecutionException e) {
+            String[] command = {"semantic-release", "--allow-no-changes", "--no-ci",
+                    "--provider", "github",
+                    "--provider-opt", "slug=" + repository.getDir(),
+                    "--ci-condition", "default",
+                    "--commit-analyzer-opt", "patch_release_rules=*",
+                    "--changelog-generator-opt", "format_commit_template=" + CHANGELOG_FORMAT_TEMPLATE};
+            CommandRunner.exec(repository.getRepositoryDirFile(), command);
+        } catch (CommandExecutionException e) {
             String msg = "Cannot deploy release for repository %s. Se logs for more info".formatted(repository.getUrl());
             throw new ReleaseTerminationException(msg, e);
         }
