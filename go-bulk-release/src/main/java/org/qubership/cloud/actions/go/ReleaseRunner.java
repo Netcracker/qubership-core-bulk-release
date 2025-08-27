@@ -112,6 +112,7 @@ public class ReleaseRunner {
             runGoTest(repository);
         }
 
+        cleanupLocalCopy(repository);
         publishToGoProxy(config, repository, releaseVersion);
 
         RepositoryRelease release = RepositoryRelease.from(repository, releaseVersion);
@@ -204,6 +205,16 @@ public class ReleaseRunner {
         log.info("=== PUBLISH TO GO PROXY {} ===", repository.getUrl());
 
         goProxyService.publishToLocalGoProxy(repository, releaseVersion.getNewVersion().getValue(), config.getGoProxyDir());
+    }
+
+    void cleanupLocalCopy(RepositoryInfo repository) {
+        try {
+            CommandRunner.exec(repository.getRepositoryDirFile(), "git", "clean", "-fdx");
+        }
+        catch (CommandExecutionException e) {
+            String msg = "Cannot cleanup directory '%s'".formatted(repository.getRepositoryDirFile());
+            throw new ReleaseTerminationException(msg, e);
+        }
     }
 
     RepositoryRelease performRelease(RepositoryRelease release) {
