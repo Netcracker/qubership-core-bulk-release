@@ -48,7 +48,7 @@ public class ResultPublisher {
         if (isNotBlank(gavsResultFile)) {
             try {
                 Path resultPath = Paths.get(gavsResultFile);
-                String gavsResult = ReleaseSummary.gavs(result).replaceAll(",", "\n");
+                String gavsResult = ReleaseSummary.gavs(result).replace(",", "\n");
                 Files.writeString(resultPath, gavsResult, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             } catch (Exception e) {
                 log.error("Failed to write GAVs to file {}", gavsResultFile, e);

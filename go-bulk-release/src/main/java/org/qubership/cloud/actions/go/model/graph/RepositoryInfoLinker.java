@@ -2,7 +2,7 @@ package org.qubership.cloud.actions.go.model.graph;
 
 import org.qubership.cloud.actions.go.model.GAV;
 import org.qubership.cloud.actions.go.model.GoGAV;
-import org.qubership.cloud.actions.go.model.RepositoryInfo;
+import org.qubership.cloud.actions.go.model.repository.RepositoryInfo;
 
 import java.util.*;
 

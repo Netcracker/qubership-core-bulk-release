@@ -9,7 +9,8 @@ import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.transport.TagOpt;
 import org.qubership.cloud.actions.go.model.GitConfig;
-import org.qubership.cloud.actions.go.model.RepositoryConfig;
+import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
+import org.qubership.cloud.actions.go.model.UnexpectedException;
 import org.qubership.cloud.actions.go.util.LoggerWriter;
 
 import java.io.File;
@@ -72,7 +73,7 @@ public class GitService {
                 log.info("Updated ~/.git-credentials.");
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
     }
 
@@ -112,7 +113,7 @@ public class GitService {
                 log.debug("Saved git config:\n{}", gitConfig.toText());
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
     }
 
@@ -126,7 +127,7 @@ public class GitService {
                 log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
     }
 
@@ -139,7 +140,7 @@ public class GitService {
                     .setPushAll()
                     .call();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         } finally {
             printWriter.flush();
         }

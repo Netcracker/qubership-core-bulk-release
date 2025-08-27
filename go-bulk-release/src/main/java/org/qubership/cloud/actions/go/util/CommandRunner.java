@@ -1,6 +1,7 @@
 package org.qubership.cloud.actions.go.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.qubership.cloud.actions.go.model.UnexpectedException;
 
 import java.io.*;
 import java.util.*;
@@ -8,27 +9,27 @@ import java.util.*;
 @Slf4j
 public class CommandRunner {
 
-    public static void exec(String... command) {
+    public static void exec(String... command) throws CommandExecutionException {
         exec(null, new LoggingOutputProcessor(), command);
     }
 
-    public static void exec(File directory, String... command) {
+    public static void exec(File directory, String... command) throws CommandExecutionException {
         exec(directory, new LoggingOutputProcessor(), command);
     }
 
-    public static List<String> execWithResult(String... command) {
+    public static List<String> execWithResult(String... command) throws CommandExecutionException {
         CollectingOutputProcessor outputProcessor = new CollectingOutputProcessor();
         exec(null, outputProcessor, command);
         return outputProcessor.getResult();
     }
 
-    public static List<String> execWithResult(File directory, String... command) {
+    public static List<String> execWithResult(File directory, String... command) throws CommandExecutionException {
         CollectingOutputProcessor outputProcessor = new CollectingOutputProcessor();
         exec(directory, outputProcessor, command);
         return outputProcessor.getResult();
     }
 
-    static void exec(File directory, OutputProcessor processor, String... command) {
+    static void exec(File directory, OutputProcessor processor, String... command) throws CommandExecutionException {
         try {
             String cmd = String.join(" ", command);
             log.info("Run command '{}'", cmd);
@@ -50,12 +51,12 @@ public class CommandRunner {
             log.info("Command: '{}' ended with code: {}", cmd, process.exitValue());
             if (process.exitValue() != 0) {
                 processor.onFail();
-                throw new RuntimeException("Failed to execute cmd: " + Arrays.toString(command) + " in directory " + directory);
+                throw new CommandExecutionException("Failed to execute cmd: " + Arrays.toString(command) + " in directory " + directory + ". See logs for more info");
             }
         } catch (IOException | InterruptedException e) {
             Thread.currentThread().interrupt();
             processor.onFail();
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
     }
 

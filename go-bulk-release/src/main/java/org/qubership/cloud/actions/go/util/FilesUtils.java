@@ -1,5 +1,7 @@
 package org.qubership.cloud.actions.go.util;
 
+import org.qubership.cloud.actions.go.model.UnexpectedException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,8 +19,10 @@ public class FilesUtils {
                             .noneMatch(n -> n.toString().equals("target")))
                     .toList();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
         return result;
     }
+
+    private FilesUtils() {}
 }

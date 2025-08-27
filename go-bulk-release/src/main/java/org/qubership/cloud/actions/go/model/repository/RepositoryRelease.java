@@ -1,7 +1,9 @@
-package org.qubership.cloud.actions.go.model;
+package org.qubership.cloud.actions.go.model.repository;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.qubership.cloud.actions.go.model.GoGAV;
+import org.qubership.cloud.actions.go.model.ReleaseVersion;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +31,7 @@ public class RepositoryRelease {
         repository.getModules().forEach(gav -> {
             //todo vlla check is it major update - refactor
             GoGAV goGAV;
-            if (gav.majorVersionFromArtifactId == releaseVersion.getNewMajorVersion())
+            if (gav.getMajorVersionFromArtifactId() == releaseVersion.getNewMajorVersion())
             {
                 goGAV = new GoGAV(gav.getArtifactId(), oldReleaseVersion, newReleaseVersion);
             }

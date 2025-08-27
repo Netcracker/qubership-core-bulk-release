@@ -2,11 +2,10 @@ package org.qubership.cloud.actions.go.model;
 
 import lombok.Builder;
 import lombok.Data;
-import lombok.ToString;
+import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Data

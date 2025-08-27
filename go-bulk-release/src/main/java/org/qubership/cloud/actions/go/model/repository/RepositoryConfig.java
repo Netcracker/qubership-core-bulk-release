@@ -1,4 +1,4 @@
-package org.qubership.cloud.actions.go.model;
+package org.qubership.cloud.actions.go.model.repository;
 
 import lombok.Builder;
 import lombok.Data;

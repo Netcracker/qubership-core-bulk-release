@@ -3,7 +3,8 @@ package org.qubership.cloud.actions.go.model.graph;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.dot.DOTExporter;
-import org.qubership.cloud.actions.go.model.RepositoryInfo;
+import org.qubership.cloud.actions.go.model.repository.RepositoryInfo;
+import org.qubership.cloud.actions.go.model.UnexpectedException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -46,7 +47,7 @@ public class DependencyGraph extends TreeMap<Integer, List<RepositoryInfo>> {
             exporter.exportGraph(graph, stream);
             return stream.toString();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
     }
 }

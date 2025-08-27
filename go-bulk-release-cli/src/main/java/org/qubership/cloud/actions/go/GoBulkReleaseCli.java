@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.go;
 
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
 import org.qubership.cloud.actions.go.publish.ResultPublisher;
 import picocli.CommandLine;
 
@@ -71,7 +72,6 @@ public class GoBulkReleaseCli implements Runnable {
 
     public static void main(String... args) {
         CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
-//        commandLine.registerConverter(VersionIncrementType.class, v -> VersionIncrementType.valueOf(v.toUpperCase()));
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);
     }

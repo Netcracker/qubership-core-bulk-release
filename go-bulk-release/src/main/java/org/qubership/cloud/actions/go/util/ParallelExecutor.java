@@ -10,6 +10,8 @@ import java.util.function.Predicate;
 @Slf4j
 public class ParallelExecutor {
 
+    private ParallelExecutor() {}
+
     public static <T> CommandBuilder<T> forEachIn(Collection<T> collection) {
         return new CommandBuilder<>(collection);
     }
@@ -37,7 +39,9 @@ public class ParallelExecutor {
 
         public <R> List<R> execute(Function<T, R> function) {
             Objects.requireNonNull(function, "function must not be null");
-            if (threadsCount <= 0) throw new IllegalArgumentException("threadsCount must be > 0");
+            if (threadsCount <= 0) {
+                throw new IllegalArgumentException("threadsCount must be > 0");
+            }
 
             final List<T> items = collection.stream()
                     .filter(filter != null ? filter : e -> true)
@@ -65,7 +69,7 @@ public class ParallelExecutor {
                     } catch (CompletionException ce) {
                         Throwable cause = ce.getCause() != null ? ce.getCause() : ce;
                         T failedElement = items.get(i);
-                        throw new RuntimeException("Task failed for element " + failedElement, cause);
+                        throw new TaskExecutionException("Task failed for element " + failedElement, cause);
                     }
                 }
                 return results;

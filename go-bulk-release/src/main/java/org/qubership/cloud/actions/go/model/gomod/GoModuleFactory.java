@@ -1,6 +1,7 @@
 package org.qubership.cloud.actions.go.model.gomod;
 
 import org.qubership.cloud.actions.go.model.GoGAV;
+import org.qubership.cloud.actions.go.model.UnexpectedException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,11 +49,11 @@ public class GoModuleFactory {
             if (moduleName != null) {
                 return new GoModule(moduleName, dependencies, path);
             } else {
-                throw new RuntimeException("TBD module name not found");
+                throw new UnexpectedException("Module name could not be resolved for %s".formatted(path));
             }
         }
         catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new UnexpectedException(e);
         }
     }
 
@@ -69,4 +70,6 @@ public class GoModuleFactory {
 
         throw new IllegalArgumentException("Invalid dependency: " + line);
     }
+
+    private GoModuleFactory() {}
 }

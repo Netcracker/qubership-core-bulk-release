@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.qubership.cloud.actions.go.model.Config;
-import org.qubership.cloud.actions.go.model.RepositoryConfig;
-import org.qubership.cloud.actions.go.model.RepositoryInfo;
+import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
+import org.qubership.cloud.actions.go.model.repository.RepositoryInfo;
 import org.qubership.cloud.actions.go.model.graph.DependencyGraph;
 import org.qubership.cloud.actions.go.model.graph.RepositoryInfoLinker;
 import org.qubership.cloud.actions.go.model.graph.StringEdge;
@@ -28,21 +28,24 @@ public class RepositoryService {
         this.gitService = new GitService(config.getGitConfig());
     }
 
-    public DependencyGraph buildDependencyGraph(String baseDir,
-                                                Set<RepositoryConfig> repositories,
-                                                Set<RepositoryConfig> repositoriesToReleaseFrom) {
-        log.info("Building dependency graph");
+    public List<RepositoryInfo> checkout(String baseDir,
+                                         Set<RepositoryConfig> repositories,
+                                         Set<RepositoryConfig> repositoriesToReleaseFrom) {
         Set<RepositoryConfig> mergedRepositories = merge(repositories, repositoriesToReleaseFrom);
-        Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = merge(repositoriesToReleaseFrom, repositories);
-
-        List<RepositoryInfo> repositoryInfoList = ParallelExecutor.forEachIn(mergedRepositories)
+        return ParallelExecutor.forEachIn(mergedRepositories)
                 .inParallelOn(4)
-                .execute((rc) -> {
+                .execute(rc -> {
                     Path repository = Paths.get(baseDir, rc.getDir());
                     gitService.gitCheckout(repository, rc);
                     return new RepositoryInfo(rc, baseDir);
                 });
+    }
 
+    public DependencyGraph buildDependencyGraph(List<RepositoryInfo> repositoryInfoList,
+                                                Set<RepositoryConfig> repositories,
+                                                Set<RepositoryConfig> repositoriesToReleaseFrom) {
+        log.info("Building dependency graph");
+        Set<RepositoryConfig> mergedRepositoriesToReleaseFrom = merge(repositoriesToReleaseFrom, repositories);
         // set repository dependencies
         RepositoryInfoLinker repositoryInfoLinker = new RepositoryInfoLinker(repositoryInfoList);
 
