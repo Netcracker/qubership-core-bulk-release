@@ -27,10 +27,9 @@ public class GoProxyService {
             String[][] commands = {
                     {"go", "env", "-w", goproxy},
                     {"go", "env", "-w", "GONOPROXY="},
-                    {"go", "env", "-w", "GONOSUMDB=github.com/netcracker/*,github.com/taurmorchant/*,github.com/vlla-test-organization/*"},
+                    {"go", "env", "-w", "GONOSUMDB=github.com/netcracker/*"},
                     {"go", "env", "-w", "GOPRIVATE="}
             };
-            //todo VLLA remove extra GONOSUMDB
             for (String[] cmd : commands) {
                 CommandRunner.exec(cmd);
             }
