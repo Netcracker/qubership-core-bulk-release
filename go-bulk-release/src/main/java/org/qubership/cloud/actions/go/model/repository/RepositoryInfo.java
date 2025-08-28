@@ -91,9 +91,6 @@ public class RepositoryInfo extends RepositoryConfig {
             log.debug("process goModFile {}", goModule.file());
 
             dependencies.stream().filter(this::isModuleContainsDependency).forEach(goModule::get);
-
-            log.info("go mod tidy");
-            goModule.tidy();
         }
         resolveDependencies();
         checkIsAllDependenciesUpdated(dependencies);
