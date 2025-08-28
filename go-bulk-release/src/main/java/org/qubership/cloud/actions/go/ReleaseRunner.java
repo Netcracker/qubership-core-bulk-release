@@ -153,7 +153,9 @@ public class ReleaseRunner {
         log.info("--- GO BUILD {} ---", repository.getUrl());
 
         try {
-            CommandRunner.exec(repository.getRepositoryDirFile(), "go", "build", "./...");
+            CommandRunner.exec(repository.getRepositoryDirFile(), "go", "build", "-mod=mod", "./...");
+
+            gitService.commitModified(repository.getRepositoryDirFile(), "chore(deps): synchronize go.sum dependencies before release");
         } catch (CommandExecutionException e) {
             String msg = "Build failed for repository %s. See logs for more info".formatted(repository.getUrl());
             throw new ReleaseTerminationException(msg, e);
