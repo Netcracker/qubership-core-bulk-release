@@ -6,16 +6,13 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.StoredConfig;
-import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.transport.TagOpt;
 import org.qubership.cloud.actions.go.model.GitConfig;
-import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
 import org.qubership.cloud.actions.go.model.UnexpectedException;
-import org.qubership.cloud.actions.go.util.LoggerWriter;
+import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,7 +30,7 @@ public class GitService {
         this.config = config;
     }
 
-    public void setupGit() {
+    public void setup() {
         Pattern urlPattern = Pattern.compile("^https://(?<host>.+)(:\\d+)?$");
         Pattern gitHostCredsPattern = Pattern.compile("^https://(?<username>.+):(?<password>.+)@(?<host>.+)$");
 
@@ -77,20 +74,15 @@ public class GitService {
         }
     }
 
-    public void gitCheckout(Path repositoryPath, RepositoryConfig repository) {
+    public void clone(Path repositoryPath, RepositoryConfig repository) {
         log.info("Gei checkout for {} [START]", repository.getUrl());
         try {
             boolean repositoryDirExists = Files.exists(repositoryPath);
             Git git;
             String branch = repository.getBranch();
-            //todo vlla do we need this if?
             if (repositoryDirExists && Files.list(repositoryPath).findAny().isPresent()) {
                 git = Git.open(repositoryPath.toFile());
-                try {
-                    git.checkout().setForced(true).setName(branch).call();
-                } catch (RefNotFoundException e) {
-                    git.checkout().setForced(true).setName("origin/" + branch).call();
-                }
+                checkout(git, branch);
             } else {
                 log.debug("Checking out {} from: [{}]", repository.getUrl(), branch);
                 Files.createDirectories(repositoryPath);
@@ -117,6 +109,14 @@ public class GitService {
         }
     }
 
+    public void checkout(Git git, String branch) throws GitAPIException {
+        try {
+            git.checkout().setForced(true).setName(branch).call();
+        } catch (RefNotFoundException e) {
+            git.checkout().setForced(true).setName("origin/" + branch).call();
+        }
+    }
+
     public void commitModified(File repository, String msg) {
         log.debug("Commit modified files for {}", repository.getAbsoluteFile());
         try (Git git = Git.open(repository)) {
@@ -132,17 +132,13 @@ public class GitService {
     }
 
     public void pushChanges(File repository) {
-        PrintWriter printWriter = new PrintWriter(new LoggerWriter(), true);
         try (Git git = Git.open(repository)) {
             git.push()
-                    .setProgressMonitor(new TextProgressMonitor(printWriter))
                     .setCredentialsProvider(config.getCredentialsProvider())
                     .setPushAll()
                     .call();
         } catch (Exception e) {
             throw new UnexpectedException(e);
-        } finally {
-            printWriter.flush();
         }
         log.info("Pushed to git: repo: {}", repository.getAbsoluteFile());
     }

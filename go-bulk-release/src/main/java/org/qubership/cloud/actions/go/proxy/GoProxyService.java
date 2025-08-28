@@ -23,6 +23,7 @@ public class GoProxyService {
             } else {
                 goProxyDir = config.getGoProxyDir();
             }
+            log.debug("Enabling GOPROXY in directory {}", goProxyDir);
             String goproxy = String.format("GOPROXY=file:///%s,https://proxy.golang.org,direct", goProxyDir);
             String[][] commands = {
                     {"go", "env", "-w", goproxy},

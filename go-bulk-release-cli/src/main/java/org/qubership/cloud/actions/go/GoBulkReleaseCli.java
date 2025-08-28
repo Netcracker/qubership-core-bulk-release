@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@SuppressWarnings({"UnusedDeclaration"})
 @CommandLine.Command(description = "go bulk release cli")
 @Slf4j
 public class GoBulkReleaseCli implements Runnable {
@@ -29,7 +30,7 @@ public class GoBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--baseDir"}, required = true, description = "base directory to write result to")
     private String baseDir;
 
-    @CommandLine.Option(names = {"--goProxyDir"}, required = false, description = "GOPROXY directory", defaultValue = "/tmp/GOPROXY")
+    @CommandLine.Option(names = {"--goProxyDir"}, description = "GOPROXY directory", defaultValue = "/tmp/GOPROXY")
     private String goProxyDir;
 
     @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
@@ -41,10 +42,6 @@ public class GoBulkReleaseCli implements Runnable {
             description = "comma seperated list of git urls which were changed and need to be released. Repositories which use them directly or indirectly will be released as well",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositoriesToReleaseFrom = Set.of();
-
-//    @CommandLine.Option(names = {"--gavs"}, split = "\\s*,\\s*",
-//            description = "comma seperated list of GAVs to update dependencies from pom.xml files to")
-//    private Set<String> gavs = new HashSet<>();
 
     @CommandLine.Option(names = {"--skipTests"}, arity = "0", defaultValue = "false", description = "skip tests run by release:prepare mvn command")
     private boolean skipTests;

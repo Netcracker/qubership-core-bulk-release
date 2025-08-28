@@ -36,7 +36,7 @@ public class RepositoryService {
                 .inParallelOn(4)
                 .execute(rc -> {
                     Path repository = Paths.get(baseDir, rc.getDir());
-                    gitService.gitCheckout(repository, rc);
+                    gitService.clone(repository, rc);
                     return new RepositoryInfo(rc, baseDir);
                 });
     }
