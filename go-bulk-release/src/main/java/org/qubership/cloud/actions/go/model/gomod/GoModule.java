@@ -34,4 +34,14 @@ public record GoModule(String moduleName, Set<GoGAV> dependencies, Path file) {
             throw new ReleaseTerminationException(msg, e);
         }
     }
+
+    public void modDownload() {
+        try {
+            CommandRunner.exec(file.getParent().toFile(), "go", "mod", "download");
+        }
+        catch (CommandExecutionException e) {
+            String msg = "Cannot perform 'go mod download' in module '%s'".formatted(moduleName);
+            throw new ReleaseTerminationException(msg, e);
+        }
+    }
 }
