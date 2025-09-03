@@ -9,7 +9,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>maven-bulk-release</artifactId>
+    <artifactId>go-bulk-release</artifactId>
 
     <properties>
         <jackson.version>2.18.4</jackson.version>
@@ -45,11 +45,6 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.failsafe</groupId>
-            <artifactId>failsafe</artifactId>
-            <version>3.3.2</version>
-        </dependency>
-        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.5.18</version>
@@ -60,16 +55,6 @@
             <version>7.3.0.202506031305-r</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-model</artifactId>
-            <version>3.9.9</version>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.plexus</groupId>
-            <artifactId>plexus-xml</artifactId>
-            <version>4.1.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.jgrapht</groupId>
             <artifactId>jgrapht-core</artifactId>
             <version>${org.jgrapht.version}</version>
@@ -78,23 +63,6 @@
             <groupId>org.jgrapht</groupId>
             <artifactId>jgrapht-io</artifactId>
             <version>${org.jgrapht.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-artifact</artifactId>
-            <version>3.9.10</version>
-        </dependency>
-        <dependency>
-            <groupId>org.kohsuke</groupId>
-            <artifactId>github-api</artifactId>
-            <version>1.327</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.11.4</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
