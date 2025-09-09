@@ -24,13 +24,12 @@ public class RepositoryConfig {
     final VersionIncrementType versionIncrementType;
 
     @Builder(builderMethodName = "")
-    protected RepositoryConfig(String url, String branch, boolean skipTests, String version,
-                               VersionIncrementType versionIncrementType) {
+    protected RepositoryConfig(String url, String branch, boolean skipTests, String version, VersionIncrementType versionIncrementType) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("URL must be specified");
         }
-        if (branch == null || branch.isBlank()) {
-            throw new IllegalArgumentException("Branch must be specified for repository: " + url);
+        if ((branch == null || branch.isBlank()) && (version == null || version.isBlank())) {
+            throw new IllegalArgumentException("Branch or version must be specified for repository: " + url);
         }
         this.url = normalizeGitUrl.apply(url);
         Matcher matcher = pattern.matcher(url);
@@ -41,7 +40,7 @@ public class RepositoryConfig {
         this.skipTests = skipTests;
         this.version = version;
         this.branch = branch;
-        this.versionIncrementType = Optional.ofNullable(versionIncrementType).orElse(VersionIncrementType.PATCH);
+        this.versionIncrementType = versionIncrementType;
     }
 
     public static RepositoryConfigBuilder builder(String url) {

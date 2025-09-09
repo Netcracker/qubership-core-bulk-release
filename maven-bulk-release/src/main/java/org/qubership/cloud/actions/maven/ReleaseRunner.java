@@ -202,7 +202,8 @@ public class ReleaseRunner {
             // todo - disable, because this plugin brings versions from redhat server i.e. 2.0.17.redhat-00001 which is not acceptable
             // updatePatchVersions(repository, config, javaVersion, outputStream);
 
-            VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType()).orElse(config.getVersionIncrementType());
+            VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType())
+                    .orElse(Optional.ofNullable(config.getVersionIncrementType()).orElse(VersionIncrementType.PATCH));
             String releaseVersion = repository.calculateReleaseVersion(versionIncrementType);
             return releasePrepare(repository, config, releaseVersion, javaVersion, outputStream);
         }
@@ -242,34 +243,6 @@ public class ReleaseRunner {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    void updatePatchVersions(RepositoryInfo repositoryInfo, Config config, String javaVersion, OutputStream outputStream) throws Exception {
-        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
-        List<String> arguments = new ArrayList<>();
-        arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
-        List<String> cmd = List.of("mvn", "-B", "versions:use-latest-releases",
-                "-DallowMajorUpdates=false",
-                "-DallowMinorUpdates=false",
-                warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
-                warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments)))
-        );
-
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
-        Optional.ofNullable(javaVersion).map(v -> config.getJavaVersionToJavaHomeEnv().get(v))
-                .ifPresent(javaHome -> processBuilder.environment().put("JAVA_HOME", javaHome));
-
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
-
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(outputStream);
-        process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
         }
     }
 

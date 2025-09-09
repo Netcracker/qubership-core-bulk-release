@@ -132,7 +132,7 @@ public class RenovateConfigConverterTest {
                   - ":ignoreModulesAndTests"
                   - ":dependencyDashboard"
                 helmv3:
-                  registryAlcd iases:
+                  registryAliases:
                     "'@custom.libraries.helm.staging'": https://artifactory.com/artifactory/custom.libraries.helm.staging
                 packageRules:
                   - matchManagers:
@@ -165,7 +165,7 @@ public class RenovateConfigConverterTest {
                 "--renovateConfigOutputFile=" + renovateConfigFile,
                 "--repositoriesFile=" + repositoriesFile,
                 "--repository=https://github.com/Netcracker/qubership-core-release-test-maven-lib-3[branch=main]",
-                "--fromJson={'packageRules':[{'matchDatasources':['maven'],'registryUrls':['https://artifactorycn.netcracker.com/pd.saas-release.mvn.group','https://artifactorycn.netcracker.com/maven_pkg_github_com_netcracker.mvn.proxy']}]}",
+                "--fromJson={'packageRules':[{'matchDatasources':['maven'],'registryUrls':['https://artifactory.com/pd.saas-release.mvn.group','https://artifactory.com/maven_pkg_github_com_netcracker.mvn.proxy']}]}",
                 "--fromJson={'packageRules':[{'matchManagers':['maven'],'matchPackageNames':['/^org.qubership.*/'],'groupName':'qubership','labels':['group:qubership']}]}}",
                 "--groupNameMapping={'quarkus': 'io.quarkus.*'}",
                 "--groupNameMapping={\"com.fasterxml.jackson\": \"com.fasterxml.jackson.*\"}",
@@ -212,7 +212,7 @@ public class RenovateConfigConverterTest {
                     allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
                   }, {
                     matchDatasources : [ "maven" ],
-                    registryUrls : [ "https://artifactorycn.netcracker.com/pd.saas-release.mvn.group", "https://artifactorycn.netcracker.com/maven_pkg_github_com_netcracker.mvn.proxy" ]
+                    registryUrls : [ "https://artifactory.com/pd.saas-release.mvn.group", "https://artifactory.com/maven_pkg_github_com_netcracker.mvn.proxy" ]
                   }, {
                     matchManagers : [ "maven" ],
                     matchPackageNames : [ "/^org.qubership.*/" ],

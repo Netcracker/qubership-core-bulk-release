@@ -27,8 +27,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @Slf4j
 public class GitService {
 
+    final GitConfig gitConfig;
+
     public GitService(GitConfig gitConfig) {
         setupGit(gitConfig);
+        this.gitConfig = gitConfig;
     }
 
     private void setupGit(GitConfig gitConfig) {
@@ -75,7 +78,7 @@ public class GitService {
         }
     }
 
-    public void gitCheckout(String baseDir, GitConfig gitConf, RepositoryConfig repository, OutputStream out) {
+    public void gitCheckout(String baseDir, RepositoryConfig repository, OutputStream out) {
         try (out) {
             Path repositoryDirPath = Paths.get(baseDir, repository.getDir());
             boolean repositoryDirExists = Files.exists(repositoryDirPath);
@@ -95,26 +98,26 @@ public class GitService {
                     Files.createDirectories(repositoryDirPath);
 
                     git = Git.cloneRepository()
-                            .setCredentialsProvider(gitConf.getCredentialsProvider())
+                            .setCredentialsProvider(this.gitConfig.getCredentialsProvider())
                             .setURI(repository.getUrl())
                             .setDirectory(repositoryDirPath.toFile())
                             .setDepth(1)
                             .setBranch(branch)
                             .setCloneAllBranches(false)
                             .setTagOption(TagOpt.FETCH_TAGS)
-                            .setProgressMonitor(gitConf.isPrintProgress() ? new TextProgressMonitor(printWriter) : null)
+                            .setProgressMonitor(this.gitConfig.isPrintProgress() ? new TextProgressMonitor(printWriter) : null)
                             .call();
                 } finally {
                     printWriter.flush();
                 }
             }
             try (git; org.eclipse.jgit.lib.Repository rep = git.getRepository()) {
-                StoredConfig gitConfig = rep.getConfig();
-                gitConfig.setString("user", null, "name", gitConf.getUsername());
-                gitConfig.setString("user", null, "email", gitConf.getEmail());
-                gitConfig.setString("credential", null, "helper", "store");
-                gitConfig.save();
-                log.debug("Saved git config:\n{}", gitConfig.toText());
+                StoredConfig storedConfig = rep.getConfig();
+                storedConfig.setString("user", null, "name", this.gitConfig.getUsername());
+                storedConfig.setString("user", null, "email", this.gitConfig.getEmail());
+                storedConfig.setString("credential", null, "helper", "store");
+                storedConfig.save();
+                log.debug("Saved git config:\n{}", storedConfig.toText());
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
