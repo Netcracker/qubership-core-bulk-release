@@ -120,8 +120,10 @@ public class ReleaseRunner {
                                 } catch (IOException ioe) {
                                     log.error("Failed to read log file: {}", repoLogFilePath, ioe);
                                 }
-                                log.error("'prepare' process for repository '{}' has failed. Error: {}.\nFor details see log content above",
+                                log.error("'prepare' process for repository '{}' has failed. Error: {}. \nFor details see log content above",
                                         repositoryInfo.getUrl(), e.getMessage());
+                                log.info("Shutting down now executor service");
+                                executorService.shutdownNow();
                                 throw new RuntimeException(e);
                             }
                         })
