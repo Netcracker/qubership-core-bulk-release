@@ -9,7 +9,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>renovate-config-cli</artifactId>
+    <artifactId>go-bulk-release-cli</artifactId>
 
     <dependencies>
         <dependency>
@@ -20,19 +20,13 @@
         </dependency>
         <dependency>
             <groupId>org.qubership.cloud</groupId>
-            <artifactId>maven-bulk-release</artifactId>
+            <artifactId>go-bulk-release</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli</artifactId>
             <version>4.7.7</version>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.12.2</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -56,7 +50,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.qubership.cloud.actions.renovate.RenovateConfigCli</mainClass>
+                            <mainClass>org.qubership.cloud.actions.go.GoBulkReleaseCli</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
