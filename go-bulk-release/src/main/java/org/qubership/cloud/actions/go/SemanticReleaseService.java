@@ -17,11 +17,10 @@ public class SemanticReleaseService {
 
     ReleaseVersion resolveReleaseVersion(RepositoryInfo repository) {
         try {
-            String[] command = new String[]{"semantic-release", "--no-ci", "--dry", "--allow-no-changes",
+            String[] command = new String[]{"semantic-release", "--no-ci", "--dry", "--allow-no-changes", "--force-bump-patch-version",
                     "--provider", "git",
                     "--provider-opt", "default_branch=main",
-                    "--ci-condition", "default",
-                    "--commit-analyzer-opt", "patch_release_rules=*"};
+                    "--ci-condition", "default"};
             List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), command);
 
             String currentVersion = null;
@@ -54,11 +53,10 @@ public class SemanticReleaseService {
         log.info("=== DEPLOY RELEASE {} ===", repository.getDir());
 
         try {
-            String[] command = {"semantic-release", "--allow-no-changes", "--no-ci",
+            String[] command = {"semantic-release", "--allow-no-changes", "--no-ci", "--force-bump-patch-version",
                     "--provider", "github",
                     "--provider-opt", "slug=" + repository.getDir(),
                     "--ci-condition", "default",
-                    "--commit-analyzer-opt", "patch_release_rules=*",
                     "--changelog-generator-opt", "format_commit_template=" + CHANGELOG_FORMAT_TEMPLATE};
             CommandRunner.exec(repository.getRepositoryDirFile(), command);
         } catch (CommandExecutionException e) {
