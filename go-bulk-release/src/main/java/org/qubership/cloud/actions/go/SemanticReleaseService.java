@@ -20,6 +20,7 @@ public class SemanticReleaseService {
             String[] command = new String[]{"semantic-release", "--no-ci", "--dry", "--allow-no-changes", "--force-bump-patch-version",
                     "--provider", "git",
                     "--provider-opt", "default_branch=main",
+                    "--provider-opt", "log_order=ctime",
                     "--ci-condition", "default"};
             List<String> result = CommandRunner.execWithResult(repository.getRepositoryDirFile(), command);
 
