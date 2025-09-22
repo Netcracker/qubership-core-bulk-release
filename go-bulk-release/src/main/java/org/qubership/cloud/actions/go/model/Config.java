@@ -25,6 +25,7 @@ public class Config {
     boolean skipTests;
     boolean dryRun;
     boolean runSequentially;
+    boolean skipGoProxy;
 
     @Builder(builderMethodName = "")
     private Config(String baseDir,
@@ -39,7 +40,8 @@ public class Config {
                    String gavsResultFile,
                    boolean skipTests,
                    boolean dryRun,
-                   boolean runSequentially) {
+                   boolean runSequentially,
+                   boolean skipGoProxy) {
         this.baseDir = baseDir;
         this.goProxyDir = goProxyDir;
         this.gitConfig = gitConfig;
@@ -53,6 +55,7 @@ public class Config {
         this.skipTests = skipTests;
         this.dryRun = dryRun;
         this.runSequentially = runSequentially;
+        this.skipGoProxy = skipGoProxy;
     }
 
     public static ConfigBuilder builder(String baseDir,

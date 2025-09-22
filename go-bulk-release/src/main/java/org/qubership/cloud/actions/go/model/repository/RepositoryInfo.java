@@ -65,9 +65,6 @@ public class RepositoryInfo extends RepositoryConfig {
         }
 
         List<Path> goModFilePaths = FilesUtils.findAll(Path.of(baseDir, dir), "go.mod");
-        if (goModFilePaths.size() != 1) {
-            throw new UnsupportedOperationException("Repositories with several go.mod files do not supported yet");
-        }
 
         List<GoModule> goModules = goModFilePaths.stream().map(GoModuleFactory::create).toList();
 
