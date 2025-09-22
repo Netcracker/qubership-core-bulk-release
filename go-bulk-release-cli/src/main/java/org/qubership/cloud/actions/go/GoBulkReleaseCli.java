@@ -67,6 +67,9 @@ public class GoBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--gavsResultFile"}, description = "File path to save dependencies graph in DOT format")
     private String gavsResultFile;
 
+    @CommandLine.Option(names = {"--skipGoProxy"}, arity = "0", defaultValue = "false", description = "skip publish modules to go proxy")
+    private boolean skipGoProxy;
+
     public static void main(String... args) {
         CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
         int exitCode = commandLine.execute(args);
@@ -109,6 +112,7 @@ public class GoBulkReleaseCli implements Runnable {
                 .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
                 .skipTests(skipTests)
                 .dryRun(dryRun)
+                .skipGoProxy(skipGoProxy)
                 .summaryFile(summaryFile)
                 .resultOutputFile(resultOutputFile)
                 .dependencyGraphFile(dependencyGraphFile)

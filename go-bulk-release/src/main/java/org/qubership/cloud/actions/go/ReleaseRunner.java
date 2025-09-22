@@ -4,6 +4,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.go.model.*;
+import org.qubership.cloud.actions.go.model.gomod.GoModule;
 import org.qubership.cloud.actions.go.model.graph.DependencyGraph;
 import org.qubership.cloud.actions.go.model.repository.RepositoryConfig;
 import org.qubership.cloud.actions.go.model.repository.RepositoryInfo;
@@ -153,19 +154,25 @@ public class ReleaseRunner {
         log.info("--- GO BUILD {} ---", repository.getUrl());
 
         try {
-            CommandRunner.exec(repository.getRepositoryDirFile(), "go", "build", "-mod=mod", "./...");
-
-            gitService.commitModified(repository.getRepositoryDirFile(), "chore(deps): synchronize go.sum dependencies before release");
+            for (GoModule goModule : repository.getGoModFiles()) {
+                log.info("Run go build for module {}", goModule.getModuleDir());
+                CommandRunner.exec(goModule.getModuleDir(), "go", "build", "-mod=mod", "./...");
+            }
         } catch (CommandExecutionException e) {
             String msg = "Build failed for repository %s. See logs for more info".formatted(repository.getUrl());
             throw new ReleaseTerminationException(msg, e);
         }
+
+        gitService.commitModified(repository.getRepositoryDirFile(), "chore(deps): synchronize go.sum dependencies before release");
     }
 
     void runGoTest(RepositoryInfo repository) {
         log.info("--- GO TEST {} ---", repository.getUrl());
         try {
-            CommandRunner.exec(repository.getRepositoryDirFile(), "go", "test", "./...", "-v");
+            for (GoModule goModule: repository.getGoModFiles()) {
+                log.info("Run go test for module {}", goModule.getModuleDir());
+                CommandRunner.exec(goModule.getModuleDir(), "go", "test", "./...", "-v");
+            }
         } catch (CommandExecutionException e) {
             String msg = "Tests failed for repository %s. See logs for more info".formatted(repository.getUrl());
             throw new ReleaseTerminationException(msg, e);
@@ -175,7 +182,10 @@ public class ReleaseRunner {
     void publishToGoProxy(Config config, RepositoryInfo repository, ReleaseVersion releaseVersion) {
         log.info("--- PUBLISH TO GO PROXY {} ---", repository.getUrl());
 
-        goProxyService.publishToLocalGoProxy(repository, releaseVersion.getNewVersion().getValue(), config.getGoProxyDir());
+        for (GoModule goModule: repository.getGoModFiles()) {
+            log.debug("Publish to GOPROXY module {}", goModule.getModuleDir());
+            goProxyService.publishToLocalGoProxy(goModule.getModuleDir().getAbsolutePath(), releaseVersion.getNewVersion().getValue(), config.getGoProxyDir());
+        }
     }
 
     void cleanupLocalCopy(RepositoryInfo repository) {
