@@ -62,18 +62,14 @@ public class RepositoryService {
                         .map(repositoryToReleaseFrom -> repos2.stream()
                                 .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
                                 .findFirst()
-                                .map(repository -> {
-                                    String repositoryBranch1 = repository.getBranch();
-                                    String repositoryBranch2 = repositoryToReleaseFrom.getBranch();
-                                    if (!Objects.equals(repositoryBranch1, repositoryBranch2)) {
-                                        if (!Objects.equals(repositoryBranch2, RepositoryConfig.HEAD)) {
-                                            return RepositoryConfig.builder(repository).branch(repositoryBranch2).build();
-                                        } else {
-                                            return RepositoryConfig.builder(repository).branch(repositoryBranch1).build();
-                                        }
-                                    }
-                                    return repository;
-                                }).orElse(repositoryToReleaseFrom))
+                                .map(repository ->
+                                        RepositoryConfig.builder(repository.getUrl())
+                                                .branch(Optional.ofNullable(repository.getBranch()).orElse(repositoryToReleaseFrom.getBranch()))
+                                                .version(Optional.ofNullable(repository.getVersion()).orElse(repositoryToReleaseFrom.getVersion()))
+                                                .versionIncrementType(Optional.ofNullable(repository.getVersionIncrementType()).orElse(repositoryToReleaseFrom.getVersionIncrementType()))
+                                                .skipTests(repository.isSkipTests() || repositoryToReleaseFrom.isSkipTests())
+                                                .build())
+                                .orElse(repositoryToReleaseFrom))
                         .collect(Collectors.toList());
         List<RepositoryConfig> mergedRepositories = mergeFunction.apply(repositories, repositoriesToReleaseFrom);
         List<RepositoryConfig> mergedRepositoriesToReleaseFrom = mergeFunction.apply(repositoriesToReleaseFrom, repositories);

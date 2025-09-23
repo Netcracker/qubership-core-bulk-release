@@ -105,8 +105,12 @@ public class ReleaseRunner {
                                 int iterations = 0;
                                 while ((line = reader.readLine()) != null) {
                                     Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-                                    if (++iterations % 100 == 0) {
-                                        System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
+                                    if (config.isLogsToConsole()) {
+                                        System.out.println(line);
+                                    } else {
+                                        if (++iterations % 100 == 0) {
+                                            System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
+                                        }
                                     }
                                 }
                                 RepositoryRelease repositoryRelease = future.getFuture().get();
@@ -115,10 +119,12 @@ public class ReleaseRunner {
                                 return repositoryRelease;
                             } catch (Exception e) {
                                 if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                try {
-                                    Files.readAllLines(repoLogFilePath).forEach(log::error);
-                                } catch (IOException ioe) {
-                                    log.error("Failed to read log file: {}", repoLogFilePath, ioe);
+                                if (!config.isLogsToConsole()) {
+                                    try {
+                                        Files.readAllLines(repoLogFilePath).forEach(log::error);
+                                    } catch (IOException ioe) {
+                                        log.error("Failed to read log file: {}", repoLogFilePath, ioe);
+                                    }
                                 }
                                 log.error("'prepare' process for repository '{}' has failed. Error: {}. \nFor details see log content above",
                                         repositoryInfo.getUrl(), e.getMessage());

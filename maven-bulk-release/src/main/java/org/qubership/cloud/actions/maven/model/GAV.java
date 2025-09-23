@@ -39,7 +39,7 @@ public class GAV extends GA implements Comparable<GAV> {
 
     @Override
     public int compareTo(GAV o) {
-        return Comparator.comparing(GA::getGroupId).thenComparing(GA::getArtifactId).compare(this, o);
+        return Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId).thenComparing(GAV::getVersion).compare(this, o);
     }
 
 }

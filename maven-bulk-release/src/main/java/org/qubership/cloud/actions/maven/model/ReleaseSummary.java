@@ -4,7 +4,7 @@ import java.util.stream.Collectors;
 
 public class ReleaseSummary {
 
-    public  static String md(Result result) {
+    public static String md(Result result) {
         String releasedRepositoriesGavs = String.join("\n", result.getReleases().stream()
                 .map(r -> {
                     // language=md
@@ -19,23 +19,21 @@ public class ReleaseSummary {
                             r.getRepository().getUrl();
                     String gavs = r.getGavs().stream().map(GAV::toString).collect(Collectors.joining("\n"));
                     String urlName = r.getRepository().getUrl();
-                    if (!RepositoryConfig.HEAD.equals(r.getRepository().getBranch())) {
-                        urlName += String.format(" [%s]", r.getRepository().getBranch());
-                    }
+                    urlName += String.format(" [%s]", r.getRepository().getBranch());
                     String link = String.format("[%s](%s)", urlName, tagUrl);
                     return String.format(repositoryPart, link, gavs);
                 }).toList());
         return String.format("""
                 ### Release Summary%s
                 %s
-                """, result.isDryRun()? " [DRY RUN]" : "", releasedRepositoriesGavs);
+                """, result.isDryRun() ? " [DRY RUN]" : "", releasedRepositoriesGavs);
     }
 
-    public  static String gavs(Result result) {
+    public static String gavs(Result result) {
         return result.getReleases().stream().flatMap(r -> r.getGavs().stream()).map(GAV::toString).collect(Collectors.joining(","));
     }
 
-    public  static String dependencyGraphDOT(Result result) {
+    public static String dependencyGraphDOT(Result result) {
         return result.getDependenciesDot();
     }
 
