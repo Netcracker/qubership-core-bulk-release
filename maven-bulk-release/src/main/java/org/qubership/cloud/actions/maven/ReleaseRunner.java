@@ -241,19 +241,29 @@ public class ReleaseRunner {
         repositoryInfo.updateDepVersions(dependencies);
         // check all versions were updated
         Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
-        Set<GAV> missedDependencies = updatedModuleDependencies.stream()
-                .filter(gav -> {
+        List<String> missedDependencies = updatedModuleDependencies.stream()
+                .map(gav -> {
                     Optional<GAV> foundGav = dependencies.stream()
                             .filter(dGav -> Objects.equals(gav.getGroupId(), dGav.getGroupId()) &&
                                             Objects.equals(gav.getArtifactId(), dGav.getArtifactId()))
                             .findFirst();
-                    if (foundGav.isEmpty()) return false;
+                    if (foundGav.isEmpty()) {
+                        return Optional.<String>empty();
+                    }
                     GAV g = foundGav.get();
-                    return !Objects.equals(gav.getVersion(), g.getVersion());
+                    if (!Objects.equals(gav.getVersion(), g.getVersion())) {
+                        return Optional.of(String.format("GA [%s] expected version = %s, actual = %s",
+                                gav.toGA().toString(), g.getVersion(), gav.getVersion()));
+                    } else {
+                        return Optional.<String>empty();
+                    }
                 })
-                .collect(Collectors.toSet());
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
         if (!missedDependencies.isEmpty()) {
-            throw new RuntimeException("Failed to update dependencies: " + missedDependencies.stream().map(GAV::toString).collect(Collectors.joining("\n")));
+            throw new RuntimeException(String.format("Failed to update dependencies. Check poms of repository: %s have valid versions assignment for: \n%s",
+                    repositoryInfo.getUrl(), String.join("\n", missedDependencies)));
         }
         commitUpdatedDependenciesIfAny(repositoryInfo);
     }
