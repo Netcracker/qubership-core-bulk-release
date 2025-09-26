@@ -75,7 +75,7 @@ public class ReleaseRunner {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
                         .map(e -> new GAV(e.getKey().getGroupId(), e.getKey().getArtifactId(), e.getValue()))
                         .collect(Collectors.toSet());
-                List<RepositoryRelease> releases = reposInfoList.stream()
+                List<TraceableFuture<RepositoryRelease, RepositoryInfo>> traceableFutures = reposInfoList.stream()
                         .map(repo -> {
                             try {
                                 PipedOutputStream out = new PipedOutputStream();
@@ -86,8 +86,8 @@ public class ReleaseRunner {
                                 throw new RuntimeException(e);
                             }
                         })
-                        .toList()
-                        .stream()
+                        .toList();
+                List<RepositoryRelease> releases = traceableFutures.stream()
                         .map(future -> {
                             RepositoryInfo repositoryInfo = future.getObject();
                             Path repoLogDirPath = logsFolderPath.resolve(repositoryInfo.getDir());
@@ -130,6 +130,13 @@ public class ReleaseRunner {
                                         repositoryInfo.getUrl(), e.getMessage());
                                 log.info("Shutting down now executor service");
                                 executorService.shutdownNow();
+                                for (TraceableFuture<RepositoryRelease, RepositoryInfo> traceableFuture : new ArrayList<>(traceableFutures)) {
+                                    try {
+                                        traceableFuture.getPipedInputStream().close();
+                                    } catch (IOException ioe) {
+                                        log.warn("Failed to close piped stream: {}", ioe.getMessage());
+                                    }
+                                }
                                 throw new RuntimeException(e);
                             }
                         })
@@ -146,7 +153,7 @@ public class ReleaseRunner {
                 log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
                         String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
                 try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-                    allReleases.stream()
+                    List<TraceableFuture<RepositoryRelease, RepositoryRelease>> traceableFutures = allReleases.stream()
                             .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
                                     .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
                             .map(release -> {
@@ -159,42 +166,55 @@ public class ReleaseRunner {
                                     throw new RuntimeException(e);
                                 }
                             })
-                            .toList()
-                            .forEach(future -> {
-                                RepositoryRelease repositoryRelease = future.getObject();
-                                Path repoLogDirPath = logsFolderPath.resolve(repositoryRelease.getRepository().getDir());
-                                Path repoLogFilePath = repoLogDirPath.resolve("perform.log");
-                                try (PipedInputStream pipedInputStream = future.getPipedInputStream();
-                                     BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                                    if (!Files.exists(repoLogDirPath)) {
-                                        Files.createDirectories(repoLogDirPath);
+                            .toList();
+                    traceableFutures.forEach(future -> {
+                        RepositoryRelease repositoryRelease = future.getObject();
+                        Path repoLogDirPath = logsFolderPath.resolve(repositoryRelease.getRepository().getDir());
+                        Path repoLogFilePath = repoLogDirPath.resolve("perform.log");
+                        try (PipedInputStream pipedInputStream = future.getPipedInputStream();
+                             BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
+                            if (!Files.exists(repoLogDirPath)) {
+                                Files.createDirectories(repoLogDirPath);
+                            }
+                            Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                            log.info("Started 'perform' process for repository '{}'.\nFor details see log file: {}",
+                                    repositoryRelease.getRepository().getUrl(), repoLogFilePath);
+                            String line;
+                            int iterations = 0;
+                            while ((line = reader.readLine()) != null) {
+                                Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+                                if (config.isLogsToConsole()) {
+                                    System.out.println(line);
+                                } else {
+                                    if (++iterations % 100 == 0) {
+                                        System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
                                     }
-                                    Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                                    log.info("Started 'perform' process for repository '{}'.\nFor details see log file: {}",
-                                            repositoryRelease.getRepository().getUrl(), repoLogFilePath);
-                                    String line;
-                                    int iterations = 0;
-                                    while ((line = reader.readLine()) != null) {
-                                        Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-                                        if (++iterations % 100 == 0) {
-                                            System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
-                                        }
-                                    }
-                                    future.getFuture().get();
-                                    log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
-                                            repositoryRelease.getRepository().getUrl(), repoLogFilePath);
-                                } catch (Exception e) {
-                                    if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                                    try {
-                                        Files.readAllLines(repoLogFilePath).forEach(log::error);
-                                    } catch (IOException ioe) {
-                                        log.error("Failed to read log file: {}", repoLogFilePath, ioe);
-                                    }
-                                    log.error("'perform' process for repository '{}' has failed. Error: {}.\nFor details see log content above",
-                                            repositoryRelease.getRepository().getUrl(), e.getMessage());
-                                    throw new RuntimeException(e);
                                 }
-                            });
+                            }
+                            future.getFuture().get();
+                            log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
+                                    repositoryRelease.getRepository().getUrl(), repoLogFilePath);
+                        } catch (Exception e) {
+                            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+                            if (!config.isLogsToConsole()) {
+                                try {
+                                    Files.readAllLines(repoLogFilePath).forEach(log::error);
+                                } catch (IOException ioe) {
+                                    log.error("Failed to read log file: {}", repoLogFilePath, ioe);
+                                }
+                            }
+                            log.error("'perform' process for repository '{}' has failed. Error: {}.\nFor details see log content above",
+                                    repositoryRelease.getRepository().getUrl(), e.getMessage());
+                            for (TraceableFuture<RepositoryRelease, RepositoryRelease> traceableFuture : new ArrayList<>(traceableFutures)) {
+                                try {
+                                    traceableFuture.getPipedInputStream().close();
+                                } catch (IOException ioe) {
+                                    log.warn("Failed to close piped stream: {}", ioe.getMessage());
+                                }
+                            }
+                            throw new RuntimeException(e);
+                        }
+                    });
                 }
             });
         }

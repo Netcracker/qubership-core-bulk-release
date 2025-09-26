@@ -35,6 +35,9 @@ public class MavenVersionDependenciesCli implements Runnable {
     @CommandLine.Option(names = {"--gitPassword"}, required = true, description = "git password")
     private String gitPassword;
 
+    @CommandLine.Option(names = {"--extraBranchSuffix"}, description = "extra suffix to use for branch")
+    private String extraBranchSuffix;
+
     @CommandLine.Option(names = {"--createMissingBranches"}, required = true,
             description = "create and push to git required support branch if it's not found")
     private boolean createMissingBranches;
@@ -86,7 +89,7 @@ public class MavenVersionDependenciesCli implements Runnable {
             RepositoryService repositoryService = new RepositoryService(new GitService(gitConfig));
             Map<Integer, List<RepositoryInfo>> repositoriesMap = repositoryService.buildVersionedDependencyGraph(baseDir,
                     gitConfig, mavenConfig, repositories, createMissingBranches, validateSameVersionUpToLevel,
-                    skipValidationForGAPatterns, out);
+                    skipValidationForGAPatterns, extraBranchSuffix, out);
             String result = repositoriesMap.values().stream()
                     .flatMap(Collection::stream)
                     .map(r -> String.format("%s[branch=%s]", r.getUrl(), r.getBranch()))
