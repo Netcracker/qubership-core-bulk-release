@@ -136,6 +136,7 @@ public class GitService {
             git.push()
                     .setCredentialsProvider(config.getCredentialsProvider())
                     .setPushAll()
+                    .setPushTags()
                     .call();
         } catch (Exception e) {
             throw new UnexpectedException(e);
