@@ -54,7 +54,7 @@ public class RepositoryInfo extends RepositoryConfig {
         this.perModuleDependencies.clear();
 
         String dir = UrlUtils.getDirName(getUrl());
-        Path repositoryDirPath = Paths.get(baseDir, UrlUtils.getDirName(getUrl()));
+        Path repositoryDirPath = Paths.get(baseDir, dir);
         boolean repositoryDirExists = Files.exists(repositoryDirPath);
         try (Stream<Path> files = Files.list(repositoryDirPath)) {
             if (!repositoryDirExists || files.findAny().isEmpty()) {
@@ -64,9 +64,11 @@ public class RepositoryInfo extends RepositoryConfig {
             throw new UnexpectedException(e);
         }
 
-        List<Path> goModFilePaths = FilesUtils.findAll(Path.of(baseDir, dir), "go.mod");
+        List<Path> goModFilePaths = FilesUtils.findAll(repositoryDirPath, "go.mod");
 
-        List<GoModule> goModules = goModFilePaths.stream().map(GoModuleFactory::create).toList();
+        List<GoModule> goModules = goModFilePaths.stream()
+                .map(path -> GoModuleFactory.create(repositoryDirPath, path))
+                .toList();
 
         this.goModFiles = goModules;
 

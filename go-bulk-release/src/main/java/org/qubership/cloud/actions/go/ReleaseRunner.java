@@ -114,6 +114,8 @@ public class ReleaseRunner {
             runGoTest(repository);
         }
 
+        createTagsForSubmodules(repository, releaseVersion);
+
         cleanupLocalCopy(repository);
         publishToGoProxy(config, repository, releaseVersion);
 
@@ -175,6 +177,24 @@ public class ReleaseRunner {
             }
         } catch (CommandExecutionException e) {
             String msg = "Tests failed for repository %s. See logs for more info".formatted(repository.getUrl());
+            throw new ReleaseTerminationException(msg, e);
+        }
+    }
+
+    //It is necessary for submodules (modules with `go.mod` not located in the root directory of the repository)
+    private void createTagsForSubmodules(RepositoryInfo repository, ReleaseVersion releaseVersion) {
+        log.info("--- GO CREATE TAGS {} ---", repository.getUrl());
+        try {
+            for (GoModule goModule: repository.getGoModFiles()) {
+                if (goModule.isSubModule()) {
+                    log.info("Create tag for module {}", goModule.getModuleDir());
+                    String tagName = goModule.relativePath() + "/" + releaseVersion.getNewVersion();
+
+                    CommandRunner.exec(goModule.getModuleDir(), "git", "tag", "-a", tagName, "-m", "\"%s\"".formatted(tagName));
+                }
+            }
+        } catch (CommandExecutionException e) {
+            String msg = "Cannot create tag for repository %s. See logs for more info".formatted(repository.getUrl());
             throw new ReleaseTerminationException(msg, e);
         }
     }

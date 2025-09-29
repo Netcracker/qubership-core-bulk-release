@@ -9,7 +9,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Set;
 
-public record GoModule(String moduleName, Set<GoGAV> dependencies, Path file) {
+public record GoModule(String moduleName, Set<GoGAV> dependencies, Path file, String relativePath) {
     public void get(GoGAV gav) {
         String lib = gav.getArtifactId() + "@" + gav.getVersion();
         get(lib);
@@ -47,5 +47,9 @@ public record GoModule(String moduleName, Set<GoGAV> dependencies, Path file) {
             String msg = "Cannot perform 'go mod download all' in module '%s'".formatted(moduleName);
             throw new ReleaseTerminationException(msg, e);
         }
+    }
+
+    public boolean isSubModule() {
+        return !relativePath.isEmpty();
     }
 }
