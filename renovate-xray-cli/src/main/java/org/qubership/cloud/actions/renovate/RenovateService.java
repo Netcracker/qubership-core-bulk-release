@@ -37,7 +37,11 @@ public class RenovateService {
                             .peek(rule -> {
                                 rule.put("enabled", true);
                                 rule.put("addLabels", labels);
-                                rule.put("prBodyNotes", List.of("Fixed CVEs: " + String.join(", ", fixes.get(gav))));
+                                rule.put("prBodyNotes", List.of(
+                                        """
+                                                <span style="color:red">Vulnerability alert</span>
+                                                This MR fixes the following CVEs:
+                                                """ + String.join("\n", fixes.get(gav))));
                             })).toList();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to build renovate package rules for report: " + reportFilePath, e);

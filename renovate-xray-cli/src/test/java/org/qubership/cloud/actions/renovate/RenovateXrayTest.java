@@ -214,7 +214,7 @@ public class RenovateXrayTest {
                         allowedVersions : "/^1.6.7$/",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "Fixed CVEs: CVE-2023-4444" ]
+                        prBodyNotes : [ "<span style=\\"color:red\\">Vulnerability alert</span>\\nThis MR fixes the following CVEs:\\nCVE-2023-4444" ]
                       } ],
                       platform : "github",
                       platformAutomerge : true,
