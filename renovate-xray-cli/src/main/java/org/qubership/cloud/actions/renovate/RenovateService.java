@@ -35,6 +35,7 @@ public class RenovateService {
                     renovateRulesService.gavsToRules(List.of(gav), null, groupNamePatternsMap)
                             .stream()
                             .peek(rule -> {
+                                rule.put("enabled", true);
                                 rule.put("addLabels", labels);
                                 rule.put("prBodyNotes", List.of("Fixed CVEs: " + String.join(", ", fixes.get(gav))));
                             })).toList();

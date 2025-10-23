@@ -8,18 +8,13 @@ import org.mockito.Mockito;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.renovate.model.*;
 
-import java.io.ByteArrayOutputStream;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -217,6 +212,7 @@ public class RenovateXrayTest {
                         matchPackageNames : [ "ant:ant-junit" ],
                         groupName : "ant",
                         allowedVersions : "/^1.6.7$/",
+                        enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "Fixed CVEs: CVE-2023-4444" ]
                       } ],
