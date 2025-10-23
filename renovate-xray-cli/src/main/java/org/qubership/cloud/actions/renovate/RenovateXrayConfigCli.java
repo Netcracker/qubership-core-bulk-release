@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.renovate;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.RepositoryConfig;
 import org.qubership.cloud.actions.renovate.converters.*;
@@ -82,7 +83,10 @@ public class RenovateXrayConfigCli implements Runnable {
     public void run() {
         try {
             HttpClient httpClient = HttpClient.newHttpClient();
-            ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            ObjectMapper objectMapper = new ObjectMapper()
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .configure(SerializationFeature.INDENT_OUTPUT, true);
+            HttpService httpService = new HttpService(httpClient, objectMapper);
             RenovateRulesService renovateRulesService = new RenovateRulesService();
 
             Map<String, Object> config = new TreeMap<>();
@@ -100,7 +104,7 @@ public class RenovateXrayConfigCli implements Runnable {
             Map<String, Pattern> groupNamePatternsMap = groupNameMappings.stream().flatMap(m -> m.entrySet().stream())
                     .collect(Collectors.toMap(Map.Entry::getKey, p -> Pattern.compile(p.getValue().toString())));
 
-            XrayService xrayService = new XrayService(httpClient, objectMapper, artifactoryUrl, artifactoryUsername, artifactoryPassword);
+            XrayService xrayService = new XrayService(httpService, objectMapper, artifactoryUrl, artifactoryUsername, artifactoryPassword);
             RenovateService service = new RenovateService(xrayService, renovateRulesService, objectMapper);
             List<? extends Map> securityPackageRules = service.getRules(Path.of(renovateReportFilePath), artifactoryMavenRepositories, groupNamePatternsMap, labels);
 

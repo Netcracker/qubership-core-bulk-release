@@ -41,7 +41,6 @@ public class RenovateService {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to build renovate package rules for report: " + reportFilePath, e);
         }
-
     }
 
     public Map<GAV, RenovateReportMavenDep> getGAVs(Path reportFilePath) throws IOException {
@@ -116,7 +115,7 @@ public class RenovateService {
                                     if (summaryCVEs.isEmpty()) {
                                         // all vulnerabilities of >= severity fixed
                                         newGAVtoFixedCVEs = Map.entry(newGav, currentCVEs);
-                                        log.info("All vulnerabilities >= {} [{}] from {} fixed in: {}",
+                                        log.info("Found the candidate with all vulnerabilities >= {} fixed [{}] from {} fixed in: {}",
                                                 severity, String.join(", ", currentCVEs), gav, newGav.getVersion());
                                         break;
                                     } else {

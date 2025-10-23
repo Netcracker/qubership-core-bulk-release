@@ -147,7 +147,7 @@ public class RenovateXrayTest {
                     String string = request.uri().toString();
 
                     if (method.equals("POST") && string.equals("https://artifactory.com/xray/api/v1/summary/artifact")) {
-                        String content = getBodyAsString(request.bodyPublisher().get());
+                        String content = HttpService.getBodyAsString(request.bodyPublisher().get());
                         XrayArtifactSummaryRequest summaryRequest = mapper.readValue(content, XrayArtifactSummaryRequest.class);
                         HttpResponse response = Mockito.mock(HttpResponse.class);
                         Mockito.when(response.statusCode()).thenReturn(200);
@@ -237,41 +237,4 @@ public class RenovateXrayTest {
                     };""", result);
         }
     }
-
-    public static String getBodyAsString(HttpRequest.BodyPublisher publisher) {
-        CompletableFuture<String> future = new CompletableFuture<>();
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-
-        publisher.subscribe(new Flow.Subscriber<>() {
-
-            @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                subscription.request(Long.MAX_VALUE);
-            }
-
-            @Override
-            public void onNext(ByteBuffer item) {
-                byte[] bytes = new byte[item.remaining()];
-                item.get(bytes);
-                output.write(bytes, 0, bytes.length);
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                future.completeExceptionally(throwable);
-            }
-
-            @Override
-            public void onComplete() {
-                future.complete(output.toString(StandardCharsets.UTF_8));
-            }
-        });
-
-        try {
-            return future.get();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to read content of the HttpRequest.BodyPublisher", e);
-        }
-    }
-
 }
