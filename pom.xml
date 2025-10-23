@@ -23,6 +23,8 @@
     </properties>
 
     <modules>
+        <module>go-bulk-release</module>
+        <module>go-bulk-release-cli</module>
         <module>maven-bulk-release</module>
         <module>maven-bulk-release-cli</module>
         <module>maven-effective-dependencies-cli</module>
