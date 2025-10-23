@@ -49,8 +49,12 @@ public class RenovateRulesService {
                                 if (type == null) {
                                     rule.put("allowedVersions", String.format("/^%s$/", mavenVersion));
                                 } else if (type == VersionIncrementType.PATCH) {
+                                    String suffix = Optional.ofNullable(mavenVersion.getSuffix()).orElse("");
+                                    if (!suffix.isBlank()){
+                                        suffix = suffix.replaceAll("^(\\.\\d+)+", "");
+                                    }
                                     rule.put("allowedVersions", String.format("/^%d\\.%d(\\.\\d+)+%s$/",
-                                            mavenVersion.getMajor(), mavenVersion.getMinor(), Optional.ofNullable(mavenVersion.getSuffix()).orElse("")));
+                                            mavenVersion.getMajor(), mavenVersion.getMinor(), suffix));
                                 } else {
                                     throw new IllegalArgumentException(String.format("Unsupported version increment type '%s' to build a packageRule", type));
                                 }

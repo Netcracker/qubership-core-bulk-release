@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -50,7 +51,7 @@ public class RepositoryService {
     }
 
     static Pattern versionPattern = Pattern.compile(".*?(?<major>\\d+)\\.(?<minor>(\\d+|x))\\.(?<patch>(\\d+|x))(-SNAPSHOT)?$");
-    static Pattern supportBranchPattern = Pattern.compile(".*(?<branch>support/(?<major>\\d+)\\.(?<minor>\\d+|x)\\.(?<patch>\\d+|x))");
+    static Pattern supportBranchPattern = Pattern.compile(".*(?<branch>support/(?<major>\\d+)\\.(?<minor>\\d+|x)\\.(?<patch>\\d+|x))(/(?<extra>.+))?");
 
     public Map<Integer, List<RepositoryInfo>> buildDependencyGraph(String baseDir,
                                                                    GitConfig gitConfig,
@@ -62,18 +63,14 @@ public class RepositoryService {
                         .map(repositoryToReleaseFrom -> repos2.stream()
                                 .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
                                 .findFirst()
-                                .map(repository -> {
-                                    String repositoryBranch1 = repository.getBranch();
-                                    String repositoryBranch2 = repositoryToReleaseFrom.getBranch();
-                                    if (!Objects.equals(repositoryBranch1, repositoryBranch2)) {
-                                        if (!Objects.equals(repositoryBranch2, RepositoryConfig.HEAD)) {
-                                            return RepositoryConfig.builder(repository).branch(repositoryBranch2).build();
-                                        } else {
-                                            return RepositoryConfig.builder(repository).branch(repositoryBranch1).build();
-                                        }
-                                    }
-                                    return repository;
-                                }).orElse(repositoryToReleaseFrom))
+                                .map(repository ->
+                                        RepositoryConfig.builder(repository.getUrl())
+                                                .branch(Optional.ofNullable(repository.getBranch()).orElse(repositoryToReleaseFrom.getBranch()))
+                                                .version(Optional.ofNullable(repository.getVersion()).orElse(repositoryToReleaseFrom.getVersion()))
+                                                .versionIncrementType(Optional.ofNullable(repository.getVersionIncrementType()).orElse(repositoryToReleaseFrom.getVersionIncrementType()))
+                                                .skipTests(repository.isSkipTests() || repositoryToReleaseFrom.isSkipTests())
+                                                .build())
+                                .orElse(repositoryToReleaseFrom))
                         .collect(Collectors.toList());
         List<RepositoryConfig> mergedRepositories = mergeFunction.apply(repositories, repositoriesToReleaseFrom);
         List<RepositoryConfig> mergedRepositoriesToReleaseFrom = mergeFunction.apply(repositoriesToReleaseFrom, repositories);
@@ -153,6 +150,7 @@ public class RepositoryService {
                                                                             boolean createMissingBranches,
                                                                             VersionIncrementType validateSameVersionUpToLevel,
                                                                             List<Pattern> skipValidationForGAPatterns,
+                                                                            String extraBranchSuffix,
                                                                             OutputStream out) {
         log.info("Building versioned dependency graph");
 
@@ -186,7 +184,7 @@ public class RepositoryService {
             // find support branches for all repositories starting from the versioned repository
             List<RepositoryInfo> resolvedSupportRepositories = resolveSupportBranches(repositoryInfoList,
                     baseDir, gitConfig, mavenConfig, createMissingBranches, validateSameVersionUpToLevel,
-                    skipValidationForGAPatterns, out);
+                    skipValidationForGAPatterns, extraBranchSuffix, out);
 
             Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
 
@@ -226,6 +224,7 @@ public class RepositoryService {
                                                 MavenConfig mavenConfig, boolean createMissingBranches,
                                                 VersionIncrementType validateSameVersionUpToLevel,
                                                 List<Pattern> skipValidationForGAPatterns,
+                                                String extraBranchSuffix,
                                                 OutputStream out) {
         Map<String, RepositoryInfo> processedVersionedRepositoryTree = new LinkedHashMap<>();
         // 1. find repositories with a non-empty version param
@@ -237,7 +236,7 @@ public class RepositoryService {
         versionedRepositories.forEach(versionedRepository ->
                 resolveSupportBranches(processedVersionedRepositoryTree, new LinkedHashMap<>(), versionedRepository,
                         repositories, baseDir, gitConfig, mavenConfig, createMissingBranches, validateSameVersionUpToLevel,
-                        skipValidationForGAPatterns, false, out));
+                        skipValidationForGAPatterns, false, extraBranchSuffix, out));
         // then process dependent repositories
 
         List<RepositoryInfo> updatedRepositories = repositories.stream()
@@ -257,7 +256,7 @@ public class RepositoryService {
                 .forEach(versionedRepository ->
                         resolveDependent(processedVersionedRepositoryTree, new LinkedHashMap<>(), versionedRepository, updatedRepositories,
                                 baseDir, gitConfig, mavenConfig, createMissingBranches, validateSameVersionUpToLevel,
-                                skipValidationForGAPatterns, out));
+                                skipValidationForGAPatterns, extraBranchSuffix, out));
         return processedVersionedRepositoryTree.values().stream().toList();
     }
 
@@ -268,8 +267,9 @@ public class RepositoryService {
                                 VersionIncrementType validateSameVersionUpToLevel,
                                 List<Pattern> skipValidationForGAPatterns,
                                 boolean resolveDependentRepositories,
+                                String extraBranchSuffix,
                                 OutputStream out) {
-        String branch = resolveSupportBranch(baseDir, gitConfig, mavenConfig, fromRepository, createMissingBranches, out);
+        String branch = resolveSupportBranch(baseDir, mavenConfig, fromRepository, createMissingBranches, validateSameVersionUpToLevel, extraBranchSuffix, out);
         // check if we already processed the repository for this branch
         RepositoryConfig repositoryConfig = RepositoryConfig.builder(fromRepository).branch(branch).build();
         RepositoryInfo repositoryInfo = this.createRepositoryInfo(baseDir, repositoryConfig, out);
@@ -363,7 +363,7 @@ public class RepositoryService {
         if (resolveDependentRepositories) {
             resolveDependent(processedVersionedRepositoryTree, parentsStack, repositoryInfo, repositories,
                     baseDir, gitConfig, mavenConfig, createMissingBranches, validateSameVersionUpToLevel,
-                    skipValidationForGAPatterns, out);
+                    skipValidationForGAPatterns, extraBranchSuffix, out);
         }
     }
 
@@ -374,6 +374,7 @@ public class RepositoryService {
                           String baseDir, GitConfig gitConfig, MavenConfig mavenConfig, boolean createMissingBranches,
                           VersionIncrementType validateSameVersionUpToLevel,
                           List<Pattern> skipValidationForGAPatterns,
+                          String extraBranchSuffix,
                           OutputStream out) {
         List<RepositoryInfo> updatedRepositories = repositories.stream().map(ri -> {
             if (Objects.equals(ri.getUrl(), repositoryInfo.getUrl())) {
@@ -400,7 +401,7 @@ public class RepositoryService {
 
             resolveSupportBranches(processedVersionedRepositoryTree, stack, childRepositoryConfig,
                     updatedRepositories, baseDir, gitConfig, mavenConfig, createMissingBranches, validateSameVersionUpToLevel,
-                    skipValidationForGAPatterns, true, out);
+                    skipValidationForGAPatterns, true, extraBranchSuffix, out);
         });
         List<RepositoryInfo> parents = linker.getRepositoriesUsingThis(repositoryInfo);
         parents.forEach(parent -> {
@@ -424,6 +425,7 @@ public class RepositoryService {
                             }
                             return gav;
                         })
+                        .filter(d -> skipValidationForGAPatterns.stream().noneMatch(p -> p.matcher(d.toString()).matches()))
                         .collect(Collectors.toSet());
                 version = findParentRepositoryVersion(baseDir, parent, gavs, validateSameVersionUpToLevel, skipValidationForGAPatterns, out);
             }
@@ -434,7 +436,7 @@ public class RepositoryService {
 
             resolveSupportBranches(processedVersionedRepositoryTree, stack, parentRepositoryConfig,
                     updatedRepositories, baseDir, gitConfig, mavenConfig, createMissingBranches, validateSameVersionUpToLevel,
-                    skipValidationForGAPatterns, true, out);
+                    skipValidationForGAPatterns, true, extraBranchSuffix, out);
         });
     }
 
@@ -492,13 +494,12 @@ public class RepositoryService {
                         .map(Matcher::group)
                         .toList();
                 long maxValidGavs = 0;
-                Map<GA, VersionInfo> lastResult = Map.of();
+                Map<GA, VersionInfo> maxValidResult = Map.of();
                 for (String ref : refs) {
                     RepositoryConfig repositoryConfig = RepositoryConfig.builder(versionedRepository).branch(ref).version(null).build();
                     RepositoryInfo repositoryInfo = createRepositoryInfo(baseDir, repositoryConfig, out);
 
-                    Set<GAV> targetGAVs = repositoryInfo.getModuleDependencies().stream()
-                            .filter(d -> skipValidationForGAPatterns.stream().noneMatch(p -> p.matcher(d.toString()).matches()))
+                    Set<GAV> targetGAVs = Stream.concat(repositoryInfo.getModuleDependencies().stream(), repositoryInfo.getModules().stream())
                             .filter(d -> mustHaveDependenciesGAVs.stream().anyMatch(gav -> gav.toGA().equals(d.toGA())))
                             .collect(Collectors.toSet());
 
@@ -523,21 +524,30 @@ public class RepositoryService {
                                 return new VersionInfo(requiredVersion, dependencyVersion, valid);
                             }));
                     long validCount = result.values().stream().filter(VersionInfo::isValid).count();
-                    if (maxValidGavs < validCount) maxValidGavs = validCount;
-                    if (validCount < maxValidGavs) {
+                    if (maxValidGavs < validCount) {
+                        maxValidGavs = validCount;
+                        maxValidResult = result;
+                    }
+                    if (maxValidGavs != 0 && validCount == 0) {
+                        Function<Map<GA, VersionInfo>, String> printResult = r -> r.entrySet().stream()
+                                .sorted(Comparator.<Map.Entry<GA, VersionInfo>, Boolean>comparing(entry -> entry.getValue().isValid())
+                                        .thenComparing(entry -> entry.getKey().getGroupId())
+                                        .thenComparing(entry -> entry.getValue().getRequired().getVersion()))
+                                .map(entry -> String.format("%s:%s", entry.getKey().toString(), entry.getValue().toString()))
+                                .collect(Collectors.joining("\n"));
+
                         throw new IllegalStateException(String.format("""
                                         Failed to resolve version for parent repository  %s
                                         ref=[%s].
-                                        Valid matches started to decline. Max match result was:
+                                        Valid matches started to decline.
+                                        Max match result was:
+                                        %s
+                                        Current match result was:
                                         %s""",
                                 repositoryInfo.getUrl(),
                                 ref,
-                                lastResult.entrySet().stream()
-                                        .sorted(Comparator.<Map.Entry<GA, VersionInfo>, Boolean>comparing(entry -> entry.getValue().isValid())
-                                                .thenComparing(entry -> entry.getKey().getGroupId())
-                                                .thenComparing(entry -> entry.getValue().getRequired().getVersion()))
-                                        .map(entry -> String.format("%s:%s", entry.getKey().toString(), entry.getValue().toString()))
-                                        .collect(Collectors.joining("\n"))));
+                                printResult.apply(maxValidResult),
+                                printResult.apply(result)));
                     }
                     if (result.values().stream().allMatch(VersionInfo::isValid)) {
                         Optional<String> optionalVersion = repositoryInfo.getModules().stream().findFirst().map(GAV::getVersion);
@@ -548,10 +558,9 @@ public class RepositoryService {
                         normalizeSnapshotVersion(mavenVersion);
                         return mavenVersion.toString();
                     }
-                    lastResult = result;
                 }
-                throw new IllegalStateException(String.format("No version found for repository: %s which dependencies satisfy gavs: %s",
-                        versionedRepository.getUrl(), mustHaveDependenciesGAVs.stream().map(GAV::toString).collect(Collectors.joining(","))));
+                throw new IllegalStateException(String.format("No version found for repository: %s which dependencies satisfy gavs:\n%s",
+                        versionedRepository.getUrl(), mustHaveDependenciesGAVs.stream().map(GAV::toString).collect(Collectors.joining("\n"))));
             }
         } catch (Exception ioe) {
             if (ioe instanceof RuntimeException re) {
@@ -574,8 +583,8 @@ public class RepositoryService {
         }
     }
 
-    String resolveSupportBranch(String baseDir, GitConfig gitConf, MavenConfig mavenConfig, RepositoryConfig versionedRepository,
-                                boolean createMissingBranches, OutputStream out) {
+    String resolveSupportBranch(String baseDir, MavenConfig mavenConfig, RepositoryConfig versionedRepository,
+                                boolean createMissingBranches, VersionIncrementType validateSameVersionUpToLevel, String extraBranchSuffix, OutputStream out) {
         String version = versionedRepository.getVersion();
         Matcher matcher;
         if (version == null || !(matcher = versionPattern.matcher(version)).matches()) {
@@ -583,6 +592,7 @@ public class RepositoryService {
         }
         String major = matcher.group("major");
         String minor = matcher.group("minor");
+        String patch = matcher.group("patch");
         try (out) {
             Path repositoryDirPath = Paths.get(baseDir, versionedRepository.getDir());
             if (!Files.exists(repositoryDirPath)) {
@@ -591,90 +601,149 @@ public class RepositoryService {
             try (Git git = Git.open(repositoryDirPath.toFile())) {
                 List<Ref> branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
                 String branch;
-                String branchNamePatch = String.format("support/%s.%s.x", major, minor);
+                String branchNamePatch = extraBranchSuffix == null ?
+                        String.format("support/%s.%s.%s", major, minor, patch) :
+                        String.format("support/%s.%s.%s/%s", major, minor, patch, extraBranchSuffix);
                 Optional<Ref> optionalBranch = branches.stream()
-                        .filter(ref -> ref.getName().endsWith(branchNamePatch))
+                        .filter(ref -> {
+                            Matcher m = supportBranchPattern.matcher(ref.getName());
+                            if (!m.matches()) return false;
+                            String b_major = m.group("major");
+                            String b_minor = m.group("minor");
+                            String b_patch = m.group("patch");
+                            String b_extra = m.group("extra");
+                            return b_major.equals(major) && b_minor.equals(minor) && b_patch.equals(patch) && (extraBranchSuffix == null || extraBranchSuffix.equals(b_extra));
+                        })
                         .findFirst();
-                if (optionalBranch.isEmpty()) {
-                    String branchNameMinor = String.format("support/%s.x.x", major);
+                if (optionalBranch.isEmpty() || !checkVersions(branchNamePatch, validateSameVersionUpToLevel, major, minor, patch, baseDir, versionedRepository, out)) {
+                    String branchNameMinor = String.format("support/%s.%s.x", major, minor);
                     optionalBranch = branches.stream()
-                            .filter(ref -> ref.getName().endsWith(branchNameMinor))
+                            .filter(ref -> {
+                                Matcher m = supportBranchPattern.matcher(ref.getName());
+                                if (!m.matches()) return false;
+                                String b_major = m.group("major");
+                                String b_minor = m.group("minor");
+                                String b_patch = m.group("patch");
+                                return b_major.equals(major) && b_minor.equals(minor) && b_patch.equals("x");
+                            })
                             .findFirst();
-                    if (optionalBranch.isEmpty() || !checkVersions(branchNameMinor, major, minor, baseDir, versionedRepository, out)) {
-                        Pattern tagPattern = Pattern.compile(String.format(".*(?<major>%s)\\.(?<minor>%s)\\.(?<patch>\\d+)", major, minor));
-                        List<String> tags = git.tagList().call().stream()
-                                .map(tag -> tagPattern.matcher(tag.getName()))
-                                .filter(Matcher::matches)
-                                .sorted((tagMatcher1, tagMatcher2) ->
-                                        Comparator.<Matcher>comparingInt(m -> Integer.parseInt(m.group("major")))
-                                                .thenComparingInt(m -> Integer.parseInt(m.group("minor")))
-                                                .thenComparingInt(m -> Integer.parseInt(m.group("patch")))
-                                                .compare(tagMatcher1, tagMatcher2))
-                                .map(Matcher::group)
-                                .toList();
-                        if (tags.isEmpty()) {
-                            throw new IllegalStateException(String.format("No tag found for versioned repository [%s] matching tagPattern: '%s'",
-                                    versionedRepository.getUrl(), tagPattern));
-                        } else {
-                            branch = optionalBranch.isEmpty() ? branchNameMinor : branchNamePatch;
-                            String lastTag = tags.getLast();
-                            git.branchCreate()
-                                    .setName(branch)
-                                    .setStartPoint(lastTag)
-                                    .call();
-                            if (createMissingBranches) {
-                                // need to increment 'patch' version and append '-SNAPSHOT' suffix to the module's version tags because in the tags versions are the released ones
-                                RepositoryConfig repositoryConfig = RepositoryConfig.builder(versionedRepository).branch(branch).version(null).build();
-                                RepositoryInfo repositoryInfo = createRepositoryInfo(baseDir, repositoryConfig, out);
-                                String v = repositoryInfo.getModules().stream().map(GAV::getVersion).toList().getFirst();
-                                MavenVersion mavenVersion = new MavenVersion(v);
-                                mavenVersion.update(VersionIncrementType.PATCH, mavenVersion.getPatch() + 1);
-                                mavenVersion.setSuffix("-SNAPSHOT");
-                                preparePOMsForDev(baseDir, repositoryInfo, mavenConfig, mavenVersion, out);
-                                List<DiffEntry> diff = git.diff().call();
-                                List<String> modifiedFiles = diff.stream()
-                                        .filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY)
-                                        .map(DiffEntry::getNewPath)
-                                        .collect(Collectors.toList());
-                                if (!modifiedFiles.isEmpty()) {
-                                    // check if buildConfig.yaml is present
-                                    String buildConfigFileName = "buildConfig.yaml";
-                                    Path buildConfigPath = repositoryDirPath.resolve(buildConfigFileName);
-                                    String buildConfigContent = "";
-                                    AddCommand addCommand = git.add();
-                                    if (!Files.exists(buildConfigPath) || !(buildConfigContent = Files.readString(buildConfigPath)).contains("type: library")) {
-                                        YAMLMapper mapper = new YAMLMapper(new YAMLFactory().configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false));
-                                        Map<String, Object> buildConfigMap;
-                                        if (buildConfigContent.isBlank()) {
-                                            buildConfigMap = Map.of("tools", Map.of("java", "J17", "maven", "M381"));
-                                        } else {
-                                            buildConfigMap = mapper.readValue(buildConfigContent, new TypeReference<>() {
-                                            });
+                    if (optionalBranch.isEmpty() || !checkVersions(branchNameMinor, validateSameVersionUpToLevel, major, minor, patch, baseDir, versionedRepository, out)) {
+                        String branchNameMajor = String.format("support/%s.x.x", major);
+                        optionalBranch = branches.stream()
+                                .filter(ref -> ref.getName().endsWith(branchNameMajor))
+                                .findFirst();
+                        if (optionalBranch.isEmpty() || !checkVersions(branchNameMajor, validateSameVersionUpToLevel, major, minor, patch, baseDir, versionedRepository, out)) {
+                            String tagPatternTemplate = ".*(?<major>%s)\\.(?<minor>%s)\\.(?<patch>%s)";
+                            Pattern tagPattern = Pattern.compile(String.format(tagPatternTemplate, major, minor, "\\d+"));
+                            List<String> tags = git.tagList().call().stream()
+                                    .map(tag -> tagPattern.matcher(tag.getName()))
+                                    .filter(Matcher::matches)
+                                    .sorted((tagMatcher1, tagMatcher2) ->
+                                            Comparator.<Matcher>comparingInt(m -> Integer.parseInt(m.group("major")))
+                                                    .thenComparingInt(m -> Integer.parseInt(m.group("minor")))
+                                                    .thenComparingInt(m -> Integer.parseInt(m.group("patch")))
+                                                    .compare(tagMatcher1, tagMatcher2))
+                                    .map(Matcher::group)
+                                    .toList();
+                            if (tags.isEmpty()) {
+                                throw new IllegalStateException(String.format("No tag found for versioned repository [%s] matching tagPattern: '%s'",
+                                        versionedRepository.getUrl(), tagPattern));
+                            } else {
+                                branch = optionalBranch.isEmpty() ? branchNameMajor : branchNameMinor;
+                                String lastTag = tags.getLast();
+                                if (!patch.equals("x")) {
+                                    Matcher lastTagMatcher = tagPattern.matcher(lastTag);
+                                    if (!lastTagMatcher.matches()) {
+                                        throw new IllegalStateException(String.format("Last tag [%s] does not match tagPattern: '%s'", lastTag, tagPattern));
+                                    }
+                                    int patchNumber = Integer.parseInt(patch);
+                                    int lastPatch = Integer.parseInt(lastTagMatcher.group("patch"));
+                                    if (patchNumber < lastPatch) {
+                                        if (extraBranchSuffix == null) {
+                                            throw new IllegalStateException(String.format("Repository [%s] demands version [%s] which is lower than last tag [%s] but extraBranchSuffix is empty " +
+                                                                                          "which means that last tag must match demanded version",
+                                                    versionedRepository.getUrl(), version, lastTag));
                                         }
-                                        buildConfigMap = new LinkedHashMap<>(buildConfigMap) {{
-                                            putFirst("type", "library");
-                                        }};
-                                        Files.write(buildConfigPath, mapper.writeValueAsBytes(buildConfigMap),
-                                                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                                        modifiedFiles.add(buildConfigFileName);
+                                        // the requested version is lower than the last tag
+                                        // need to create special branch for particular tag
+                                        lastTag = tags.stream().filter(t -> {
+                                            Pattern tagPatchPattern = Pattern.compile(String.format(tagPatternTemplate, major, minor, patch));
+                                            Matcher m = tagPatchPattern.matcher(t);
+                                            return m.matches();
+                                        }).findFirst().orElseThrow(() -> new IllegalStateException(String.format("No tag found for versioned repository [%s] matching tagPattern: '%s'",
+                                                versionedRepository.getUrl(), tagPattern)));
+                                        branch = String.format("support/%s.%s.%s/%s", major, minor, patch, extraBranchSuffix);
                                     }
-                                    modifiedFiles.forEach(addCommand::addFilepattern);
-                                    addCommand.call();
-                                    String msg = "CPCAP-0000 updating poms versions for support branch created from the tag";
-                                    git.commit().setMessage(msg).call();
-                                    log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
-                                    Iterable<PushResult> pushResults = git.push()
-                                            .setRemote("origin")
-                                            .add("refs/heads/" + branch)
-                                            .call();
-                                    List<PushResult> results = StreamSupport.stream(pushResults.spliterator(), false).toList();
-                                    List<RemoteRefUpdate> failedUpdates = results.stream().flatMap(r -> r.getRemoteUpdates().stream()).filter(r -> r.getStatus() != RemoteRefUpdate.Status.OK).toList();
-                                    if (!failedUpdates.isEmpty()) {
-                                        throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
+                                }
+                                git.branchCreate()
+                                        .setName(branch)
+                                        .setStartPoint(lastTag)
+                                        .call();
+                                if (createMissingBranches) {
+                                    // need to increment 'patch' version and append '-SNAPSHOT' suffix to the module's version tags because in the tags versions are the released ones
+                                    RepositoryConfig repositoryConfig = RepositoryConfig.builder(versionedRepository).branch(branch).version(null).build();
+                                    RepositoryInfo repositoryInfo = createRepositoryInfo(baseDir, repositoryConfig, out);
+                                    String v = repositoryInfo.getModules().stream().map(GAV::getVersion).toList().getFirst();
+                                    MavenVersion mavenVersion = new MavenVersion(v);
+                                    String versionSuffix;
+                                    if (extraBranchSuffix != null && branch.endsWith("/" + extraBranchSuffix)) {
+                                        // 1.2.3-lts-2025.3-01-SNAPSHOT
+                                        versionSuffix = "-SNAPSHOT";
+                                        versionSuffix = String.format("-%s-%02d-SNAPSHOT", extraBranchSuffix, 1);
+                                    } else {
+                                        mavenVersion.update(VersionIncrementType.PATCH, mavenVersion.getPatch() + 1);
+                                        versionSuffix = "-SNAPSHOT";
                                     }
-                                    log.info("Pushed '{}'. Results: ", msg);
+                                    mavenVersion.setSuffix(versionSuffix);
+
+                                    preparePOMsForDev(baseDir, repositoryInfo, mavenConfig, mavenVersion, out);
+                                    List<DiffEntry> diff = git.diff().call();
+                                    List<String> modifiedFiles = diff.stream()
+                                            .filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY)
+                                            .map(DiffEntry::getNewPath)
+                                            .collect(Collectors.toList());
+                                    if (!modifiedFiles.isEmpty()) {
+                                        // check if buildConfig.yaml is present
+                                        String buildConfigFileName = "buildConfig.yaml";
+                                        Path buildConfigPath = repositoryDirPath.resolve(buildConfigFileName);
+                                        String buildConfigContent = "";
+                                        AddCommand addCommand = git.add();
+                                        if (!Files.exists(buildConfigPath) || !(buildConfigContent = Files.readString(buildConfigPath)).contains("type: library")) {
+                                            YAMLMapper mapper = new YAMLMapper(new YAMLFactory().configure(YAMLGenerator.Feature.WRITE_DOC_START_MARKER, false));
+                                            Map<String, Object> buildConfigMap;
+                                            if (buildConfigContent.isBlank()) {
+                                                buildConfigMap = Map.of("tools", Map.of("java", "J17", "maven", "M381"));
+                                            } else {
+                                                buildConfigMap = mapper.readValue(buildConfigContent, new TypeReference<>() {
+                                                });
+                                            }
+                                            buildConfigMap = new LinkedHashMap<>(buildConfigMap) {{
+                                                putFirst("type", "library");
+                                            }};
+                                            Files.write(buildConfigPath, mapper.writeValueAsBytes(buildConfigMap),
+                                                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                                            modifiedFiles.add(buildConfigFileName);
+                                        }
+                                        modifiedFiles.forEach(addCommand::addFilepattern);
+                                        addCommand.call();
+                                        String msg = "CPCAP-0000 updating poms versions for support branch created from the tag";
+                                        git.commit().setMessage(msg).call();
+                                        log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
+                                        Iterable<PushResult> pushResults = git.push()
+                                                .setRemote("origin")
+                                                .add("refs/heads/" + branch)
+                                                .call();
+                                        List<PushResult> results = StreamSupport.stream(pushResults.spliterator(), false).toList();
+                                        List<RemoteRefUpdate> failedUpdates = results.stream().flatMap(r -> r.getRemoteUpdates().stream()).filter(r -> r.getStatus() != RemoteRefUpdate.Status.OK).toList();
+                                        if (!failedUpdates.isEmpty()) {
+                                            throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
+                                        }
+                                        log.info("Pushed '{}'. Results: ", msg);
+                                    }
                                 }
                             }
+                        } else {
+                            branch = branchNameMajor;
                         }
                     } else {
                         branch = branchNameMinor;
@@ -716,7 +785,8 @@ public class RepositoryService {
         }
     }
 
-    boolean checkVersions(String branchName, String major, String minor, String baseDir, RepositoryConfig versionedRepository, OutputStream out) {
+    boolean checkVersions(String branchName, VersionIncrementType validateSameVersionUpToLevel, String major, String minor, String patch,
+                          String baseDir, RepositoryConfig versionedRepository, OutputStream out) {
         RepositoryConfig repositoryConfig = RepositoryConfig.builder(versionedRepository).branch(branchName).version(null).build();
         RepositoryInfo repositoryInfo = this.createRepositoryInfo(baseDir, repositoryConfig, out);
         return repositoryInfo.getModules().stream().allMatch(gav -> {
@@ -726,7 +796,14 @@ public class RepositoryService {
             }
             String majorFromModule = versionMatcher.group("major");
             String minorFromModule = versionMatcher.group("minor");
-            return Objects.equals(majorFromModule, major) && Objects.equals(minorFromModule, minor);
+            String patchFromModule = versionMatcher.group("patch");
+            if (validateSameVersionUpToLevel == VersionIncrementType.MAJOR) {
+                return major.equals(majorFromModule);
+            } else if (validateSameVersionUpToLevel == VersionIncrementType.MINOR) {
+                return major.equals(majorFromModule) && minor.equals(minorFromModule);
+            } else {
+                return major.equals(majorFromModule) && minor.equals(minorFromModule) && patch.equals(patchFromModule);
+            }
         });
     }
 

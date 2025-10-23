@@ -56,6 +56,9 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--skipTests"}, arity = "0", defaultValue = "false", description = "skip tests run by release:prepare mvn command")
     private boolean skipTests;
 
+    @CommandLine.Option(names = {"--logsToConsole"}, arity = "0", defaultValue = "false", description = "print logs to console. Warning! use only for single repository release to avoid exceeding the console output limit")
+    private boolean logsToConsole;
+
     @CommandLine.Option(names = {"--runParallelism"}, defaultValue = "1",
             description = "perform release command for each repository from the same level in parallel with specified concurrency or the number of repose in the same level")
     private int runParallelism;
@@ -148,6 +151,7 @@ public class MavenBulkReleaseCli implements Runnable {
                     .skipTests(skipTests)
                     .dryRun(dryRun)
                     .runParallelism(runParallelism)
+                    .logsToConsole(logsToConsole)
                     .build();
 
             Result result = new ReleaseRunner().release(config);

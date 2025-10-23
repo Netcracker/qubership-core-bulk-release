@@ -25,7 +25,7 @@ public class RenovateConfigConverterTest {
                 org.springframework.boot:spring-boot-starter-parent:3.4.8
                 org.springframework.cloud:spring-cloud-dependencies:2024.0.2
                 org.springframework.boot:spring-boot-parent:3.4.8
-                io.quarkus.platform:quarkus-bom:3.15.6
+                io.quarkus.platform:quarkus-bom:3.15.6.1
                 io.quarkus.platform:quarkus-maven-plugin:3.15.6
                 io.quarkus:quarkus-extension-processor:3.15.6
                 io.quarkus:quarkus-universe-bom:3.15.5
@@ -271,7 +271,11 @@ public class RenovateConfigConverterTest {
                     groupName : "io.smallrye",
                     allowedVersions : "/^3\\\\.2(\\\\.\\\\d+)+$/"
                   }, {
-                    matchPackageNames : [ "io.quarkus.platform:quarkus-bom", "io.quarkus.platform:quarkus-maven-plugin", "io.quarkus.platform:quarkus-operator-sdk-bom" ],
+                    matchPackageNames : [ "io.quarkus.platform:quarkus-bom" ],
+                    groupName : "quarkus",
+                    allowedVersions : "/^3\\\\.15(\\\\.\\\\d+)+$/"
+                  }, {
+                    matchPackageNames : [ "io.quarkus.platform:quarkus-maven-plugin", "io.quarkus.platform:quarkus-operator-sdk-bom" ],
                     groupName : "quarkus",
                     allowedVersions : "/^3\\\\.15(\\\\.\\\\d+)+$/"
                   }, {

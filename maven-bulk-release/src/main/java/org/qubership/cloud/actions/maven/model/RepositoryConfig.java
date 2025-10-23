@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 @Data
 public class RepositoryConfig {
-    public static final String HEAD = "HEAD";
     public static Pattern pattern = Pattern.compile("^(?<url>https://[^/]+/(?<dir>[^\\[]+))(\\[(?<params>.*)])?$");
 
     final String url;
