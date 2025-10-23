@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.qubership.cloud</groupId>
     <artifactId>qubership-core-bulk-release</artifactId>
-    <version>1.3.2-SNAPSHOT</version>
+    <version>1.4.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <licenses>
@@ -23,6 +23,8 @@
     </properties>
 
     <modules>
+        <module>go-bulk-release</module>
+        <module>go-bulk-release-cli</module>
         <module>maven-bulk-release</module>
         <module>maven-bulk-release-cli</module>
         <module>maven-effective-dependencies-cli</module>
