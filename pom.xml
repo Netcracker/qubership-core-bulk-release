@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.qubership.cloud</groupId>
     <artifactId>qubership-core-bulk-release</artifactId>
-    <version>1.3.2-SNAPSHOT</version>
+    <version>1.4.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <licenses>
@@ -28,6 +28,7 @@
         <module>maven-effective-dependencies-cli</module>
         <module>maven-version-dependencies-cli</module>
         <module>renovate-config-cli</module>
+        <module>renovate-xray-cli</module>
     </modules>
 
     <build>

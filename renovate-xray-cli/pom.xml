@@ -9,7 +9,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>renovate-config-cli</artifactId>
+    <artifactId>renovate-xray-cli</artifactId>
 
     <dependencies>
         <dependency>
@@ -24,6 +24,11 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.qubership.cloud</groupId>
+            <artifactId>renovate-config-cli</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli</artifactId>
             <version>4.7.7</version>
@@ -34,6 +39,18 @@
             <version>5.12.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.17.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.17.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -56,7 +73,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.qubership.cloud.actions.renovate.RenovateConfigCli</mainClass>
+                            <mainClass>org.qubership.cloud.actions.renovate.RenovateXrayConfigCli</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
