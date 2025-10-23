@@ -31,6 +31,10 @@ public class RenovateService {
         try {
             Map<GAV, RenovateReportMavenDep> gavs = getGAVs(reportFilePath);
             Map<GAV, Set<String>> fixes = findFixedGavs(repos, gavs, Severity.High);
+            log.info("Versions with fixed CVEs:\n{}",
+                    fixes.entrySet().stream()
+                            .map(entry-> String.format("%s: [%s]", entry.getKey(), String.join(", ", entry.getValue())))
+                            .collect(Collectors.joining("\n")));
             return fixes.keySet().stream().flatMap(gav ->
                     renovateRulesService.gavsToRules(List.of(gav), null, groupNamePatternsMap)
                             .stream()
