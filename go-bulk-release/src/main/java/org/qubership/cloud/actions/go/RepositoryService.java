@@ -52,9 +52,8 @@ public class RepositoryService {
         // filter repositories which are not affected by 'released from' repositories
         List<RepositoryInfo> repositoryInfos = mergedRepositoriesToReleaseFrom.isEmpty() ? repositoryInfoList : repositoryInfoList.stream()
                 .filter(ri ->
-                        mergedRepositoriesToReleaseFrom.stream().map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(ri.getUrl()) ||
-                        mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(ri).stream()
-                                .map(RepositoryInfo::getUrl).collect(Collectors.toSet()).contains(riFrom.getUrl())))
+                        isContains(mergedRepositoriesToReleaseFrom, ri) ||
+                        isAffectedByMergedReleaseRepos(mergedRepositoriesToReleaseFrom, repositoryInfoLinker, ri))
                 .toList();
 
         Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
@@ -106,5 +105,23 @@ public class RepositoryService {
                             return repository;
                         }).orElse(repositoryToReleaseFrom))
                 .collect(Collectors.toSet());
+    }
+
+    private boolean isContains(Set<RepositoryConfig> repositoryConfigs, RepositoryInfo repositoryInfo) {
+        return repositoryConfigs.stream()
+                .map(repositoryConfig -> repositoryConfig.getUrl().toLowerCase())
+                .collect(Collectors.toSet())
+                .contains(repositoryInfo.getUrl().toLowerCase());
+    }
+
+    private boolean isAffectedByMergedReleaseRepos(Set<RepositoryConfig> merged,
+                                                   RepositoryInfoLinker linker,
+                                                   RepositoryInfo repositoryInfo) {
+        Set<String> usedUrls = linker.getRepositoriesUsedByThisFlatSet(repositoryInfo).stream()
+                .map(r -> r.getUrl().toLowerCase())
+                .collect(Collectors.toSet());
+        return merged.stream()
+                .map(rc -> rc.getUrl().toLowerCase())
+                .anyMatch(usedUrls::contains);
     }
 }
