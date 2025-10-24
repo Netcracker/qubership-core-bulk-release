@@ -201,7 +201,6 @@ public class RenovateXrayTest {
                                 Mockito.when(response.body()).thenReturn(body);
                                 return response;
                             } else if (Objects.equals(repository, "go-repository")) {
-                                //        "github.com/stretchr/testify/@v/v1.10.0.zip"
                                 Matcher goPathMatcher = Pattern.compile("^(?<package>.+?)/@v/(?<version>v[\\d.]+.+?)\\.zip$").matcher(path);
                                 if (!goPathMatcher.matches()) {
                                     throw new IllegalStateException("Unexpected path: " + matcher.pattern());
