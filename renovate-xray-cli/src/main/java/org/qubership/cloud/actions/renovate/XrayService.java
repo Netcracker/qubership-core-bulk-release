@@ -6,9 +6,7 @@ import org.qubership.cloud.actions.maven.model.GA;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.renovate.model.*;
 
-import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
@@ -29,12 +27,9 @@ public class XrayService {
         this.basicAuth = String.format("Basic %s", Base64.getEncoder().encodeToString(String.format("%s:%s", user, password).getBytes()));
     }
 
-    public XrayArtifactSummaryElement getArtifactSummary(List<String> repositories, GAV gav) throws Exception {
+    public XrayArtifactSummaryElement getArtifactSummary(Collection<String> repositories, String artifactPath) throws Exception {
         for (String repo : repositories) {
-            String groupPath = gav.getGroupId().replace(".", "/");
-            String artifactPath = gav.getArtifactId().replace(".", "/");
-            String artifactJar = String.format("%s-%s.jar", gav.getArtifactId(), gav.getVersion());
-            String artifactFullPath = String.format("default/%s/%s/%s/%s/%s", repo, groupPath, artifactPath, gav.getVersion(), artifactJar);
+            String artifactFullPath = String.format("default/%s/%s", repo, artifactPath);
             String body = objectMapper.writeValueAsString(new XrayArtifactSummaryRequest(List.of(artifactFullPath)));
 
             HttpRequest request = HttpRequest.newBuilder(URI.create(String.format("%s%s", artifactoryUrl, "/xray/api/v1/summary/artifact")))
@@ -42,7 +37,7 @@ public class XrayService {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
-            HttpResponse<String> response = httpService.sendRequest(request, 5,  200);
+            HttpResponse<String> response = httpService.sendRequest(request, 5, 200);
             XrayArtifactSummary xrayArtifactSummary = objectMapper.readValue(response.body(), XrayArtifactSummary.class);
             if (xrayArtifactSummary == null || xrayArtifactSummary.getErrors() != null && !xrayArtifactSummary.getErrors().isEmpty()) {
                 continue;
@@ -55,7 +50,16 @@ public class XrayService {
         return null;
     }
 
-    public List<ArtifactoryVersion> getArtifactVersions(List<String> repositories, GA ga) throws Exception {
+    public List<String> getArtifactVersions(Collection<String> repos, ArtifactVersionData<?> artifactVersion) throws Exception {
+        return switch (artifactVersion.getType()) {
+            case maven -> getMavenVersions(repos, (MavenArtifactVersion) artifactVersion);
+            case go -> getGoVersions(repos, (GoArtifactVersion) artifactVersion);
+            default -> throw new IllegalArgumentException("Unsupported artifact type: " + artifactVersion.getType());
+        };
+    }
+
+    public List<String> getMavenVersions(Collection<String> repositories, MavenArtifactVersion mavenArtifactVersion) throws Exception {
+        GA ga = mavenArtifactVersion.getGav().toGA();
         for (String repo : repositories) {
             Map<String, String> query = new LinkedHashMap<>();
             query.put("g", ga.getGroupId());
@@ -72,10 +76,30 @@ public class XrayService {
             if (response.statusCode() == 404) {
                 continue;
             }
-            return objectMapper.readValue(response.body(), ArtifactoryVersions.class).getResults();
+            return objectMapper.readValue(response.body(), ArtifactoryVersions.class).getResults().stream()
+                    .filter(v -> !v.isIntegration())
+                    .map(ArtifactoryVersion::getVersion)
+                    .toList();
         }
         throw new IllegalStateException("No versions found for GA: " + ga);
     }
 
+    public List<String> getGoVersions(Collection<String> repositories, GoArtifactVersion goArtifactVersion) throws Exception {
+        String packageName = goArtifactVersion.getPackageName();
+        for (String repo : repositories) {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(String.format("%s/api/go/%s/%s/@v/list", artifactoryUrl, repo, packageName)))
+                    .header("Authorization", basicAuth)
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpService.sendRequest(request, 5, 404, 200);
+            if (response.statusCode() == 404) {
+                continue;
+            }
+            return Arrays.stream(Optional.ofNullable(response.body()).orElse("").split("\n"))
+                    .filter(v -> !v.isBlank())
+                    .toList();
+        }
+        throw new IllegalStateException("No versions found for packageName: " + packageName);
+    }
 
 }

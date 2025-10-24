@@ -88,19 +88,6 @@
             "deps": [
               {
                 "datasource": "maven",
-                "depName": "test.cloud.core:cleanup-service",
-                "currentValue": "1.0.0-SNAPSHOT",
-                "fileReplacePosition": 418,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "parent-root",
-                "updates": [],
-                "packageName": "test.cloud.core:cleanup-service",
-                "skipReason": "disabled"
-              },
-              {
-                "datasource": "maven",
                 "depName": "io.quarkus:quarkus-universe-bom",
                 "currentValue": "3.20.2.2",
                 "fileReplacePosition": 608,
@@ -137,439 +124,6 @@
                 "currentVersionAgeInDays": 53,
                 "isSingleVersion": true,
                 "fixedVersion": "3.20.2.2"
-              },
-              {
-                "datasource": "maven",
-                "depName": "io.fabric8:kubernetes-client-bom",
-                "currentValue": "6.13.5",
-                "fileReplacePosition": 1165,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "import",
-                "updates": [
-                  {
-                    "bucket": "major",
-                    "newVersion": "7.3.1",
-                    "newValue": "7.3.1",
-                    "releaseTimestamp": "2025-05-20T10:11:29.000Z",
-                    "newVersionAgeInDays": 154,
-                    "registryUrl": "https://artifactorycn.com/pd.saas-release.mvn.group",
-                    "newMajor": 7,
-                    "newMinor": 3,
-                    "newPatch": 1,
-                    "updateType": "major",
-                    "isBreaking": true,
-                    "libYears": 0.3063199200913242,
-                    "branchName": "renovate-master/major-io.fabric8"
-                  }
-                ],
-                "packageName": "io.fabric8:kubernetes-client-bom",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/fabric8io/kubernetes-client",
-                "packageScope": "io.fabric8",
-                "respectLatest": false,
-                "currentVersion": "6.13.5",
-                "currentVersionTimestamp": "2025-01-28T14:49:44.000Z",
-                "currentVersionAgeInDays": 265,
-                "isSingleVersion": true,
-                "fixedVersion": "6.13.5"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.projectlombok:lombok",
-                "currentValue": "1.18.40",
-                "fileReplacePosition": 1486,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "provided",
-                "updates": [],
-                "packageName": "org.projectlombok:lombok",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/projectlombok/lombok",
-                "homepage": "https://projectlombok.org",
-                "packageScope": "org.projectlombok",
-                "respectLatest": false,
-                "currentVersion": "1.18.40",
-                "currentVersionTimestamp": "2025-09-04T22:18:00.000Z",
-                "currentVersionAgeInDays": 46,
-                "fixedVersion": "1.18.40"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.mapstruct:mapstruct",
-                "currentValue": "1.6.3",
-                "fileReplacePosition": 1696,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "org.mapstruct:mapstruct",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/mapstruct/mapstruct",
-                "homepage": "https://mapstruct.org/mapstruct/",
-                "packageScope": "org.mapstruct",
-                "respectLatest": false,
-                "currentVersion": "1.6.3",
-                "currentVersionTimestamp": "2024-11-09T11:38:32.000Z",
-                "currentVersionAgeInDays": 346,
-                "fixedVersion": "1.6.3"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.projectlombok:lombok-mapstruct-binding",
-                "currentValue": "0.2.0",
-                "fileReplacePosition": 1887,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "org.projectlombok:lombok-mapstruct-binding",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/rzwitserloot/lombok",
-                "homepage": "https://projectlombok.org",
-                "packageScope": "org.projectlombok",
-                "respectLatest": false,
-                "currentVersion": "0.2.0",
-                "currentVersionTimestamp": "2020-12-04T00:50:44.000Z",
-                "currentVersionAgeInDays": 1782,
-                "fixedVersion": "0.2.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "dev.failsafe:failsafe",
-                "currentValue": "3.3.2",
-                "fileReplacePosition": 3065,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "dev.failsafe:failsafe",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/failsafe-lib/failsafe",
-                "homepage": "https://failsafe.dev",
-                "respectLatest": false,
-                "currentVersion": "3.3.2",
-                "currentVersionTimestamp": "2023-06-24T15:54:09.000Z",
-                "currentVersionAgeInDays": 849,
-                "fixedVersion": "3.3.2"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.slf4j:slf4j-api",
-                "currentValue": "2.0.17",
-                "fileReplacePosition": 3233,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "org.slf4j:slf4j-api",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/qos-ch/slf4j",
-                "homepage": "http://www.slf4j.org",
-                "changelogUrl": "https://www.slf4j.org/news.html",
-                "respectLatest": false,
-                "currentVersion": "2.0.17",
-                "currentVersionTimestamp": "2025-02-25T16:43:14.000Z",
-                "currentVersionAgeInDays": 237,
-                "fixedVersion": "2.0.17"
-              },
-              {
-                "datasource": "maven",
-                "depName": "test.cloud:core-error-handling-rest",
-                "currentValue": "2.2.1",
-                "fileReplacePosition": 3579,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [
-                  {
-                    "bucket": "major",
-                    "newVersion": "3.2.1",
-                    "newValue": "3.2.1",
-                    "releaseTimestamp": "2025-09-22T10:04:21.000Z",
-                    "newVersionAgeInDays": 29,
-                    "registryUrl": "https://artifactory.test/pd.saas-release.mvn.group",
-                    "newMajor": 3,
-                    "newMinor": 2,
-                    "newPatch": 1,
-                    "updateType": "major",
-                    "isBreaking": true,
-                    "branchName": "renovate-master/major"
-                  }
-                ],
-                "packageName": "test.cloud:core-error-handling-rest",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/qubership-core-error-handling",
-                "respectLatest": false,
-                "currentVersion": "2.2.1",
-                "currentVersionTimestamp": "2025-09-26T10:10:10.000Z",
-                "currentVersionAgeInDays": 25,
-                "isSingleVersion": true,
-                "fixedVersion": "2.2.1"
-              },
-              {
-                "datasource": "maven",
-                "depName": "io.quarkiverse.wiremock:quarkus-wiremock-test",
-                "currentValue": "1.5.1",
-                "fileReplacePosition": 4298,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "io.quarkiverse.wiremock:quarkus-wiremock-test",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/quarkiverse/quarkus-wiremock",
-                "homepage": "https://quarkiverse.io",
-                "respectLatest": false,
-                "currentVersion": "1.5.1",
-                "currentVersionTimestamp": "2025-07-17T16:45:22.000Z",
-                "currentVersionAgeInDays": 95,
-                "fixedVersion": "1.5.1"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.mockito:mockito-core",
-                "currentValue": "5.17.0",
-                "fileReplacePosition": 4644,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "org.mockito:mockito-core",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/mockito/mockito",
-                "packageScope": "org.mockito",
-                "respectLatest": false,
-                "currentVersion": "5.17.0",
-                "currentVersionTimestamp": "2025-04-04T13:26:03.000Z",
-                "currentVersionAgeInDays": 200,
-                "fixedVersion": "5.17.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "test.encryption-services:encryption-services-cipher",
-                "currentValue": "12.2.1",
-                "fileReplacePosition": 4887,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "test.encryption-services:encryption-services-cipher",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://git.com/PROD.Platform.Core.Security/encryption-services.git",
-                "registryUrl": "https://artifactory.test/pd.saas-release.mvn.group",
-                "respectLatest": false,
-                "currentVersion": "12.2.1",
-                "currentVersionTimestamp": "2024-12-24T06:31:32.000Z",
-                "currentVersionAgeInDays": 301,
-                "fixedVersion": "12.2.1"
-              },
-              {
-                "datasource": "maven",
-                "depName": "commons-dbutils:commons-dbutils",
-                "currentValue": "1.8.1",
-                "fileReplacePosition": 5727,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "commons-dbutils:commons-dbutils",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://gitbox.apache.org/repos/asf?p=commons-dbutils.git",
-                "homepage": "https://commons.apache.org/proper/commons-dbutils/",
-                "packageScope": "commons-dbutils",
-                "respectLatest": false,
-                "currentVersion": "1.8.1",
-                "currentVersionTimestamp": "2023-09-09T12:40:14.000Z",
-                "currentVersionAgeInDays": 773,
-                "fixedVersion": "1.8.1"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.apache.commons:commons-collections4",
-                "currentValue": "4.5.0",
-                "fileReplacePosition": 5915,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "org.apache.commons:commons-collections4",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://gitbox.apache.org/repos/asf?p=commons-collections.git",
-                "homepage": "https://commons.apache.org/proper/commons-collections/",
-                "respectLatest": false,
-                "currentVersion": "4.5.0",
-                "currentVersionTimestamp": "2025-04-19T13:59:49.000Z",
-                "currentVersionAgeInDays": 184,
-                "fixedVersion": "4.5.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.apache.maven.plugins:maven-compiler-plugin",
-                "currentValue": "3.14.0",
-                "fileReplacePosition": 6173,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "build",
-                "updates": [],
-                "packageName": "org.apache.maven.plugins:maven-compiler-plugin",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/apache/maven-compiler-plugin",
-                "homepage": "https://maven.apache.org/plugins/",
-                "respectLatest": false,
-                "currentVersion": "3.14.0",
-                "currentVersionTimestamp": "2025-10-21T04:52:15.000Z",
-                "currentVersionAgeInDays": 0,
-                "fixedVersion": "3.14.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.mapstruct:mapstruct-processor",
-                "currentValue": "1.6.3",
-                "fileReplacePosition": 6543,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "updates": [],
-                "packageName": "org.mapstruct:mapstruct-processor",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/mapstruct/mapstruct",
-                "homepage": "https://mapstruct.org/mapstruct-processor/",
-                "packageScope": "org.mapstruct",
-                "respectLatest": false,
-                "currentVersion": "1.6.3",
-                "currentVersionTimestamp": "2024-11-09T11:38:31.000Z",
-                "currentVersionAgeInDays": 346,
-                "fixedVersion": "1.6.3"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.projectlombok:lombok",
-                "currentValue": "1.18.40",
-                "fileReplacePosition": 6784,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "updates": [],
-                "packageName": "org.projectlombok:lombok",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/projectlombok/lombok",
-                "homepage": "https://projectlombok.org",
-                "packageScope": "org.projectlombok",
-                "respectLatest": false,
-                "currentVersion": "1.18.40",
-                "currentVersionTimestamp": "2025-09-04T22:18:00.000Z",
-                "currentVersionAgeInDays": 46,
-                "fixedVersion": "1.18.40"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.projectlombok:lombok-mapstruct-binding",
-                "currentValue": "0.2.0",
-                "fileReplacePosition": 7045,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "updates": [],
-                "packageName": "org.projectlombok:lombok-mapstruct-binding",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/rzwitserloot/lombok",
-                "homepage": "https://projectlombok.org",
-                "packageScope": "org.projectlombok",
-                "respectLatest": false,
-                "currentVersion": "0.2.0",
-                "currentVersionTimestamp": "2020-12-04T00:50:44.000Z",
-                "currentVersionAgeInDays": 1782,
-                "fixedVersion": "0.2.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "io.quarkus:quarkus-maven-plugin",
-                "currentValue": "3.20.2.2",
-                "fileReplacePosition": 608,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "build",
-                "sharedVariableName": "quarkus.platform.version",
-                "updates": [
-                  {
-                    "bucket": "non-major",
-                    "newVersion": "3.20.3",
-                    "newValue": "3.20.3",
-                    "releaseTimestamp": "2025-09-17T08:48:20.000Z",
-                    "newVersionAgeInDays": 34,
-                    "registryUrl": "https://artifactory.test/pd.saas-release.mvn.group",
-                    "newMajor": 3,
-                    "newMinor": 20,
-                    "newPatch": 3,
-                    "updateType": "patch",
-                    "isBreaking": false,
-                    "libYears": 0.05198576230339929,
-                    "branchName": "renovate-master/quarkus"
-                  }
-                ],
-                "packageName": "io.quarkus:quarkus-maven-plugin",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/quarkusio/quarkus",
-                "respectLatest": false,
-                "currentVersion": "3.20.2.2",
-                "currentVersionTimestamp": "2025-08-29T09:24:37.000Z",
-                "currentVersionAgeInDays": 53,
-                "isSingleVersion": true,
-                "fixedVersion": "3.20.2.2"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.apache.maven.plugins:maven-surefire-plugin",
-                "currentValue": "3.3.0",
-                "fileReplacePosition": 7959,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "build",
-                "updates": [],
-                "packageName": "org.apache.maven.plugins:maven-surefire-plugin",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/apache/maven-surefire",
-                "homepage": "https://maven.apache.org/surefire/",
-                "packageScope": "org.apache.maven.plugins",
-                "respectLatest": false,
-                "currentVersion": "3.3.0",
-                "currentVersionTimestamp": "2024-06-11T20:07:38.000Z",
-                "currentVersionAgeInDays": 496,
-                "fixedVersion": "3.3.0"
               }
             ]
           },
@@ -577,100 +131,6 @@
             "datasource": "maven",
             "packageFile": "cleanup-service-tests/pom.xml",
             "deps": [
-              {
-                "datasource": "maven",
-                "depName": "test.cloud.core:cleanup-service",
-                "currentValue": "1.0.0-SNAPSHOT",
-                "fileReplacePosition": 433,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "parent-root",
-                "updates": [],
-                "packageName": "test.cloud.core:cleanup-service",
-                "skipReason": "disabled"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.junit.jupiter:junit-jupiter",
-                "currentValue": "5.12.2",
-                "fileReplacePosition": 868,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "org.junit.jupiter:junit-jupiter",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/junit-team/junit-framework",
-                "homepage": "https://junit.org/",
-                "packageScope": "org.junit.jupiter",
-                "respectLatest": false,
-                "currentVersion": "5.12.2",
-                "currentVersionTimestamp": "2025-04-11T14:11:04.000Z",
-                "currentVersionAgeInDays": 192,
-                "fixedVersion": "5.12.2"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.projectlombok:lombok",
-                "currentValue": "1.18.40",
-                "fileReplacePosition": 1074,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "compile",
-                "updates": [],
-                "packageName": "org.projectlombok:lombok",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/projectlombok/lombok",
-                "homepage": "https://projectlombok.org",
-                "packageScope": "org.projectlombok",
-                "respectLatest": false,
-                "currentVersion": "1.18.40",
-                "currentVersionTimestamp": "2025-09-04T22:18:00.000Z",
-                "currentVersionAgeInDays": 46,
-                "fixedVersion": "1.18.40"
-              },
-              {
-                "datasource": "maven",
-                "depName": "test.cloud.junit.cloudcore:cloud-core-extension",
-                "currentValue": "6.0.12",
-                "fileReplacePosition": 1282,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [
-                  {
-                    "bucket": "major",
-                    "newVersion": "8.4.1",
-                    "newValue": "8.4.1",
-                    "releaseTimestamp": "2025-10-14T05:56:43.000Z",
-                    "newVersionAgeInDays": 7,
-                    "registryUrl": "https://artifactory.test/pd.saas-release.mvn.group",
-                    "newMajor": 8,
-                    "newMinor": 4,
-                    "newPatch": 1,
-                    "updateType": "major",
-                    "isBreaking": true,
-                    "libYears": 0.7114356925418569,
-                    "branchName": "renovate-master/major"
-                  }
-                ],
-                "packageName": "test.cloud.junit.cloudcore:cloud-core-extension",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/qubership-core-junit-k8s-extension",
-                "respectLatest": false,
-                "currentVersion": "6.0.12",
-                "currentVersionTimestamp": "2025-01-27T13:46:07.000Z",
-                "currentVersionAgeInDays": 266,
-                "isSingleVersion": true,
-                "fixedVersion": "6.0.12"
-              },
               {
                 "datasource": "maven",
                 "depName": "dev.failsafe:failsafe",
@@ -691,179 +151,6 @@
                 "currentVersionTimestamp": "2023-06-24T15:54:09.000Z",
                 "currentVersionAgeInDays": 849,
                 "fixedVersion": "3.3.2"
-              },
-              {
-                "datasource": "maven",
-                "depName": "com.squareup.okhttp3:okhttp",
-                "currentValue": "4.12.0",
-                "fileReplacePosition": 1693,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "com.squareup.okhttp3:okhttp",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/square/okhttp",
-                "homepage": "https://square.github.io/okhttp/",
-                "packageScope": "com.squareup.okhttp3",
-                "respectLatest": false,
-                "currentVersion": "4.12.0",
-                "currentVersionTimestamp": "2023-10-17T02:23:57.000Z",
-                "currentVersionAgeInDays": 735,
-                "fixedVersion": "4.12.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "ch.qos.logback:logback-classic",
-                "currentValue": "1.5.18",
-                "fileReplacePosition": 1905,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "ch.qos.logback:logback-classic",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/qos-ch/logback",
-                "homepage": "http://logback.qos.ch",
-                "changelogUrl": "https://logback.qos.ch/news.html",
-                "respectLatest": false,
-                "currentVersion": "1.5.18",
-                "currentVersionTimestamp": "2025-03-18T12:48:00.000Z",
-                "currentVersionAgeInDays": 217,
-                "fixedVersion": "1.5.18"
-              },
-              {
-                "datasource": "maven",
-                "depName": "io.agroal:agroal-pool",
-                "currentValue": "2.7.1",
-                "fileReplacePosition": 2740,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "io.agroal:agroal-pool",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/agroal/agroal",
-                "homepage": "https://github.com/agroal",
-                "respectLatest": false,
-                "currentVersion": "2.7.1",
-                "currentVersionTimestamp": "2025-05-22T18:04:05.000Z",
-                "currentVersionAgeInDays": 151,
-                "fixedVersion": "2.7.1"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.postgresql:postgresql",
-                "currentValue": "42.7.7",
-                "fileReplacePosition": 2946,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "org.postgresql:postgresql",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/pgjdbc/pgjdbc",
-                "homepage": "https://jdbc.postgresql.org",
-                "packageScope": "org.postgresql",
-                "respectLatest": false,
-                "currentVersion": "42.7.7",
-                "currentVersionTimestamp": "2025-06-11T09:55:12.000Z",
-                "currentVersionAgeInDays": 132,
-                "fixedVersion": "42.7.7"
-              },
-              {
-                "datasource": "maven",
-                "depName": "commons-dbutils:commons-dbutils",
-                "currentValue": "1.8.1",
-                "fileReplacePosition": 3385,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "commons-dbutils:commons-dbutils",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://gitbox.apache.org/repos/asf?p=commons-dbutils.git",
-                "homepage": "https://commons.apache.org/proper/commons-dbutils/",
-                "packageScope": "commons-dbutils",
-                "respectLatest": false,
-                "currentVersion": "1.8.1",
-                "currentVersionTimestamp": "2023-09-09T12:40:14.000Z",
-                "currentVersionAgeInDays": 773,
-                "fixedVersion": "1.8.1"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.apache.commons:commons-collections4",
-                "currentValue": "4.5.0",
-                "fileReplacePosition": 3605,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "test",
-                "updates": [],
-                "packageName": "org.apache.commons:commons-collections4",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://gitbox.apache.org/repos/asf?p=commons-collections.git",
-                "homepage": "https://commons.apache.org/proper/commons-collections/",
-                "respectLatest": false,
-                "currentVersion": "4.5.0",
-                "currentVersionTimestamp": "2025-04-19T13:59:49.000Z",
-                "currentVersionAgeInDays": 184,
-                "fixedVersion": "4.5.0"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.apache.maven.plugins:maven-surefire-plugin",
-                "currentValue": "3.2.5",
-                "fileReplacePosition": 3895,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "build",
-                "updates": [],
-                "packageName": "org.apache.maven.plugins:maven-surefire-plugin",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/apache/maven-surefire",
-                "homepage": "https://maven.apache.org/surefire/",
-                "packageScope": "org.apache.maven.plugins",
-                "respectLatest": false,
-                "currentVersion": "3.2.5",
-                "currentVersionTimestamp": "2024-01-06T19:37:41.000Z",
-                "currentVersionAgeInDays": 653,
-                "fixedVersion": "3.2.5"
-              },
-              {
-                "datasource": "maven",
-                "depName": "org.apache.maven.plugins:maven-antrun-plugin",
-                "currentValue": "3.1.0",
-                "fileReplacePosition": 4400,
-                "registryUrls": [
-                  "https://repo.maven.apache.org/maven2"
-                ],
-                "depType": "build",
-                "updates": [],
-                "packageName": "org.apache.maven.plugins:maven-antrun-plugin",
-                "versioning": "maven",
-                "warnings": [],
-                "sourceUrl": "https://github.com/apache/maven-antrun-plugin",
-                "homepage": "https://maven.apache.org/plugins/",
-                "respectLatest": false,
-                "currentVersion": "3.1.0",
-                "currentVersionTimestamp": "2022-04-18T19:42:00.000Z",
-                "currentVersionAgeInDays": 1281,
-                "fixedVersion": "3.1.0"
               },
               {
                 "datasource": "maven",
@@ -893,19 +180,74 @@
             "deps": [],
             "packageFileVersion": "1.0.0-SNAPSHOT"
           }
-        ]
-      },
-      "libYearsWithStatus": {
-        "libYears": {
-          "managers": {
-            "dockerfile": 0,
-            "maven": 1.1401058155758497
+        ],
+        "gomod": [
+          {
+            "deps": [
+              {
+                "datasource": "golang-version",
+                "versioning": "go-mod-directive",
+                "depType": "golang",
+                "depName": "go",
+                "currentValue": "1.22",
+                "managerData": {
+                  "lineNumber": 2
+                },
+                "updates": [],
+                "packageName": "go",
+                "skipReason": "disabled"
+              },
+              {
+                "datasource": "go",
+                "depType": "require",
+                "depName": "github.com/stretchr/testify",
+                "currentValue": "v1.10.0",
+                "managerData": {
+                  "multiLine": true,
+                  "lineNumber": 8
+                },
+                "updates": [
+                  {
+                    "bucket": "non-major",
+                    "newVersion": "v1.11.1",
+                    "newValue": "v1.11.1",
+                    "releaseTimestamp": "2025-08-27T10:46:31.000Z",
+                    "newVersionAgeInDays": 57,
+                    "newMajor": 1,
+                    "newMinor": 11,
+                    "newPatch": 1,
+                    "updateType": "minor",
+                    "isBreaking": false,
+                    "libYears": 0.7876479578893962,
+                    "branchName": "renovate-support/latest/github.com-stretchr-testify-1.x"
+                  }
+                ],
+                "packageName": "github.com/stretchr/testify",
+                "versioning": "semver",
+                "warnings": [],
+                "sourceUrl": "https://github.com/stretchr/testify",
+                "mostRecentTimestamp": "2025-08-27T10:46:31.000Z",
+                "currentVersion": "v1.10.0",
+                "currentVersionTimestamp": "2024-11-12T22:58:45.000Z",
+                "currentVersionAgeInDays": 345,
+                "isSingleVersion": true,
+                "fixedVersion": "v1.10.0"
+              }
+            ]
+          }
+        ],
+        "libYearsWithStatus": {
+          "libYears": {
+            "managers": {
+              "dockerfile": 0,
+              "maven": 1.1401058155758497
+            },
+            "total": 1.1401058155758497
           },
-          "total": 1.1401058155758497
-        },
-        "dependencyStatus": {
-          "outdated": 6,
-          "total": 28
+          "dependencyStatus": {
+            "outdated": 6,
+            "total": 28
+          }
         }
       }
     }

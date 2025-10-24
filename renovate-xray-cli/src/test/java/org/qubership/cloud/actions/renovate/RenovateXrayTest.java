@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.renovate.model.*;
 
 import java.net.http.HttpClient;
@@ -14,10 +13,13 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class RenovateXrayTest {
 
@@ -96,6 +98,7 @@ public class RenovateXrayTest {
                 "--artifactoryUsername=" + artifactoryUsername,
                 "--artifactoryPassword=" + artifactoryPassword,
                 "--artifactoryMavenRepository=maven-repository",
+                "--artifactoryGoRepository=go-repository",
                 "--renovateConfigOutputFile=" + renovateConfigFile,
                 "--repositoriesFile=" + repositoriesFile,
                 "--fromFile=" + jsonFile
@@ -109,10 +112,25 @@ public class RenovateXrayTest {
             Mockito.when(defaultSummaryResponse.statusCode()).thenReturn(200);
             Mockito.when(defaultSummaryResponse.body()).thenReturn(mapper.writeValueAsString(new XrayArtifactSummary()));
 
-            BiFunction<GAV, List<XrayArtifactSummaryIssue>, XrayArtifactSummary> buildSummary = (GAV gav, List<XrayArtifactSummaryIssue> issues) -> {
+            BiFunction<ArtifactVersion, List<XrayArtifactSummaryIssue>, XrayArtifactSummary> buildSummary = (ArtifactVersion artifactVersion, List<XrayArtifactSummaryIssue> issues) -> {
                 XrayArtifactSummary summary = new XrayArtifactSummary();
                 XrayArtifactSummaryGeneral xrayArtifactSummaryGeneral = new XrayArtifactSummaryGeneral();
-                xrayArtifactSummaryGeneral.setPath(MessageFormat.format("default/maven-repository/{0}/{1}/{2}/{1}-{2}.jar", gav.getGroupId(), gav.getArtifactId(), gav.getVersion()));
+                final String packageName = artifactVersion.getPackageName();
+                final String version = artifactVersion.getVersion();
+                String path = switch (artifactVersion.getType()) {
+                    //        "default/pd.saas.golang/git.netcracker.com/prod.platform.cloud_core/libs/go/core/v2/@v/v2.2.9.zip"
+                    case go -> MessageFormat.format("default/go-repository/{0}/@v/{1}.zip", packageName, version);
+                    //        "default/central_maven_org.mvn.proxy-cache/io/undertow/undertow-core/2.3.11.Final/undertow-core-2.3.11.Final.jar"
+                    case maven -> {
+                        String[] packageParts = packageName.split("/");
+                        String groupId = Arrays.stream(Arrays.copyOfRange(packageParts, 0, packageParts.length - 1)).collect(Collectors.joining("/"));
+                        String artifactId = packageParts[packageParts.length - 1];
+                        yield MessageFormat.format("default/maven-repository/{0}/{1}/{2}/{1}-{2}.jar", groupId, artifactId, version);
+                    }
+                    default ->
+                            throw new IllegalArgumentException("Unsupported artifact type: " + artifactVersion.getType());
+                };
+                xrayArtifactSummaryGeneral.setPath(path);
 
                 XrayArtifactSummaryElement xrayArtifactSummaryElement = new XrayArtifactSummaryElement(xrayArtifactSummaryGeneral, issues);
 
@@ -120,12 +138,19 @@ public class RenovateXrayTest {
                 return summary;
             };
 
-            XrayArtifactSummaryIssue xrayArtifactSummaryIssue = new XrayArtifactSummaryIssue();
-            xrayArtifactSummaryIssue.setSeverity(Severity.High);
-            XrayArtifactSummaryCVE xrayArtifactSummaryCVE = new XrayArtifactSummaryCVE();
-            xrayArtifactSummaryCVE.setCve("CVE-2023-4444");
-            xrayArtifactSummaryIssue.setCves(List.of(xrayArtifactSummaryCVE));
-            List<XrayArtifactSummaryIssue> antJunitIssues = List.of(xrayArtifactSummaryIssue);
+            XrayArtifactSummaryIssue xrayArtifactSummaryIssue1 = new XrayArtifactSummaryIssue();
+            xrayArtifactSummaryIssue1.setSeverity(Severity.High);
+            XrayArtifactSummaryCVE xrayArtifactSummaryCVE1 = new XrayArtifactSummaryCVE();
+            xrayArtifactSummaryCVE1.setCve("CVE-2023-4444");
+            xrayArtifactSummaryIssue1.setCves(List.of(xrayArtifactSummaryCVE1));
+            List<XrayArtifactSummaryIssue> issues1 = List.of(xrayArtifactSummaryIssue1);
+
+            XrayArtifactSummaryIssue xrayArtifactSummaryIssue2 = new XrayArtifactSummaryIssue();
+            xrayArtifactSummaryIssue2.setSeverity(Severity.High);
+            XrayArtifactSummaryCVE xrayArtifactSummaryCVE2 = new XrayArtifactSummaryCVE();
+            xrayArtifactSummaryCVE2.setCve("CVE-2023-8888");
+            xrayArtifactSummaryIssue2.setCves(List.of(xrayArtifactSummaryCVE2));
+            List<XrayArtifactSummaryIssue> issues2 = List.of(xrayArtifactSummaryIssue2);
 
             HttpResponse antJunitVersionsResponse = Mockito.mock(HttpResponse.class);
             Mockito.when(antJunitVersionsResponse.statusCode()).thenReturn(200);
@@ -134,6 +159,13 @@ public class RenovateXrayTest {
                     new ArtifactoryVersion("1.6.6", false),
                     new ArtifactoryVersion("1.6.7", false)
             ))));
+            HttpResponse testifyVersionsResponse = Mockito.mock(HttpResponse.class);
+            Mockito.when(testifyVersionsResponse.statusCode()).thenReturn(200);
+            Mockito.when(testifyVersionsResponse.body()).thenReturn("""
+                    v1.10.0
+                    v1.11.1
+                    v1.11.2
+                    """);
 
             Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).then(i -> {
                 try {
@@ -147,24 +179,54 @@ public class RenovateXrayTest {
                         HttpResponse response = Mockito.mock(HttpResponse.class);
                         Mockito.when(response.statusCode()).thenReturn(200);
 
-                        Pattern pathPattern = Pattern.compile("^default/maven-repository/(?<group>.+?)/(?<artifact>[^/]+)/(?<version>\\d+.+?)/[^/]+\\.jar$");
+                        Pattern pathPattern = Pattern.compile("^default/(?<repository>[^/]+)/(?<path>.+)$");
                         Matcher matcher = pathPattern.matcher(summaryRequest.getPaths().getFirst());
                         if (matcher.matches()) {
-                            String group = matcher.group("group").replace("/", ".");
-                            String artifact = matcher.group("artifact");
-                            String version = matcher.group("version");
-                            GAV gav = new GAV(group, artifact, version);
-                            if (gav.equals(new GAV("ant:ant-junit:1.6.5")) || gav.equals(new GAV("ant:ant-junit:1.6.6"))) {
-                                Mockito.when(response.body()).thenReturn(mapper.writeValueAsString(buildSummary.apply(gav, antJunitIssues)));
+                            String repository = matcher.group("repository");
+                            String path = matcher.group("path");
+                            if (Objects.equals(repository, "maven-repository")) {
+                                Matcher mavenPathMatcher = Pattern.compile("^(?<package>.+?)/(?<version>[\\d.]+.+?)/(?<jar>.+)\\.jar$").matcher(path);
+                                if (!mavenPathMatcher.matches()) {
+                                    throw new IllegalStateException("Unexpected path: " + matcher.pattern());
+                                }
+                                String packageName = mavenPathMatcher.group("package");
+                                String version = mavenPathMatcher.group("version");
+                                List<XrayArtifactSummaryIssue> issues;
+                                if (packageName.equals("ant/ant-junit") && (version.equals("1.6.5") || version.equals("1.6.6"))) {
+                                    issues = issues1;
+                                } else {
+                                    issues = List.of();
+                                }
+                                String body = mapper.writeValueAsString(buildSummary.apply(new DefaultArtifactVersion(ArtifactType.maven, packageName, version), issues));
+                                Mockito.when(response.body()).thenReturn(body);
+                                return response;
+                            } else if (Objects.equals(repository, "go-repository")) {
+                                //        "github.com/stretchr/testify/@v/v1.10.0.zip"
+                                Matcher goPathMatcher = Pattern.compile("^(?<package>.+?)/@v/(?<version>v[\\d.]+.+?)\\.zip$").matcher(path);
+                                if (!goPathMatcher.matches()) {
+                                    throw new IllegalStateException("Unexpected path: " + matcher.pattern());
+                                }
+                                String packageName = goPathMatcher.group("package");
+                                String version = goPathMatcher.group("version");
+                                List<XrayArtifactSummaryIssue> issues;
+                                if (packageName.equals("github.com/stretchr/testify") && (version.equals("v1.10.0") || version.equals("v1.11.1"))) {
+                                    issues = issues2;
+                                } else {
+                                    issues = List.of();
+                                }
+                                String body = mapper.writeValueAsString(buildSummary.apply(new DefaultArtifactVersion(ArtifactType.go, packageName, version), issues));
+                                Mockito.when(response.body()).thenReturn(body);
+                                return response;
                             } else {
-                                Mockito.when(response.body()).thenReturn(mapper.writeValueAsString(buildSummary.apply(gav, List.of())));
+                                throw new IllegalStateException("Unexpected repository: " + repository);
                             }
-                            return response;
                         } else {
                             throw new IllegalStateException("Unexpected request: " + request);
                         }
                     } else if (method.equals("GET") && string.equals("https://artifactory.com/artifactory/api/search/versions?g=ant&a=ant-junit&repos=maven-repository")) {
                         return antJunitVersionsResponse;
+                    } else if (method.equals("GET") && string.equals("https://artifactory.com/api/go/go-repository/github.com/stretchr/testify/@v/list")) {
+                        return testifyVersionsResponse;
                     } else {
                         throw new IllegalStateException("Unexpected request: " + request);
                     }
@@ -210,11 +272,16 @@ public class RenovateXrayTest {
                         allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
                       }, {
                         matchPackageNames : [ "ant:ant-junit" ],
-                        groupName : "ant",
                         allowedVersions : "/^1.6.7$/",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "<span style=\\"color:red\\">Vulnerability alert</span>\\nThis MR fixes the following CVEs:\\nCVE-2023-4444" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2023-4444" ]
+                      }, {
+                        matchPackageNames : [ "github.com/stretchr/testify" ],
+                        allowedVersions : "/^v1.11.2$/",
+                        enabled : true,
+                        addLabels : [ "security" ],
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2023-8888" ]
                       } ],
                       platform : "github",
                       platformAutomerge : true,

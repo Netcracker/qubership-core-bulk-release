@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @NoArgsConstructor
-public class RenovateReportPackageFiles {
-    List<RenovateReportMaven> maven;
-    List<RenovateReportGomod> gomod;
+public class RenovateReportGomod {
+    String packageFile;
+    List<RenovateReportGomodDep> deps;
 }

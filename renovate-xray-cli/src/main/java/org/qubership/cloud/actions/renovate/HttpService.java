@@ -87,7 +87,6 @@ public class HttpService {
                 future.complete(output.toString(StandardCharsets.UTF_8));
             }
         });
-
         try {
             return future.get();
         } catch (Exception e) {

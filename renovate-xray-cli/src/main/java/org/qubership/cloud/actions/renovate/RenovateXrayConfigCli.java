@@ -46,9 +46,11 @@ public class RenovateXrayConfigCli implements Runnable {
             converter = RepositoryConfigConverter.class)
     private List<RepositoryConfig> repositories = new ArrayList<>();
 
-    @CommandLine.Option(names = {"--artifactoryMavenRepository"}, required = true, description = """
-            maven repository name""")
+    @CommandLine.Option(names = {"--artifactoryMavenRepository"}, description = "artifactory maven repository name")
     private List<String> artifactoryMavenRepositories = new ArrayList<>();
+
+    @CommandLine.Option(names = {"--artifactoryGoRepository"}, description = "artifactory go repository name")
+    private List<String> artifactoryGoRepositories = new ArrayList<>();
 
     @CommandLine.Option(names = {"--repositoriesFile"}, split = ",", description = """
             File with new-line seperated repositories in format: '{url}[branch={branch}]' to be used for building 'repositories' and their
@@ -106,7 +108,10 @@ public class RenovateXrayConfigCli implements Runnable {
 
             XrayService xrayService = new XrayService(httpService, objectMapper, artifactoryUrl, artifactoryUsername, artifactoryPassword);
             RenovateService service = new RenovateService(xrayService, renovateRulesService, objectMapper);
-            List<? extends Map> securityPackageRules = service.getRules(Path.of(renovateReportFilePath), artifactoryMavenRepositories, groupNamePatternsMap, labels);
+            Map<String, Collection<String>> dependencyRepositories = new TreeMap<>();
+            dependencyRepositories.put("maven", artifactoryMavenRepositories);
+            dependencyRepositories.put("go", artifactoryGoRepositories);
+            List<? extends Map> securityPackageRules = service.getRules(Path.of(renovateReportFilePath), dependencyRepositories, labels);
 
             List<Map> packageRules = (List<Map>) config.computeIfAbsent("packageRules", k -> new ArrayList<>());
             packageRules.addAll(securityPackageRules);
