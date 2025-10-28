@@ -107,7 +107,7 @@ public class RenovateXrayConfigCli implements Runnable {
                     .collect(Collectors.toMap(Map.Entry::getKey, p -> Pattern.compile(p.getValue().toString())));
 
             XrayService xrayService = new XrayService(httpService, objectMapper, artifactoryUrl, artifactoryUsername, artifactoryPassword);
-            RenovateService service = new RenovateService(xrayService, renovateRulesService, objectMapper);
+            RenovateService service = new RenovateService(xrayService, objectMapper);
             Map<String, Collection<String>> dependencyRepositories = new TreeMap<>();
             dependencyRepositories.put("maven", artifactoryMavenRepositories);
             dependencyRepositories.put("go", artifactoryGoRepositories);

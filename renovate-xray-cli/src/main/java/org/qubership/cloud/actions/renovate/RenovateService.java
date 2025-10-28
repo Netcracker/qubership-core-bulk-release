@@ -16,12 +16,10 @@ import java.util.stream.Stream;
 @Slf4j
 public class RenovateService {
     XrayService xrayService;
-    RenovateRulesService renovateRulesService;
     ObjectMapper objectMapper;
 
-    public RenovateService(XrayService xrayService, RenovateRulesService renovateRulesService, ObjectMapper objectMapper) {
+    public RenovateService(XrayService xrayService, ObjectMapper objectMapper) {
         this.xrayService = xrayService;
-        this.renovateRulesService = renovateRulesService;
         this.objectMapper = objectMapper;
     }
 
@@ -31,7 +29,7 @@ public class RenovateService {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
             Map<ArtifactVersion, Set<String>> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
-            log.info("Versions with fixed CVEs:\n{}",
+            log.info("Dependencies with fixed CVEs:\n{}",
                     fixes.entrySet().stream()
                             .map(entry -> String.format("[%s] %s:%s [%s]",
                                     entry.getKey().getType(),
@@ -130,6 +128,10 @@ public class RenovateService {
                                     String newVersion = nVersion.getVersion();
                                     ArtifactVersion newArtifactVersion = new DefaultArtifactVersion(data.getType(), data.getPackageName(), newVersion);
                                     XrayArtifactSummaryElement summary = xrayService.getArtifactSummary(repositories, data.getArtifactPath(newVersion));
+                                    if (summary == null) {
+                                        log.warn("Artifact summary not found for: {}", data.getArtifactPath(newVersion));
+                                        continue;
+                                    }
                                     Set<String> summaryCVEs = summary.getIssues().stream()
                                             .filter(issueBySeverity)
                                             .flatMap(issue -> issue.getCves().stream().map(XrayArtifactSummaryCVE::getCve))
