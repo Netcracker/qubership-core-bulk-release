@@ -23,19 +23,21 @@ public class RenovateService {
         this.objectMapper = objectMapper;
     }
 
-    public List<? extends Map> getRules(Path reportFilePath,
+    public List<? extends Map<String, Object>> getRules(Path reportFilePath,
                                         Map<String, ? extends Collection<String>> repos,
                                         Collection<String> labels) {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
-            Map<ArtifactVersion, FixedVersionData> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
+            Map<ArtifactVersion, Map<String, Set<String>>> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
             log.info("Dependencies with fixed CVEs:\n{}",
                     fixes.entrySet().stream()
                             .map(entry -> String.format("[%s] %s:%s [%s]",
                                     entry.getKey().getType(),
                                     entry.getKey().getPackageName(),
                                     entry.getKey().getVersion(),
-                                    String.join(", ", entry.getValue().getFixedCVEs())))
+                                    entry.getValue().entrySet().stream()
+                                            .map(vulnVerEntry -> String.format("%s -> [%s]", vulnVerEntry.getKey(), String.join(", ", vulnVerEntry.getValue())))
+                                            .collect(Collectors.joining("\n"))))
                             .collect(Collectors.joining("\n")));
             return gavsToRules(fixes, labels);
         } catch (Exception e) {
@@ -76,9 +78,9 @@ public class RenovateService {
         return result;
     }
 
-    public Map<ArtifactVersion, FixedVersionData> findFixedVersions(Map<String, ? extends Collection<String>> repos,
-                                                                    List<ArtifactVersionData<?>> artifactVersions,
-                                                                    Severity severity) {
+    public Map<ArtifactVersion, Map<String, Set<String>>> findFixedVersions(Map<String, ? extends Collection<String>> repos,
+                                                                            List<ArtifactVersionData<?>> artifactVersions,
+                                                                            Severity severity) {
         Predicate<XrayArtifactSummaryIssue> issueBySeverity = issue ->
                 /*Objects.equals(issue.getIssue_type(), "security") && */issue.getSeverity().ordinal() <= severity.ordinal();
         return artifactVersions.stream()
@@ -172,30 +174,37 @@ public class RenovateService {
                 })
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                    FixedVersionData fixedVersionData = entry.getValue();
+                    return Map.of(fixedVersionData.getVulnerableVersion(), fixedVersionData.getFixedCVEs());
+                }, (m1, m2) -> Stream.concat(m1.entrySet().stream(), m2.entrySet().stream())
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (v1, v2) -> v1, TreeMap::new))));
     }
 
-    public List<? extends Map> gavsToRules(Map<ArtifactVersion, FixedVersionData> artifactVersions, Collection<String> labels) {
+    public List<? extends Map<String, Object>> gavsToRules(Map<ArtifactVersion, Map<String, Set<String>>> artifactVersions, Collection<String> labels) {
         return artifactVersions.entrySet().stream()
-                .sorted(Comparator.<Map.Entry<ArtifactVersion, FixedVersionData>, String>comparing(entry -> entry.getKey().getPackageName())
+                .sorted(Comparator.<Map.Entry<ArtifactVersion, Map<String, Set<String>>>, String>comparing(entry -> entry.getKey().getPackageName())
                         .thenComparing(entry -> new LooseVersion(entry.getKey().getVersion())))
-                .map(entry -> {
+                .flatMap(entry -> {
                     ArtifactVersion artifactVersion = entry.getKey();
-                    FixedVersionData fixedVersionData = entry.getValue();
-                    String vulnerableVersion = fixedVersionData.getVulnerableVersion();
-                    Collection<String> fixedCVEs = fixedVersionData.getFixedCVEs();
-                    RenovateMap rule = new RenovateMap();
-                    rule.put("matchPackageNames", List.of(artifactVersion.getPackageName()));
-                    rule.put("allowedVersions", String.format("/^%s$/", artifactVersion.getVersion()));
-                    rule.put("matchCurrentVersion", vulnerableVersion);
-                    rule.put("enabled", true);
-                    rule.put("addLabels", labels);
-                    rule.put("prBodyNotes", List.of(
-                            """
-                                    ⚠️Vulnerability alert
-                                    This MR fixes the following CVEs:
-                                    """ + String.join("\n", fixedCVEs)));
-                    return rule;
+                    return entry.getValue().entrySet().stream()
+                            .map(vulnerableVerEntry -> {
+                                String vulnerableVersion = vulnerableVerEntry.getKey();
+                                Collection<String> fixedCVEs = vulnerableVerEntry.getValue();
+                                RenovateMap rule = new RenovateMap();
+                                rule.put("matchPackageNames", List.of(artifactVersion.getPackageName()));
+                                rule.put("allowedVersions", String.format("/^%s$/", artifactVersion.getVersion()));
+                                rule.put("matchCurrentVersion", vulnerableVersion);
+                                rule.put("enabled", true);
+                                rule.put("addLabels", labels);
+                                rule.put("prBodyNotes", List.of(
+                                        """
+                                                ⚠️Vulnerability alert
+                                                This MR fixes the following CVEs:
+                                                """ + String.join("\n", fixedCVEs)));
+                                return rule;
+                            });
+
                 })
                 .toList();
     }
