@@ -1,5 +1,8 @@
 package org.qubership.cloud.actions.renovate.model;
 
+import lombok.Data;
+
+@Data
 public class DefaultArtifactVersion implements ArtifactVersion {
     ArtifactType type;
     String packageName;

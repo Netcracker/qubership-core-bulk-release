@@ -28,14 +28,14 @@ public class RenovateService {
                                         Collection<String> labels) {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
-            Map<ArtifactVersion, Set<String>> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
+            Map<ArtifactVersion, FixedVersionData> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
             log.info("Dependencies with fixed CVEs:\n{}",
                     fixes.entrySet().stream()
                             .map(entry -> String.format("[%s] %s:%s [%s]",
                                     entry.getKey().getType(),
                                     entry.getKey().getPackageName(),
                                     entry.getKey().getVersion(),
-                                    String.join(", ", entry.getValue())))
+                                    String.join(", ", entry.getValue().getFixedCVEs())))
                             .collect(Collectors.joining("\n")));
             return gavsToRules(fixes, labels);
         } catch (Exception e) {
@@ -76,9 +76,9 @@ public class RenovateService {
         return result;
     }
 
-    public Map<ArtifactVersion, Set<String>> findFixedVersions(Map<String, ? extends Collection<String>> repos,
-                                                               List<ArtifactVersionData<?>> artifactVersions,
-                                                               Severity severity) {
+    public Map<ArtifactVersion, FixedVersionData> findFixedVersions(Map<String, ? extends Collection<String>> repos,
+                                                                    List<ArtifactVersionData<?>> artifactVersions,
+                                                                    Severity severity) {
         Predicate<XrayArtifactSummaryIssue> issueBySeverity = issue ->
                 /*Objects.equals(issue.getIssue_type(), "security") && */issue.getSeverity().ordinal() <= severity.ordinal();
         return artifactVersions.stream()
@@ -93,7 +93,7 @@ public class RenovateService {
                         XrayArtifactSummaryElement artifactSummary = xrayService.getArtifactSummary(repositories, data.getArtifactPath());
                         if (artifactSummary == null) {
                             log.warn("Artifact summary not found for: {}", data.getArtifactPath());
-                            return Optional.<Map.Entry<ArtifactVersion, Set<String>>>empty();
+                            return Optional.<Map.Entry<ArtifactVersion, FixedVersionData>>empty();
                         }
                         // 2. filter artifact issues with severity >= requested
                         List<XrayArtifactSummaryIssue> issues = artifactSummary.getIssues().stream()
@@ -114,7 +114,7 @@ public class RenovateService {
                                     .sorted()
                                     .toList();
                             // 4. if there are versions >= gav, then load their summary to find versions with fixed issues
-                            Map.Entry<ArtifactVersion, Set<String>> newVersiontoFixedCVEs = null;
+                            Map.Entry<ArtifactVersion, FixedVersionData> newVersiontoFixedCVEs = null;
                             // 5.a check if renovate has updates and the updates have versions with fixed issues
                             Optional<LooseVersion> minUpdate = data.getNewVersions().stream()
                                     .map(LooseVersion::new)
@@ -138,7 +138,7 @@ public class RenovateService {
                                             .collect(Collectors.toSet());
                                     if (summaryCVEs.isEmpty()) {
                                         // all vulnerabilities of >= severity fixed
-                                        newVersiontoFixedCVEs = Map.entry(newArtifactVersion, currentCVEs);
+                                        newVersiontoFixedCVEs = Map.entry(newArtifactVersion, new FixedVersionData(currentVersion.getVersion(), currentCVEs));
                                         log.info("Found the candidate with all vulnerabilities >= {} fixed [{}] from {} fixed in: {}",
                                                 severity, String.join(", ", currentCVEs), data.getArtifactPath(), newVersion);
                                         break;
@@ -146,13 +146,13 @@ public class RenovateService {
                                         if (summaryCVEs.size() < currentCVEs.size()) {
                                             Set<String> fixedCVEs = currentCVEs.stream().filter(cve -> !summaryCVEs.contains(cve)).collect(Collectors.toSet());
                                             if (newVersiontoFixedCVEs == null) {
-                                                newVersiontoFixedCVEs = Map.entry(newArtifactVersion, fixedCVEs);
+                                                newVersiontoFixedCVEs = Map.entry(newArtifactVersion, new FixedVersionData(currentVersion.getVersion(), fixedCVEs));
                                                 log.info("Found new candidate with fixed vulnerabilities >= {} [{}] from {} fixed in: {}",
                                                         severity, String.join(", ", currentCVEs), data.getArtifactPath(), newVersion);
                                             } else {
-                                                Set<String> existingSummaryCVEs = newVersiontoFixedCVEs.getValue();
+                                                Set<String> existingSummaryCVEs = newVersiontoFixedCVEs.getValue().getFixedCVEs();
                                                 if (fixedCVEs.size() > existingSummaryCVEs.size()) {
-                                                    newVersiontoFixedCVEs = Map.entry(newArtifactVersion, fixedCVEs);
+                                                    newVersiontoFixedCVEs = Map.entry(newArtifactVersion, new FixedVersionData(currentVersion.getVersion(), fixedCVEs));
                                                     log.info("Found new candidate with more fixed vulnerabilities >= {} [{}] from {} fixed in: {}",
                                                             severity, String.join(", ", currentCVEs), data.getArtifactPath(), newVersion);
                                                 }
@@ -165,7 +165,7 @@ public class RenovateService {
                             }
                             return Optional.ofNullable(newVersiontoFixedCVEs);
                         }
-                        return Optional.<Map.Entry<ArtifactVersion, Set<String>>>empty();
+                        return Optional.<Map.Entry<ArtifactVersion, FixedVersionData>>empty();
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to process artifact", e);
                     }
@@ -175,16 +175,19 @@ public class RenovateService {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public List<? extends Map> gavsToRules(Map<ArtifactVersion, Set<String>> artifactVersions, Collection<String> labels) {
+    public List<? extends Map> gavsToRules(Map<ArtifactVersion, FixedVersionData> artifactVersions, Collection<String> labels) {
         return artifactVersions.entrySet().stream()
-                .sorted(Comparator.<Map.Entry<ArtifactVersion, Set<String>>, String>comparing(entry -> entry.getKey().getPackageName())
+                .sorted(Comparator.<Map.Entry<ArtifactVersion, FixedVersionData>, String>comparing(entry -> entry.getKey().getPackageName())
                         .thenComparing(entry -> new LooseVersion(entry.getKey().getVersion())))
                 .map(entry -> {
                     ArtifactVersion artifactVersion = entry.getKey();
-                    Collection<String> fixedCVEs = entry.getValue();
+                    FixedVersionData fixedVersionData = entry.getValue();
+                    String vulnerableVersion = fixedVersionData.getVulnerableVersion();
+                    Collection<String> fixedCVEs = fixedVersionData.getFixedCVEs();
                     RenovateMap rule = new RenovateMap();
                     rule.put("matchPackageNames", List.of(artifactVersion.getPackageName()));
                     rule.put("allowedVersions", String.format("/^%s$/", artifactVersion.getVersion()));
+                    rule.put("matchCurrentVersion", vulnerableVersion);
                     rule.put("enabled", true);
                     rule.put("addLabels", labels);
                     rule.put("prBodyNotes", List.of(

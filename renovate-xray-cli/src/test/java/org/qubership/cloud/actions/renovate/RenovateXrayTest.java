@@ -272,12 +272,14 @@ public class RenovateXrayTest {
                       }, {
                         matchPackageNames : [ "ant:ant-junit" ],
                         allowedVersions : "/^1.6.7$/",
+                        matchCurrentVersion : "1.6.5",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2023-4444" ]
                       }, {
                         matchPackageNames : [ "github.com/stretchr/testify" ],
                         allowedVersions : "/^v1.11.2$/",
+                        matchCurrentVersion : "v1.10.0",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2023-8888" ]
