@@ -42,7 +42,11 @@ public class HttpService {
             }
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (log.isDebugEnabled()) {
-                String body = mapper.writeValueAsString(mapper.readValue(response.body(), Object.class));
+                String body = response.body();
+                try {
+                    body = mapper.writeValueAsString(mapper.readValue(response.body(), Object.class));
+                } catch (Exception ignored) {
+                }
                 String debug = String.format("Received response: [%s]%s", response.statusCode(), body == null ? "" : " body:\n" + body);
                 log.debug(debug);
             }
