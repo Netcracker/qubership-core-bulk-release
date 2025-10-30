@@ -131,8 +131,8 @@ public class RenovateService {
                                     .filter(v -> {
                                         boolean allowed = allowedVersionsPattern.matcher(v).matches();
                                         if (!allowed) {
-                                            log.warn("Package version '{}' not allowed and filtered out. Version must match pattern: {}",
-                                                    data.getArtifactPath(v), allowedVersionsPattern.pattern());
+                                            log.warn("Package with version '{}' not allowed and filtered out. Version '{}' must match pattern: {}",
+                                                    data.getArtifactPath(v), v, allowedVersionsPattern.pattern());
                                         }
                                         return allowed;
                                     })
