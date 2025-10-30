@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,10 +26,11 @@ public class RenovateService {
 
     public List<? extends Map<String, Object>> getRules(Path reportFilePath,
                                                         Map<String, ? extends Collection<String>> repos,
+                                                        Pattern allowedVersionsPattern,
                                                         Collection<String> labels) {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
-            Map<ArtifactVersion, Map<String, Set<String>>> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
+            Map<ArtifactVersion, Map<String, Set<String>>> fixes = findFixedVersions(repos, artifactVersions, allowedVersionsPattern, Severity.High);
             log.info("Dependencies with fixed CVEs:\n{}",
                     fixes.entrySet().stream()
                             .map(entry -> String.format("[%s] %s:%s [%s]",
@@ -92,6 +94,7 @@ public class RenovateService {
 
     public Map<ArtifactVersion, Map<String, Set<String>>> findFixedVersions(Map<String, ? extends Collection<String>> repos,
                                                                             List<ArtifactVersionData<?>> artifactVersions,
+                                                                            Pattern allowedVersionsPattern,
                                                                             Severity severity) {
         Predicate<XrayArtifactSummaryIssue> issueBySeverity = issue ->
                 /*Objects.equals(issue.getIssue_type(), "security") && */issue.getSeverity().ordinal() <= severity.ordinal();
@@ -125,9 +128,16 @@ public class RenovateService {
                             LooseVersion currentVersion = new LooseVersion(data.getVersion());
                             // 3. load available versions for artifact
                             List<LooseVersion> newVersions = xrayService.getArtifactVersions(repositories, data).stream()
+                                    .filter(v -> {
+                                        boolean allowed = allowedVersionsPattern.matcher(v).matches();
+                                        if (!allowed) {
+                                            log.warn("Package version '{}' not allowed and filtered out. Version must match pattern: {}",
+                                                    data.getArtifactPath(v), allowedVersionsPattern.pattern());
+                                        }
+                                        return allowed;
+                                    })
                                     .filter(LooseVersion::isValid)
                                     .map(LooseVersion::new)
-                                    .filter(v -> v.getSuffix() == null || !v.getSuffix().contains("SNAPSHOT"))
                                     .filter(v -> v.compareTo(currentVersion) > 0)
                                     .sorted(LooseVersion::compareTo)
                                     .toList();
