@@ -30,6 +30,7 @@ public class RenovateService {
                                                         Collection<String> labels) {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
+            log.info("Found {} dependencies with renovate data", artifactVersions.size());
             Map<ArtifactVersion, Map<String, Set<String>>> fixes = findFixedVersions(repos, artifactVersions, allowedVersionsPattern, Severity.High);
             log.info("Dependencies with fixed CVEs:\n{}",
                     fixes.entrySet().stream()
@@ -103,8 +104,8 @@ public class RenovateService {
                     try {
                         // 1. load xray artifact summary
                         Collection<String> repositories = repos.get(data.getType().name().toLowerCase());
-                        if (repositories == null) {
-                            throw new IllegalArgumentException("Unsupported type: " + data.getType());
+                        if (repositories == null || repositories.isEmpty()) {
+                            throw new IllegalArgumentException("Repositories not configured for type: " + data.getType());
                         }
                         XrayArtifactSummaryElement artifactSummary = xrayService.getArtifactSummary(repositories, data.getArtifactPath());
                         if (artifactSummary == null) {
