@@ -299,19 +299,19 @@ public class RenovateXrayTest {
                         matchPackagePatterns : [ ".*" ],
                         allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
                       }, {
-                        matchPackageNames : [ "alpine/openjdk21" ],
-                        allowedVersions : "/^21.0.8.9.05$/",
-                        matchCurrentVersion : "21.0.8.9.03",
-                        enabled : true,
-                        addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-7777" ]
-                      }, {
                         matchPackageNames : [ "ant:ant-junit" ],
                         allowedVersions : "/^1.6.7$/",
                         matchCurrentVersion : "1.6.5",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-4444" ]
+                      }, {
+                        matchPackageNames : [ "artifactory.com:17003/alpine/openjdk21" ],
+                        allowedVersions : "/^21.0.8.9.05$/",
+                        matchCurrentVersion : "21.0.8.9.03",
+                        enabled : true,
+                        addLabels : [ "security" ],
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-7777" ]
                       }, {
                         matchPackageNames : [ "github.com/stretchr/testify" ],
                         allowedVersions : "/^v1.11.2$/",

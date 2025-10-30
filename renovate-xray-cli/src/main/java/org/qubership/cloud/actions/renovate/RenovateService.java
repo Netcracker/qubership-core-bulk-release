@@ -110,7 +110,7 @@ public class RenovateService {
                         if (artifactSummary == null) {
                             log.warn("Artifact summary not found for: {}", data.getArtifactPath());
                             return Optional.<Map.Entry<ArtifactVersion, FixedVersionData>>empty();
-                        } else if (!LooseVersion.isValid(data.getVersion())){
+                        } else if (!LooseVersion.isValid(data.getVersion())) {
                             log.warn("Artifact version in not a valid version: {}. Must match pattern: '{}'",
                                     data.getVersion(), LooseVersion.versionPattern.pattern());
                             return Optional.<Map.Entry<ArtifactVersion, FixedVersionData>>empty();
@@ -154,7 +154,9 @@ public class RenovateService {
                             for (LooseVersion nVersion : newVersions) {
                                 try {
                                     String newVersion = nVersion.getVersion();
-                                    ArtifactVersion newArtifactVersion = new DefaultArtifactVersion(data.getType(), data.getPackageName(), newVersion);
+                                    ArtifactVersion newArtifactVersion = data instanceof DockerArtifactVersion dockerData ?
+                                            new DefaultArtifactVersion(data.getType(), dockerData.getRenovateData().getPackageName(), newVersion) :
+                                            new DefaultArtifactVersion(data.getType(), data.getPackageName(), newVersion);
                                     XrayArtifactSummaryElement summary = xrayService.getArtifactSummary(repositories, data.getArtifactPath(newVersion));
                                     if (summary == null) {
                                         log.warn("Artifact summary not found for: {}", data.getArtifactPath(newVersion));
