@@ -107,6 +107,10 @@ public class RenovateService {
                         if (artifactSummary == null) {
                             log.warn("Artifact summary not found for: {}", data.getArtifactPath());
                             return Optional.<Map.Entry<ArtifactVersion, FixedVersionData>>empty();
+                        } else if (!LooseVersion.isValid(data.getVersion())){
+                            log.warn("Artifact version in not a valid version: {}. Must match pattern: '{}'",
+                                    data.getVersion(), LooseVersion.versionPattern.pattern());
+                            return Optional.<Map.Entry<ArtifactVersion, FixedVersionData>>empty();
                         }
                         // 2. filter artifact issues with severity >= requested
                         List<XrayArtifactSummaryIssue> issues = artifactSummary.getIssues().stream()
@@ -121,6 +125,7 @@ public class RenovateService {
                             LooseVersion currentVersion = new LooseVersion(data.getVersion());
                             // 3. load available versions for artifact
                             List<LooseVersion> newVersions = xrayService.getArtifactVersions(repositories, data).stream()
+                                    .filter(LooseVersion::isValid)
                                     .map(LooseVersion::new)
                                     .filter(v -> v.getSuffix() == null || !v.getSuffix().contains("SNAPSHOT"))
                                     .filter(v -> v.compareTo(currentVersion) > 0)

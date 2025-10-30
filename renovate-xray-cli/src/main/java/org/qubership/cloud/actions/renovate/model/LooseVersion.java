@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 @Data
 public class LooseVersion implements Comparable<LooseVersion> {
 
-    static Pattern versionPattern = Pattern.compile("^(?<perfix>[^\\d]+)?(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<suffix>.+)?$");
+    public static Pattern versionPattern = Pattern.compile("^(?<perfix>[^\\d]+)?(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<suffix>.+)?$");
 
     private String version;
     private int major;
@@ -25,7 +25,7 @@ public class LooseVersion implements Comparable<LooseVersion> {
     public LooseVersion(String version) {
         Matcher matcher = versionPattern.matcher(version);
         if (!matcher.matches()) {
-            throw new IllegalArgumentException("Invalid maven version: " + version);
+            throw new IllegalArgumentException(String.format("Invalid loose version: %s. Must match pattern: %s", version, versionPattern.pattern()));
         }
         this.version = version;
         this.major = Integer.parseInt(matcher.group("major"));
@@ -44,7 +44,7 @@ public class LooseVersion implements Comparable<LooseVersion> {
     public void update(VersionIncrementType type, int value) {
         Matcher matcher = versionPattern.matcher(version);
         if (!matcher.matches()) {
-            throw new IllegalArgumentException("Invalid maven version: " + version);
+            throw new IllegalArgumentException(String.format("Invalid loose version: %s. Must match pattern: %s", version, versionPattern.pattern()));
         }
         this.version = matcher.replaceAll(mr -> {
             String part = mr.group(type.name().toLowerCase());
