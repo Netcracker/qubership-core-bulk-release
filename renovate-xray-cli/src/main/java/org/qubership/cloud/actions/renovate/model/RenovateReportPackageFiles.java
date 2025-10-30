@@ -10,4 +10,5 @@ import java.util.List;
 public class RenovateReportPackageFiles {
     List<RenovateReportMaven> maven;
     List<RenovateReportGomod> gomod;
+    List<RenovateReportDockerfile> dockerfile;
 }

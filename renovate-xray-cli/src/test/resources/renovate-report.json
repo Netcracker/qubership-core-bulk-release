@@ -236,6 +236,42 @@
             ]
           }
         ],
+        "dockerfile": [
+          {
+            "deps": [
+              {
+                "depName": "artifactory.com:17003/alpine/openjdk21",
+                "packageName": "artifactory.com:17003/alpine/openjdk21",
+                "currentValue": "21.0.8.9.03",
+                "replaceString": "artifactory.com:17003/alpine/openjdk21:21.0.8.9.03",
+                "autoReplaceStringTemplate": "{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}",
+                "datasource": "docker",
+                "depType": "final",
+                "updates": [
+                  {
+                    "bucket": "non-major",
+                    "newVersion": "21.0.8.9.05",
+                    "newValue": "21.0.8.9.05",
+                    "newMajor": 21,
+                    "newMinor": 0,
+                    "newPatch": 8,
+                    "updateType": "patch",
+                    "isBreaking": false,
+                    "branchName": "renovate-master/alpine"
+                  }
+                ],
+                "versioning": "loose",
+                "warnings": [],
+                "registryUrl": "https://artifactory.com:17003",
+                "lookupName": "alpine/openjdk21",
+                "currentVersion": "21.0.8.9.03",
+                "isSingleVersion": true,
+                "fixedVersion": "21.0.8.9.03"
+              }
+            ],
+            "packageFile": "Dockerfile"
+          }
+        ],
         "libYearsWithStatus": {
           "libYears": {
             "managers": {

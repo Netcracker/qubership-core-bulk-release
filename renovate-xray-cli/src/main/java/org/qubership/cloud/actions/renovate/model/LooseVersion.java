@@ -95,6 +95,20 @@ public class LooseVersion implements Comparable<LooseVersion> {
 
     @Override
     public int compareTo(LooseVersion o) {
-        return Comparator.comparing(LooseVersion::getMajor).thenComparing(LooseVersion::getMinor).thenComparing(LooseVersion::getPatch).compare(this, o);
+        return Comparator.comparing(LooseVersion::getMajor)
+                .thenComparing(LooseVersion::getMinor)
+                .thenComparing(LooseVersion::getPatch)
+                .thenComparing(LooseVersion::getSuffix, (o1,o2)-> {
+                    if (o1 == null && o2 == null) {
+                        return 0;
+                    } else if (o1 == null) {
+                        return -1;
+                    } else if (o2 == null) {
+                        return 1;
+                    } else {
+                        return o1.compareTo(o2);
+                    }
+                })
+                .compare(this, o);
     }
 }

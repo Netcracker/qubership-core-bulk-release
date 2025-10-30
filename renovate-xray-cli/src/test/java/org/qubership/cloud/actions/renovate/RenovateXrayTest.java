@@ -99,6 +99,7 @@ public class RenovateXrayTest {
                 "--artifactoryPassword=" + artifactoryPassword,
                 "--artifactoryMavenRepository=maven-repository",
                 "--artifactoryGoRepository=go-repository",
+                "--artifactoryDockerRepository=docker-repository",
                 "--renovateConfigOutputFile=" + renovateConfigFile,
                 "--repositoriesFile=" + repositoriesFile,
                 "--fromFile=" + jsonFile
@@ -127,13 +128,10 @@ public class RenovateXrayTest {
                         String artifactId = packageParts[packageParts.length - 1];
                         yield MessageFormat.format("default/maven-repository/{0}/{1}/{2}/{1}-{2}.jar", groupId, artifactId, version);
                     }
-                    default ->
-                            throw new IllegalArgumentException("Unsupported artifact type: " + artifactVersion.getType());
+                    case docker -> MessageFormat.format("default/docker-repository/{0}/{1}/", packageName, version);
                 };
                 xrayArtifactSummaryGeneral.setPath(path);
-
                 XrayArtifactSummaryElement xrayArtifactSummaryElement = new XrayArtifactSummaryElement(xrayArtifactSummaryGeneral, issues);
-
                 summary.setArtifacts(List.of(xrayArtifactSummaryElement));
                 return summary;
             };
@@ -141,20 +139,27 @@ public class RenovateXrayTest {
             XrayArtifactSummaryIssue xrayArtifactSummaryIssue1 = new XrayArtifactSummaryIssue();
             xrayArtifactSummaryIssue1.setSeverity(Severity.High);
             XrayArtifactSummaryCVE xrayArtifactSummaryCVE1 = new XrayArtifactSummaryCVE();
-            xrayArtifactSummaryCVE1.setCve("CVE-2023-4444");
+            xrayArtifactSummaryCVE1.setCve("CVE-2025-4444");
             xrayArtifactSummaryIssue1.setCves(List.of(xrayArtifactSummaryCVE1));
             List<XrayArtifactSummaryIssue> issues1 = List.of(xrayArtifactSummaryIssue1);
 
             XrayArtifactSummaryIssue xrayArtifactSummaryIssue2 = new XrayArtifactSummaryIssue();
             xrayArtifactSummaryIssue2.setSeverity(Severity.High);
             XrayArtifactSummaryCVE xrayArtifactSummaryCVE2 = new XrayArtifactSummaryCVE();
-            xrayArtifactSummaryCVE2.setCve("CVE-2023-8888");
+            xrayArtifactSummaryCVE2.setCve("CVE-2025-8888");
             xrayArtifactSummaryIssue2.setCves(List.of(xrayArtifactSummaryCVE2));
             List<XrayArtifactSummaryIssue> issues2 = List.of(xrayArtifactSummaryIssue2);
 
+            XrayArtifactSummaryIssue xrayArtifactSummaryIssue3 = new XrayArtifactSummaryIssue();
+            xrayArtifactSummaryIssue3.setSeverity(Severity.High);
+            XrayArtifactSummaryCVE xrayArtifactSummaryCVE3 = new XrayArtifactSummaryCVE();
+            xrayArtifactSummaryCVE3.setCve("CVE-2025-7777");
+            xrayArtifactSummaryIssue3.setCves(List.of(xrayArtifactSummaryCVE3));
+            List<XrayArtifactSummaryIssue> issues3 = List.of(xrayArtifactSummaryIssue3);
+
             HttpResponse antJunitVersionsResponse = Mockito.mock(HttpResponse.class);
             Mockito.when(antJunitVersionsResponse.statusCode()).thenReturn(200);
-            Mockito.when(antJunitVersionsResponse.body()).thenReturn(mapper.writeValueAsString(new ArtifactoryVersions(List.of(
+            Mockito.when(antJunitVersionsResponse.body()).thenReturn(mapper.writeValueAsString(new ArtifactoryMavenVersions(List.of(
                     new ArtifactoryVersion("1.6.5", false),
                     new ArtifactoryVersion("1.6.6", false),
                     new ArtifactoryVersion("1.6.7", false)
@@ -166,6 +171,12 @@ public class RenovateXrayTest {
                     v1.11.1
                     v1.11.2
                     """);
+            HttpResponse alpineVersionsResponse = Mockito.mock(HttpResponse.class);
+            Mockito.when(alpineVersionsResponse.statusCode()).thenReturn(200);
+            Mockito.when(alpineVersionsResponse.body()).thenReturn(mapper.writeValueAsString(new ArtifactoryDockerVersions(List.of(
+                    "21.0.8.9.04",
+                    "21.0.8.9.05"
+            ))));
 
             Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).then(i -> {
                 try {
@@ -216,6 +227,22 @@ public class RenovateXrayTest {
                                 String body = mapper.writeValueAsString(buildSummary.apply(new DefaultArtifactVersion(ArtifactType.go, packageName, version), issues));
                                 Mockito.when(response.body()).thenReturn(body);
                                 return response;
+                            } else if (Objects.equals(repository, "docker-repository")) {
+                                Matcher pathMatcher = Pattern.compile("^(?<package>.+?)/(?<version>[\\d.]+.+?)/$").matcher(path);
+                                if (!pathMatcher.matches()) {
+                                    throw new IllegalStateException("Unexpected path: " + matcher.pattern());
+                                }
+                                String packageName = pathMatcher.group("package");
+                                String version = pathMatcher.group("version");
+                                List<XrayArtifactSummaryIssue> issues;
+                                if (packageName.equals("alpine/openjdk21") && (version.equals("21.0.8.9.03") || version.equals("21.0.8.9.04"))) {
+                                    issues = issues3;
+                                } else {
+                                    issues = List.of();
+                                }
+                                String body = mapper.writeValueAsString(buildSummary.apply(new DefaultArtifactVersion(ArtifactType.docker, packageName, version), issues));
+                                Mockito.when(response.body()).thenReturn(body);
+                                return response;
                             } else {
                                 throw new IllegalStateException("Unexpected repository: " + repository);
                             }
@@ -226,6 +253,8 @@ public class RenovateXrayTest {
                         return antJunitVersionsResponse;
                     } else if (method.equals("GET") && string.equals("https://artifactory.com/api/go/go-repository/github.com/stretchr/testify/@v/list")) {
                         return testifyVersionsResponse;
+                    } else if (method.equals("GET") && string.equals("https://artifactory.com/api/docker/docker-repository/v2/alpine/openjdk21/tags/list")) {
+                        return alpineVersionsResponse;
                     } else {
                         throw new IllegalStateException("Unexpected request: " + request);
                     }
@@ -270,19 +299,26 @@ public class RenovateXrayTest {
                         matchPackagePatterns : [ ".*" ],
                         allowedVersions : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
                       }, {
+                        matchPackageNames : [ "alpine/openjdk21" ],
+                        allowedVersions : "/^21.0.8.9.05$/",
+                        matchCurrentVersion : "21.0.8.9.03",
+                        enabled : true,
+                        addLabels : [ "security" ],
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-7777" ]
+                      }, {
                         matchPackageNames : [ "ant:ant-junit" ],
                         allowedVersions : "/^1.6.7$/",
                         matchCurrentVersion : "1.6.5",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2023-4444" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-4444" ]
                       }, {
                         matchPackageNames : [ "github.com/stretchr/testify" ],
                         allowedVersions : "/^v1.11.2$/",
                         matchCurrentVersion : "v1.10.0",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2023-8888" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-8888" ]
                       } ],
                       platform : "github",
                       platformAutomerge : true,

@@ -4,26 +4,23 @@ import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
 
-public class GoArtifactVersion implements ArtifactVersionData<RenovateReportGomodDep> {
+public class DockerArtifactVersion implements ArtifactVersionData<RenovateReportDockerfileDep> {
     String packageName;
     String version;
     String artifactPath;
-    RenovateReportGomodDep renovateData;
+    RenovateReportDockerfileDep renovateData;
 
-    public GoArtifactVersion(String packageName, String version, RenovateReportGomodDep renovateData) {
+    public DockerArtifactVersion(String packageName, String version, RenovateReportDockerfileDep renovateData) {
         this.packageName = packageName;
         this.version = version;
         this.renovateData = renovateData;
-        //        "defaul/proxy_golang_org.proxy_techical-cache/golang.org/toolchain/@v/v0.0.1-go1.23.3.linux-amd64.zip",
-        //        "defaul/proxy_golang_org.proxy_techical-cache/github.com/miekg/dns/@v/v1.1.59.zip",
-        //        "defaul/proxy_golang_org.proxy_techical-cache/github.com/bradleyjkemp/cupaloy/v2/@v/v2.7.0.zip"
-        // todo check if below is valid for go artifact
+        //defaul/pd.saas.docker/alpine/openjdk21/21.0.8.9.05/manifest.json
         this.artifactPath = getArtifactPath(version);
     }
 
     @Override
     public ArtifactType getType() {
-        return ArtifactType.go;
+        return ArtifactType.docker;
     }
 
     @Override
@@ -39,7 +36,7 @@ public class GoArtifactVersion implements ArtifactVersionData<RenovateReportGomo
     @Override
     public List<String> getNewVersions() {
         return Optional.ofNullable(renovateData.getUpdates()).orElse(List.of()).stream()
-                .map(RenovateReportGomodDepUpdate::getNewVersion)
+                .map(RenovateReportDockerfileDepUpdate::getNewVersion)
                 .toList();
     }
 
@@ -50,11 +47,11 @@ public class GoArtifactVersion implements ArtifactVersionData<RenovateReportGomo
 
     @Override
     public String getArtifactPath(String version) {
-        return MessageFormat.format("{0}/@v/{1}.zip", this.packageName, version);
+        return MessageFormat.format("{0}/{1}/", this.packageName, version);
     }
 
     @Override
-    public RenovateReportGomodDep getRenovateData() {
+    public RenovateReportDockerfileDep getRenovateData() {
         return renovateData;
     }
 }

@@ -24,8 +24,8 @@ public class RenovateService {
     }
 
     public List<? extends Map<String, Object>> getRules(Path reportFilePath,
-                                        Map<String, ? extends Collection<String>> repos,
-                                        Collection<String> labels) {
+                                                        Map<String, ? extends Collection<String>> repos,
+                                                        Collection<String> labels) {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
             Map<ArtifactVersion, Map<String, Set<String>>> fixes = findFixedVersions(repos, artifactVersions, Severity.High);
@@ -58,9 +58,9 @@ public class RenovateService {
                 .map(RenovateReportMaven::getDeps)
                 .flatMap(List::stream)
                 .filter(dep -> dep.getCurrentVersion() != null && !"import".equals(dep.getDepType()))
-                .map(mavenDep -> {
-                    GAV gav = new GAV(String.format("%s:%s", mavenDep.getDepName(), mavenDep.getCurrentVersion()));
-                    return new MavenArtifactVersion(gav, mavenDep);
+                .map(dep -> {
+                    GAV gav = new GAV(String.format("%s:%s", dep.getDepName(), dep.getCurrentVersion()));
+                    return new MavenArtifactVersion(gav, dep);
                 })
                 .toList());
         // go
@@ -73,7 +73,19 @@ public class RenovateService {
                 .map(RenovateReportGomod::getDeps)
                 .flatMap(List::stream)
                 .filter(dep -> dep.getCurrentVersion() != null)
-                .map(goDep -> new GoArtifactVersion(goDep.getPackageName(), goDep.getCurrentVersion(), goDep))
+                .map(dep -> new GoArtifactVersion(dep.getPackageName(), dep.getCurrentVersion(), dep))
+                .toList());
+        // docker
+        result.addAll(renovateReport.getRepositories().values().stream()
+                .map(RenovateReportRepository::getPackageFiles)
+                .filter(Objects::nonNull)
+                .map(RenovateReportPackageFiles::getDockerfile)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .map(RenovateReportDockerfile::getDeps)
+                .flatMap(List::stream)
+                .filter(dep -> dep.getCurrentVersion() != null)
+                .map(dep -> new DockerArtifactVersion(dep.getLookupName(), dep.getCurrentVersion(), dep))
                 .toList());
         return result;
     }
@@ -87,11 +99,10 @@ public class RenovateService {
                 .map(data -> {
                     try {
                         // 1. load xray artifact summary
-                        Collection<String> repositories = switch (data.getType()) {
-                            case maven -> repos.get("maven");
-                            case go -> repos.get("go");
-                            default -> throw new IllegalArgumentException("Unsupported type: " + data.getType());
-                        };
+                        Collection<String> repositories = repos.get(data.getType().name().toLowerCase());
+                        if (repositories == null) {
+                            throw new IllegalArgumentException("Unsupported type: " + data.getType());
+                        }
                         XrayArtifactSummaryElement artifactSummary = xrayService.getArtifactSummary(repositories, data.getArtifactPath());
                         if (artifactSummary == null) {
                             log.warn("Artifact summary not found for: {}", data.getArtifactPath());
@@ -113,14 +124,14 @@ public class RenovateService {
                                     .map(LooseVersion::new)
                                     .filter(v -> v.getSuffix() == null || !v.getSuffix().contains("SNAPSHOT"))
                                     .filter(v -> v.compareTo(currentVersion) > 0)
-                                    .sorted()
+                                    .sorted(LooseVersion::compareTo)
                                     .toList();
                             // 4. if there are versions >= gav, then load their summary to find versions with fixed issues
                             Map.Entry<ArtifactVersion, FixedVersionData> newVersiontoFixedCVEs = null;
                             // 5.a check if renovate has updates and the updates have versions with fixed issues
                             Optional<LooseVersion> minUpdate = data.getNewVersions().stream()
                                     .map(LooseVersion::new)
-                                    .min(Comparator.naturalOrder());
+                                    .min(LooseVersion::compareTo);
                             if (minUpdate.isPresent()) {
                                 newVersions = Stream.concat(Stream.of(minUpdate.get()), newVersions.stream()).distinct().toList();
                             }

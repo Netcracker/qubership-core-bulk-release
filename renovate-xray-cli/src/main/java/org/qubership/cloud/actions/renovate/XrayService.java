@@ -3,7 +3,6 @@ package org.qubership.cloud.actions.renovate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GA;
-import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.renovate.model.*;
 
 import java.net.URI;
@@ -54,7 +53,7 @@ public class XrayService {
         return switch (artifactVersion.getType()) {
             case maven -> getMavenVersions(repos, (MavenArtifactVersion) artifactVersion);
             case go -> getGoVersions(repos, (GoArtifactVersion) artifactVersion);
-            default -> throw new IllegalArgumentException("Unsupported artifact type: " + artifactVersion.getType());
+            case docker -> getDockerVersions(repos, (DockerArtifactVersion) artifactVersion);
         };
     }
 
@@ -76,12 +75,13 @@ public class XrayService {
             if (response.statusCode() == 404) {
                 continue;
             }
-            return objectMapper.readValue(response.body(), ArtifactoryVersions.class).getResults().stream()
+            return objectMapper.readValue(response.body(), ArtifactoryMavenVersions.class).getResults().stream()
                     .filter(v -> !v.isIntegration())
                     .map(ArtifactoryVersion::getVersion)
                     .toList();
         }
-        throw new IllegalStateException("No versions found for GA: " + ga);
+        throw new IllegalStateException(String.format("No versions found for GA: '%s' in repositories:\n%s",
+                ga, String.join("\n", repositories)));
     }
 
     public List<String> getGoVersions(Collection<String> repositories, GoArtifactVersion goArtifactVersion) throws Exception {
@@ -99,7 +99,24 @@ public class XrayService {
                     .filter(v -> !v.isBlank())
                     .toList();
         }
-        throw new IllegalStateException("No versions found for packageName: " + packageName);
+        throw new IllegalStateException(String.format("No versions found for packageName: '%s' in repositories:\n%s",
+                packageName, String.join("\n", repositories)));
     }
 
+    public List<String> getDockerVersions(Collection<String> repositories, DockerArtifactVersion dockerArtifactVersion) throws Exception {
+        String packageName = dockerArtifactVersion.getPackageName();
+        for (String repo : repositories) {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(String.format("%s/api/docker/%s/v2/%s/tags/list", artifactoryUrl, repo, packageName)))
+                    .header("Authorization", basicAuth)
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpService.sendRequest(request, 5, 404, 200);
+            if (response.statusCode() == 404) {
+                continue;
+            }
+            return objectMapper.readValue(response.body(), ArtifactoryDockerVersions.class).getTags();
+        }
+        throw new IllegalStateException(String.format("No versions found for packageName: '%s' in repositories:\n%s",
+                packageName, String.join("\n", repositories)));
+    }
 }

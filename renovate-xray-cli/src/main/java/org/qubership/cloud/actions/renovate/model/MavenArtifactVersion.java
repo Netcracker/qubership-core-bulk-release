@@ -52,7 +52,7 @@ public class MavenArtifactVersion implements ArtifactVersionData<RenovateReportM
 
     @Override
     public String getArtifactPath(String version) {
-        return this.artifactPath = MessageFormat.format("{0}/{1}/{2}/{1}-{2}.jar",
+        return MessageFormat.format("{0}/{1}/{2}/{1}-{2}.jar",
                 gav.getGroupId().replace(".", "/"), gav.getArtifactId(), version);
     }
 

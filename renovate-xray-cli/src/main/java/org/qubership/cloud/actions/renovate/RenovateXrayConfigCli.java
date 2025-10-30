@@ -13,8 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @CommandLine.Command(description = "renovate xray config cli")
@@ -51,6 +49,9 @@ public class RenovateXrayConfigCli implements Runnable {
 
     @CommandLine.Option(names = {"--artifactoryGoRepository"}, description = "artifactory go repository name")
     private List<String> artifactoryGoRepositories = new ArrayList<>();
+
+    @CommandLine.Option(names = {"--artifactoryDockerRepository"}, description = "artifactory docker repository name")
+    private List<String> artifactoryDockerRepositories = new ArrayList<>();
 
     @CommandLine.Option(names = {"--repositoriesFile"}, split = ",", description = """
             File with new-line seperated repositories in format: '{url}[branch={branch}]' to be used for building 'repositories' and their
@@ -108,6 +109,7 @@ public class RenovateXrayConfigCli implements Runnable {
             Map<String, Collection<String>> dependencyRepositories = new TreeMap<>();
             dependencyRepositories.put("maven", artifactoryMavenRepositories);
             dependencyRepositories.put("go", artifactoryGoRepositories);
+            dependencyRepositories.put("docker", artifactoryDockerRepositories);
             List<? extends Map<String, Object>> securityPackageRules = service.getRules(Path.of(renovateReportFilePath), dependencyRepositories, labels);
 
             List<Map> packageRules = (List<Map>) config.computeIfAbsent("packageRules", k -> new ArrayList<>());
