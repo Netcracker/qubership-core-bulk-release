@@ -30,7 +30,11 @@ public class RenovateService {
                                                         Collection<String> labels) {
         try {
             List<ArtifactVersionData<?>> artifactVersions = getArtifactVersionsWithRenovateData(reportFilePath);
-            log.info("Found {} dependencies with renovate data", artifactVersions.size());
+            log.info("Found {} dependencies with renovate data:\n{}", artifactVersions.size(),
+                    artifactVersions.stream().collect(Collectors.groupingBy(ArtifactVersion::getType))
+                            .entrySet().stream().map(entry ->
+                                    String.format("%s: %d", entry.getKey(), entry.getValue().size()))
+                            .collect(Collectors.joining("\n")));
             Map<ArtifactVersion, Map<String, Set<String>>> fixes = findFixedVersions(repos, artifactVersions, allowedVersionsPattern, Severity.High);
             log.info("Dependencies with fixed CVEs:\n{}",
                     fixes.entrySet().stream()
