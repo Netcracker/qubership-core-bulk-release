@@ -133,7 +133,7 @@ public class RenovateConfigConverterTest {
                   - ":dependencyDashboard"
                 helmv3:
                   registryAliases:
-                    "'@custom.libraries.helm.staging'": https://artifactory.com/artifactory/custom.libraries.helm.staging
+                    "@custom.libraries.helm.staging": https://artifactory.com/artifactory/custom.libraries.helm.staging
                 packageRules:
                   - matchManagers:
                       - maven
