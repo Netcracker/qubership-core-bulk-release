@@ -17,7 +17,8 @@ public class YamlFromFileConverter implements CommandLine.ITypeConverter<Map<Str
     static ObjectMapper mapper = new YAMLMapper()
             .setSerializationInclusion(JsonInclude.Include.NON_NULL)
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+            .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
+            .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
 
     @Override
     public Map<String, Object> convert(String value) throws CommandLine.TypeConversionException {
