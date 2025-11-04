@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class YamlFromFileConverter implements CommandLine.ITypeConverter<Map<String, Object>> {
     static ObjectMapper mapper = new YAMLMapper()
@@ -25,6 +27,10 @@ public class YamlFromFileConverter implements CommandLine.ITypeConverter<Map<Str
         if (value == null || value.isBlank()) return null;
         try {
             String str = Files.readString(Path.of(value));
+            Matcher jsMatcher = Pattern.compile("\\s*module.exports\\s*=\\s*(?<json>\\{.+});", Pattern.DOTALL).matcher(str);
+            if (jsMatcher.matches()) {
+                str = jsMatcher.group("json");
+            }
             return mapper.readValue(str, new TypeReference<>() {
             });
         } catch (IOException e) {
