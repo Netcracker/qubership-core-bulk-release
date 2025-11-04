@@ -1,4 +1,4 @@
-package org.qubership.cloud.actions.renovate.model;
+package org.qubership.cloud.actions.renovate.model.go;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

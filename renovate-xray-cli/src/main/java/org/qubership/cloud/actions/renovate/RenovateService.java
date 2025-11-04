@@ -4,6 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.renovate.model.*;
+import org.qubership.cloud.actions.renovate.model.docker.DockerArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.docker.RenovateReportDockerfile;
+import org.qubership.cloud.actions.renovate.model.go.GoArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.go.RenovateReportGomod;
+import org.qubership.cloud.actions.renovate.model.maven.MavenArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.maven.RenovateReportMaven;
+import org.qubership.cloud.actions.renovate.model.regex.RegexArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.regex.RenovateReportRegex;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -69,6 +77,7 @@ public class RenovateService {
                     GAV gav = new GAV(String.format("%s:%s", dep.getDepName(), dep.getCurrentVersion()));
                     return new MavenArtifactVersion(gav, dep);
                 })
+                .distinct()
                 .toList());
         // go
         result.addAll(renovateReport.getRepositories().values().stream()
@@ -81,6 +90,7 @@ public class RenovateService {
                 .flatMap(List::stream)
                 .filter(dep -> dep.getCurrentVersion() != null)
                 .map(dep -> new GoArtifactVersion(dep.getPackageName(), dep.getCurrentVersion(), dep))
+                .distinct()
                 .toList());
         // docker
         result.addAll(renovateReport.getRepositories().values().stream()
@@ -93,6 +103,20 @@ public class RenovateService {
                 .flatMap(List::stream)
                 .filter(dep -> dep.getCurrentVersion() != null)
                 .map(dep -> new DockerArtifactVersion(dep.getLookupName(), dep.getCurrentVersion(), dep))
+                .distinct()
+                .toList());
+        // regex (alpine)
+        result.addAll(renovateReport.getRepositories().values().stream()
+                .map(RenovateReportRepository::getPackageFiles)
+                .filter(Objects::nonNull)
+                .map(RenovateReportPackageFiles::getRegex)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .map(RenovateReportRegex::getDeps)
+                .flatMap(List::stream)
+                .filter(dep -> dep.getCurrentVersion() != null)
+                .map(dep -> new RegexArtifactVersion(dep.getPackageName(), dep.getCurrentVersion(), dep))
+                .distinct()
                 .toList());
         return result;
     }

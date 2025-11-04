@@ -1,12 +1,16 @@
-package org.qubership.cloud.actions.renovate.model;
+package org.qubership.cloud.actions.renovate.model.maven;
 
+import lombok.Data;
 import lombok.Getter;
 import org.qubership.cloud.actions.maven.model.GAV;
+import org.qubership.cloud.actions.renovate.model.ArtifactType;
+import org.qubership.cloud.actions.renovate.model.ArtifactVersionData;
 
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
 
+@Data
 public class MavenArtifactVersion implements ArtifactVersionData<RenovateReportMavenDep> {
     @Getter
     GAV gav;

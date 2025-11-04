@@ -3,13 +3,28 @@ package org.qubership.cloud.actions.renovate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.qubership.cloud.actions.maven.model.GA;
-import org.qubership.cloud.actions.renovate.model.*;
+import org.qubership.cloud.actions.renovate.model.ArtifactVersionData;
+import org.qubership.cloud.actions.renovate.model.XrayArtifactSummary;
+import org.qubership.cloud.actions.renovate.model.XrayArtifactSummaryElement;
+import org.qubership.cloud.actions.renovate.model.XrayArtifactSummaryRequest;
+import org.qubership.cloud.actions.renovate.model.docker.ArtifactoryDockerVersions;
+import org.qubership.cloud.actions.renovate.model.docker.DockerArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.go.GoArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.maven.ArtifactoryMavenVersions;
+import org.qubership.cloud.actions.renovate.model.maven.ArtifactoryVersion;
+import org.qubership.cloud.actions.renovate.model.maven.MavenArtifactVersion;
+import org.qubership.cloud.actions.renovate.model.regex.AlpinePkgVersion;
+import org.qubership.cloud.actions.renovate.model.regex.AlpinePkgsVersions;
+import org.qubership.cloud.actions.renovate.model.regex.RegexArtifactVersion;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class XrayService {
@@ -54,6 +69,7 @@ public class XrayService {
             case maven -> getMavenVersions(repos, (MavenArtifactVersion) artifactVersion);
             case go -> getGoVersions(repos, (GoArtifactVersion) artifactVersion);
             case docker -> getDockerVersions(repos, (DockerArtifactVersion) artifactVersion);
+            case regex -> getAlpinePkgVersions(repos, (RegexArtifactVersion) artifactVersion);
         };
     }
 
@@ -119,4 +135,61 @@ public class XrayService {
         throw new IllegalStateException(String.format("No versions found for packageName: '%s' in repositories:\n%s",
                 packageName, String.join("\n", repositories)));
     }
+
+    public List<String> getAlpinePkgVersions(Collection<String> repositories, RegexArtifactVersion regexArtifactVersion) throws Exception {
+        String packageName = regexArtifactVersion.getPackageName();
+        String packageNameSimplified = packageName.replace("[+]{2}", "++");
+        //            "name": "clang18-libs-18.1.8-r6.apk"
+        Pattern packageNamePattern = Pattern.compile("^%s-(?<version>\\d+.*)\\.apk".formatted(packageName));
+        Pattern repoPattern = Pattern.compile("^(?<artifactoryRepo>.+?)/(?<alpineRepo>.+)");
+        //        "dl_cdn_alpinelinux_org_alpine.apk.proxy-cache/v3.22/community/x86_64/",
+        //        "dl_cdn_alpinelinux_org_alpine.apk.proxy-cache/edge/community/x86_64/"
+        List<String> versions = repositories.stream().flatMap(repo -> {
+                    Matcher matcher = repoPattern.matcher(repo);
+                    if (!matcher.matches()) {
+                        throw new IllegalStateException(String.format("Invalid repository: '%s'. Must match pattern: %s", repo, repoPattern.pattern()));
+                    }
+                    String artifactoryRepo = matcher.group("artifactoryRepo");
+                    String alpineRepo = matcher.group("alpineRepo");
+
+                    String body = """
+                            items.find({
+                              "$and": [
+                                {"name": {"$match": "%s*.apk"}},
+                                {"path": {"$match": "%s"}},
+                                {"repo": {"$match": "%s"}}
+                              ]
+                            }).include("name","repo","path")
+                            """.formatted(packageNameSimplified, alpineRepo, artifactoryRepo);
+                    try {
+                        HttpRequest request = HttpRequest.newBuilder(URI.create("%s/artifactory/api/search/aql".formatted(artifactoryUrl)))
+                                .header("Authorization", basicAuth)
+                                .header("Content-Type", "text/plain")
+                                .POST(HttpRequest.BodyPublishers.ofString(body))
+                                .build();
+                        HttpResponse<String> response = httpService.sendRequest(request, 5, 404, 200);
+                        if (response.statusCode() == 404) {
+                            return Stream.empty();
+                        }
+                        return objectMapper.readValue(response.body(), AlpinePkgsVersions.class).getResults().stream()
+                                .map(AlpinePkgVersion::getName)
+                                .map(packageNamePattern::matcher)
+                                .filter(Matcher::matches)
+                                .map(m -> m.group("version"))
+                                .toList().stream();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .distinct()
+                .toList();
+
+        if (versions.isEmpty()) {
+            throw new IllegalStateException(String.format("No versions found for packageName: '%s' in repositories:\n%s",
+                    packageName, String.join("\n", repositories)));
+        } else {
+            return versions;
+        }
+    }
+
 }

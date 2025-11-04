@@ -1,9 +1,14 @@
-package org.qubership.cloud.actions.renovate.model;
+package org.qubership.cloud.actions.renovate.model.go;
+
+import lombok.Data;
+import org.qubership.cloud.actions.renovate.model.ArtifactType;
+import org.qubership.cloud.actions.renovate.model.ArtifactVersionData;
 
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
 
+@Data
 public class GoArtifactVersion implements ArtifactVersionData<RenovateReportGomodDep> {
     String packageName;
     String version;

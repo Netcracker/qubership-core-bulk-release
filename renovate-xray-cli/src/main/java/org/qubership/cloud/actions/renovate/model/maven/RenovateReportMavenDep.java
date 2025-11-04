@@ -1,4 +1,4 @@
-package org.qubership.cloud.actions.renovate.model;
+package org.qubership.cloud.actions.renovate.model.maven;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,15 +7,16 @@ import java.util.List;
 
 @Data
 @NoArgsConstructor
-public class RenovateReportGomodDep {
+public class RenovateReportMavenDep {
     String datasource;
-    String versioning;
-    String depType;
     String depName;
     String currentValue;
-    List<RenovateReportGomodDepUpdate> updates;
+    List<String> registryUrls;
+    String depType;
+    List<RenovateReportMavenDepUpdate> updates;
     String packageName;
-    String skipReason;
+    String versioning;
+    boolean respectLatest;
     String currentVersion;
     String currentVersionTimestamp;
     int currentVersionAgeInDays;

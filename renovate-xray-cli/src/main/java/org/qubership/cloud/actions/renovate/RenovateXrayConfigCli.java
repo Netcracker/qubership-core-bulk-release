@@ -54,6 +54,9 @@ public class RenovateXrayConfigCli implements Runnable {
     @CommandLine.Option(names = {"--artifactoryDockerRepository"}, description = "artifactory docker repository name")
     private List<String> artifactoryDockerRepositories = new ArrayList<>();
 
+    @CommandLine.Option(names = {"--artifactoryRegexRepository"}, description = "artifactory regex repository name")
+    private List<String> artifactoryRegexRepositories = new ArrayList<>();
+
     @CommandLine.Option(names = {"--allowedVersionsPattern"}, defaultValue = "^(v\\d+|\\d+).*$", required = true,
             description = "pattern to filter packages versions")
     private Pattern allowedVersionsPattern;
@@ -115,6 +118,7 @@ public class RenovateXrayConfigCli implements Runnable {
             dependencyRepositories.put("maven", artifactoryMavenRepositories);
             dependencyRepositories.put("go", artifactoryGoRepositories);
             dependencyRepositories.put("docker", artifactoryDockerRepositories);
+            dependencyRepositories.put("regex", artifactoryRegexRepositories);
             List<? extends Map<String, Object>> securityPackageRules = service.getRules(Path.of(renovateReportFilePath),
                     dependencyRepositories, allowedVersionsPattern, labels);
 
