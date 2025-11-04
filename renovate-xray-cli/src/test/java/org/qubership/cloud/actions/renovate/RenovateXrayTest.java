@@ -6,6 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.qubership.cloud.actions.renovate.model.*;
+import org.qubership.cloud.actions.renovate.model.docker.ArtifactoryDockerVersions;
+import org.qubership.cloud.actions.renovate.model.maven.ArtifactoryMavenVersions;
+import org.qubership.cloud.actions.renovate.model.maven.ArtifactoryVersion;
+import org.qubership.cloud.actions.renovate.model.regex.AlpinePkgVersion;
+import org.qubership.cloud.actions.renovate.model.regex.AlpinePkgsVersions;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -100,6 +105,8 @@ public class RenovateXrayTest {
                 "--artifactoryMavenRepository=maven-repository",
                 "--artifactoryGoRepository=go-repository",
                 "--artifactoryDockerRepository=docker-repository",
+                "--artifactoryRegexRepository=apk-repository/v3.22/main/x86_64",
+                "--artifactoryRegexRepository=apk-repository/edge/main/x86_64",
                 "--renovateConfigOutputFile=" + renovateConfigFile,
                 "--repositoriesFile=" + repositoriesFile,
                 "--fromFile=" + jsonFile
@@ -129,6 +136,7 @@ public class RenovateXrayTest {
                         yield MessageFormat.format("default/maven-repository/{0}/{1}/{2}/{1}-{2}.jar", groupId, artifactId, version);
                     }
                     case docker -> MessageFormat.format("default/docker-repository/{0}/{1}/", packageName, version);
+                    case regex -> MessageFormat.format("default/apk-repository/{0}-{1}.apk", packageName, version);
                 };
                 xrayArtifactSummaryGeneral.setPath(path);
                 XrayArtifactSummaryElement xrayArtifactSummaryElement = new XrayArtifactSummaryElement(xrayArtifactSummaryGeneral, issues);
@@ -157,13 +165,20 @@ public class RenovateXrayTest {
             xrayArtifactSummaryIssue3.setCves(List.of(xrayArtifactSummaryCVE3));
             List<XrayArtifactSummaryIssue> issues3 = List.of(xrayArtifactSummaryIssue3);
 
+            XrayArtifactSummaryIssue xrayArtifactSummaryIssue4 = new XrayArtifactSummaryIssue();
+            xrayArtifactSummaryIssue4.setSeverity(Severity.High);
+            XrayArtifactSummaryCVE xrayArtifactSummaryCVE4 = new XrayArtifactSummaryCVE();
+            xrayArtifactSummaryCVE4.setCve("CVE-2025-9999");
+            xrayArtifactSummaryIssue4.setCves(List.of(xrayArtifactSummaryCVE4));
+            List<XrayArtifactSummaryIssue> issues4 = List.of(xrayArtifactSummaryIssue4);
+
             HttpResponse antJunitVersionsResponse = Mockito.mock(HttpResponse.class);
             Mockito.when(antJunitVersionsResponse.statusCode()).thenReturn(200);
             Mockito.when(antJunitVersionsResponse.body()).thenReturn(mapper.writeValueAsString(new ArtifactoryMavenVersions(List.of(
                     new ArtifactoryVersion("1.6.5", false),
                     new ArtifactoryVersion("1.6.6", false),
-                    new ArtifactoryVersion("1.6.7", false)
-            ))));
+                    new ArtifactoryVersion("1.6.7", false)))));
+
             HttpResponse testifyVersionsResponse = Mockito.mock(HttpResponse.class);
             Mockito.when(testifyVersionsResponse.statusCode()).thenReturn(200);
             Mockito.when(testifyVersionsResponse.body()).thenReturn("""
@@ -171,12 +186,18 @@ public class RenovateXrayTest {
                     v1.11.1
                     v1.11.2
                     """);
+
             HttpResponse alpineVersionsResponse = Mockito.mock(HttpResponse.class);
             Mockito.when(alpineVersionsResponse.statusCode()).thenReturn(200);
             Mockito.when(alpineVersionsResponse.body()).thenReturn(mapper.writeValueAsString(new ArtifactoryDockerVersions(List.of(
                     "21.0.8.9.04",
-                    "21.0.8.9.05"
-            ))));
+                    "21.0.8.9.05"))));
+
+            HttpResponse apkVersionsResponse = Mockito.mock(HttpResponse.class);
+            Mockito.when(apkVersionsResponse.statusCode()).thenReturn(200);
+            Mockito.when(apkVersionsResponse.body()).thenReturn(mapper.writeValueAsString(new AlpinePkgsVersions(List.of(
+                    new AlpinePkgVersion("apk-repository", "v3.32/community/x86_64", "nss_wrapper-1.1.10-r0.apk"),
+                    new AlpinePkgVersion("apk-repository", "edge/community/x86_64", "nss_wrapper-1.1.12-r1.apk")))));
 
             Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).then(i -> {
                 try {
@@ -243,6 +264,22 @@ public class RenovateXrayTest {
                                 String body = mapper.writeValueAsString(buildSummary.apply(new DefaultArtifactVersion(ArtifactType.docker, packageName, version), issues));
                                 Mockito.when(response.body()).thenReturn(body);
                                 return response;
+                            } else if (Objects.equals(repository, "apk-repository")) {
+                                Matcher pathMatcher = Pattern.compile("^(?<package>.+?)-(?<version>\\d+(\\.\\d+)*-r\\d+)\\.apk$").matcher(path);
+                                if (!pathMatcher.matches()) {
+                                    throw new IllegalStateException("Unexpected path: '%s', must match pattern: %s".formatted(path, matcher.pattern()));
+                                }
+                                String packageName = pathMatcher.group("package");
+                                String version = pathMatcher.group("version");
+                                List<XrayArtifactSummaryIssue> issues;
+                                if (packageName.equals("v3.22/main/x86_64/nss_wrapper") && (version.equals("1.1.10-r0"))) {
+                                    issues = issues4;
+                                } else {
+                                    issues = List.of();
+                                }
+                                String body = mapper.writeValueAsString(buildSummary.apply(new DefaultArtifactVersion(ArtifactType.regex, packageName, version), issues));
+                                Mockito.when(response.body()).thenReturn(body);
+                                return response;
                             } else {
                                 throw new IllegalStateException("Unexpected repository: " + repository);
                             }
@@ -255,6 +292,8 @@ public class RenovateXrayTest {
                         return testifyVersionsResponse;
                     } else if (method.equals("GET") && string.equals("https://artifactory.com/api/docker/docker-repository/v2/alpine/openjdk21/tags/list")) {
                         return alpineVersionsResponse;
+                    } else if (method.equals("POST") && string.equals("https://artifactory.com/artifactory/api/search/aql")) {
+                        return apkVersionsResponse;
                     } else {
                         throw new IllegalStateException("Unexpected request: " + request);
                     }
@@ -319,6 +358,13 @@ public class RenovateXrayTest {
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-8888" ]
+                      }, {
+                        matchPackageNames : [ "nss_wrapper" ],
+                        allowedVersions : "/^1.1.12-r1$/",
+                        matchCurrentVersion : "1.1.10-r0",
+                        enabled : true,
+                        addLabels : [ "security" ],
+                        prBodyNotes : [ "⚠️Vulnerability alert\\nThis MR fixes the following CVEs:\\nCVE-2025-9999" ]
                       } ],
                       platform : "github",
                       platformAutomerge : true,

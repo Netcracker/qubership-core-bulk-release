@@ -272,6 +272,45 @@
             "packageFile": "Dockerfile"
           }
         ],
+        "regex": [
+          {
+            "deps": [
+              {
+                "depName": "nss_wrapper",
+                "currentValue": "1.1.10-r0",
+                "datasource": "custom.apk_community",
+                "versioning": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<build>(\\.\\d)*-r\\d+)$",
+                "replaceString": "# renovate: datasource=custom.apk_community depName=nss_wrapper\nARG NSS_WRAPPER_VERSION=\"1.1.10-r0\"",
+                "updates": [],
+                "packageName": "nss_wrapper",
+                "warnings": [],
+                "currentVersion": "1.1.10-r0",
+                "fixedVersion": "1.1.10-r0"
+              },
+              {
+                "depName": "openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit",
+                "currentValue": "0.25.5-r2",
+                "datasource": "custom.apk_community",
+                "versioning": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<build>(\\.\\d)*-r\\d+)$",
+                "replaceString": "# renovate: datasource=custom.apk_community depName=openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit\nARG P11_KIT_VERSION=\"0.25.5-r2\"",
+                "updates": [],
+                "packageName": "openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit",
+                "warnings": [
+                  {
+                    "topic": "openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit",
+                    "message": "Failed to look up custom.apk_community package openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit"
+                  }
+                ]
+              }
+            ],
+            "matchStrings": [
+              "(?s)#\\s*renovate:\\s*datasource=(?<datasource>custom.apk_community)\\s+depName=(?<depName>.+?)\\s+ARG\\s+[^=]+=\\\"(?<currentValue>[\\d.]+-r\\d+)\\\""
+            ],
+            "datasourceTemplate": "custom.apk_community",
+            "versioningTemplate": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<build>(\\.\\d)*-r\\d+)$",
+            "packageFile": "Dockerfile.21-alpine"
+          }
+        ],
         "libYearsWithStatus": {
           "libYears": {
             "managers": {
