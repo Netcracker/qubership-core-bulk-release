@@ -343,28 +343,28 @@ public class RenovateXrayTest {
                         matchCurrentVersion : "1.6.5",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert<br>This MR fixes the following CVEs:<br>([CVE-2025-4444](https://nvd.nist.gov/vuln/detail/CVE-2025-4444)" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-4444](https://nvd.nist.gov/vuln/detail/CVE-2025-4444)" ]
                       }, {
                         matchPackageNames : [ "artifactory.com:17003/alpine/openjdk21" ],
                         allowedVersions : "/^21.0.8.9.05$/",
                         matchCurrentVersion : "21.0.8.9.03",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert<br>This MR fixes the following CVEs:<br>([CVE-2025-7777](https://nvd.nist.gov/vuln/detail/CVE-2025-7777)" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-7777](https://nvd.nist.gov/vuln/detail/CVE-2025-7777)" ]
                       }, {
                         matchPackageNames : [ "github.com/stretchr/testify" ],
                         allowedVersions : "/^v1.11.2$/",
                         matchCurrentVersion : "v1.10.0",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert<br>This MR fixes the following CVEs:<br>([CVE-2025-8888](https://nvd.nist.gov/vuln/detail/CVE-2025-8888)" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-8888](https://nvd.nist.gov/vuln/detail/CVE-2025-8888)" ]
                       }, {
                         matchPackageNames : [ "nss_wrapper" ],
                         allowedVersions : "/^1.1.12-r1$/",
                         matchCurrentVersion : "1.1.10-r0",
                         enabled : true,
                         addLabels : [ "security" ],
-                        prBodyNotes : [ "⚠️Vulnerability alert<br>This MR fixes the following CVEs:<br>([CVE-2025-9999](https://nvd.nist.gov/vuln/detail/CVE-2025-9999)" ]
+                        prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-9999](https://nvd.nist.gov/vuln/detail/CVE-2025-9999)" ]
                       } ],
                       platform : "github",
                       platformAutomerge : true,

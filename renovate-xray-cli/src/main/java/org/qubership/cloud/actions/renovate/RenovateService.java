@@ -257,8 +257,7 @@ public class RenovateService {
                                 rule.put("addLabels", labels);
                                 rule.put("prBodyNotes", List.of(
                                         """
-                                                ⚠️Vulnerability alert
-                                                This MR fixes the following CVEs:
+                                                ⚠️Vulnerability alert. This MR fixes the following CVEs:
                                                 """.replace("\n", "<br>") + fixedCVEs.stream()
                                                 .map(cve -> new MessageFormat("[{0}](https://nvd.nist.gov/vuln/detail/{0})").format(new Object[]{cve}))
                                                 .collect(Collectors.joining("<br>"))));
