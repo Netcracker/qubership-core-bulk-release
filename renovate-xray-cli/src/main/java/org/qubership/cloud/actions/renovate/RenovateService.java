@@ -260,7 +260,7 @@ public class RenovateService {
                                                 ⚠️Vulnerability alert
                                                 This MR fixes the following CVEs:
                                                 """.replace("\n", "<br>") + fixedCVEs.stream()
-                                                .map(cve -> new MessageFormat("([{0}](https://nvd.nist.gov/vuln/detail/{0})").format(new Object[]{cve}))
+                                                .map(cve -> new MessageFormat("[{0}](https://nvd.nist.gov/vuln/detail/{0})").format(new Object[]{cve}))
                                                 .collect(Collectors.joining("<br>"))));
                                 return rule;
                             });
