@@ -1,0 +1,330 @@
+{
+  "repositories": {
+    "PROD.Platform.Cloud_Core/cleanup/cleanup-service": {
+      "problems": [],
+      "branches": [
+        {
+          "branchName": "renovate-master",
+          "prNo": 75,
+          "prTitle": "CPCAP-0000 Update artifactory.test:17003/alpine/openjdk21 Docker tag to v21.0.8.9.05",
+          "result": "done",
+          "upgrades": [
+            {
+              "datasource": "docker",
+              "depName": "artifactory.test:17003/alpine/openjdk21",
+              "displayPending": "",
+              "fixedVersion": "21.0.8.9.04",
+              "currentVersion": "21.0.8.9.04",
+              "currentValue": "21.0.8.9.04",
+              "newValue": "21.0.8.9.05",
+              "newVersion": "21.0.8.9.05",
+              "packageFile": "Dockerfile",
+              "updateType": "patch",
+              "packageName": "artifactory.test:17003/alpine/openjdk21"
+            }
+          ]
+        },
+        {
+          "branchName": "renovate-master/quarkus",
+          "prNo": 76,
+          "prTitle": "CPCAP-0000 Update quarkus to v3.20.3",
+          "result": "done",
+          "upgrades": [
+            {
+              "datasource": "maven",
+              "depName": "io.quarkus:quarkus-maven-plugin",
+              "displayPending": "",
+              "fixedVersion": "3.20.2.2",
+              "currentVersion": "3.20.2.2",
+              "currentValue": "3.20.2.2",
+              "newValue": "3.20.3",
+              "newVersion": "3.20.3",
+              "packageFile": "cleanup-service-impl/pom.xml",
+              "updateType": "patch",
+              "packageName": "io.quarkus:quarkus-maven-plugin"
+            },
+            {
+              "datasource": "maven",
+              "depName": "io.quarkus:quarkus-universe-bom",
+              "displayPending": "",
+              "fixedVersion": "3.20.2.2",
+              "currentVersion": "3.20.2.2",
+              "currentValue": "3.20.2.2",
+              "newValue": "3.20.3",
+              "newVersion": "3.20.3",
+              "packageFile": "cleanup-service-impl/pom.xml",
+              "updateType": "patch",
+              "packageName": "io.quarkus:quarkus-universe-bom"
+            }
+          ]
+        },
+        {
+          "branchName": "renovate-master/major-io.fabric8",
+          "prNo": 63,
+          "prTitle": "CPCAP-0000 Update dependency io.fabric8:kubernetes-client-bom to v7",
+          "result": "done",
+          "upgrades": [
+            {
+              "datasource": "maven",
+              "depName": "io.fabric8:kubernetes-client-bom",
+              "displayPending": "",
+              "fixedVersion": "6.13.5",
+              "currentVersion": "6.13.5",
+              "currentValue": "6.13.5",
+              "newValue": "7.3.1",
+              "newVersion": "7.3.1",
+              "packageFile": "cleanup-service-impl/pom.xml",
+              "updateType": "major",
+              "packageName": "io.fabric8:kubernetes-client-bom"
+            }
+          ]
+        }
+      ],
+      "packageFiles": {
+        "maven": [
+          {
+            "datasource": "maven",
+            "packageFile": "cleanup-service-impl/pom.xml",
+            "deps": [
+              {
+                "datasource": "maven",
+                "depName": "io.quarkus:quarkus-universe-bom",
+                "currentValue": "3.20.2.2",
+                "fileReplacePosition": 608,
+                "registryUrls": [
+                  "https://repo.maven.apache.org/maven2"
+                ],
+                "depType": "import",
+                "sharedVariableName": "quarkus.platform.version",
+                "updates": [
+                  {
+                    "bucket": "non-major",
+                    "newVersion": "3.20.3",
+                    "newValue": "3.20.3",
+                    "releaseTimestamp": "2025-09-24T05:48:02.000Z",
+                    "newVersionAgeInDays": 27,
+                    "registryUrl": "https://artifactorycn.com/pd.saas-release.mvn.group",
+                    "newMajor": 3,
+                    "newMinor": 20,
+                    "newPatch": 3,
+                    "updateType": "patch",
+                    "isBreaking": false,
+                    "libYears": 0.0703644406392694,
+                    "branchName": "renovate-master/quarkus"
+                  }
+                ],
+                "packageName": "io.quarkus:quarkus-universe-bom",
+                "versioning": "maven",
+                "warnings": [],
+                "sourceUrl": "https://github.com/quarkusio/quarkus-platform",
+                "packageScope": "io.quarkus",
+                "respectLatest": false,
+                "currentVersion": "3.20.2.2",
+                "currentVersionTimestamp": "2025-08-29T13:24:29.000Z",
+                "currentVersionAgeInDays": 53,
+                "isSingleVersion": true,
+                "fixedVersion": "3.20.2.2"
+              }
+            ]
+          },
+          {
+            "datasource": "maven",
+            "packageFile": "cleanup-service-tests/pom.xml",
+            "deps": [
+              {
+                "datasource": "maven",
+                "depName": "dev.failsafe:failsafe",
+                "currentValue": "3.3.2",
+                "fileReplacePosition": 1485,
+                "registryUrls": [
+                  "https://repo.maven.apache.org/maven2"
+                ],
+                "depType": "test",
+                "updates": [],
+                "packageName": "dev.failsafe:failsafe",
+                "versioning": "maven",
+                "warnings": [],
+                "sourceUrl": "https://github.com/failsafe-lib/failsafe",
+                "homepage": "https://failsafe.dev",
+                "respectLatest": false,
+                "currentVersion": "3.3.2",
+                "currentVersionTimestamp": "2023-06-24T15:54:09.000Z",
+                "currentVersionAgeInDays": 849,
+                "fixedVersion": "3.3.2"
+              },
+              {
+                "datasource": "maven",
+                "depName": "ant:ant-junit",
+                "currentValue": "1.6.5",
+                "fileReplacePosition": 5561,
+                "registryUrls": [
+                  "https://repo.maven.apache.org/maven2"
+                ],
+                "depType": "build",
+                "updates": [],
+                "packageName": "ant:ant-junit",
+                "versioning": "maven",
+                "warnings": [],
+                "packageScope": "ant",
+                "respectLatest": false,
+                "currentVersion": "1.6.5",
+                "currentVersionTimestamp": "2005-11-08T22:24:34.000Z",
+                "currentVersionAgeInDays": 7286,
+                "fixedVersion": "1.6.5"
+              }
+            ]
+          },
+          {
+            "datasource": "maven",
+            "packageFile": "pom.xml",
+            "deps": [],
+            "packageFileVersion": "1.0.0-SNAPSHOT"
+          }
+        ],
+        "gomod": [
+          {
+            "deps": [
+              {
+                "datasource": "golang-version",
+                "versioning": "go-mod-directive",
+                "depType": "golang",
+                "depName": "go",
+                "currentValue": "1.22",
+                "managerData": {
+                  "lineNumber": 2
+                },
+                "updates": [],
+                "packageName": "go",
+                "skipReason": "disabled"
+              },
+              {
+                "datasource": "go",
+                "depType": "require",
+                "depName": "github.com/stretchr/testify",
+                "currentValue": "v1.10.0",
+                "managerData": {
+                  "multiLine": true,
+                  "lineNumber": 8
+                },
+                "updates": [
+                  {
+                    "bucket": "non-major",
+                    "newVersion": "v1.11.1",
+                    "newValue": "v1.11.1",
+                    "releaseTimestamp": "2025-08-27T10:46:31.000Z",
+                    "newVersionAgeInDays": 57,
+                    "newMajor": 1,
+                    "newMinor": 11,
+                    "newPatch": 1,
+                    "updateType": "minor",
+                    "isBreaking": false,
+                    "libYears": 0.7876479578893962,
+                    "branchName": "renovate-support/latest/github.com-stretchr-testify-1.x"
+                  }
+                ],
+                "packageName": "github.com/stretchr/testify",
+                "versioning": "semver",
+                "warnings": [],
+                "sourceUrl": "https://github.com/stretchr/testify",
+                "mostRecentTimestamp": "2025-08-27T10:46:31.000Z",
+                "currentVersion": "v1.10.0",
+                "currentVersionTimestamp": "2024-11-12T22:58:45.000Z",
+                "currentVersionAgeInDays": 345,
+                "isSingleVersion": true,
+                "fixedVersion": "v1.10.0"
+              }
+            ]
+          }
+        ],
+        "dockerfile": [
+          {
+            "deps": [
+              {
+                "depName": "artifactory.com:17003/alpine/openjdk21",
+                "packageName": "artifactory.com:17003/alpine/openjdk21",
+                "currentValue": "21.0.8.9.03",
+                "replaceString": "artifactory.com:17003/alpine/openjdk21:21.0.8.9.03",
+                "autoReplaceStringTemplate": "{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}",
+                "datasource": "docker",
+                "depType": "final",
+                "updates": [
+                  {
+                    "bucket": "non-major",
+                    "newVersion": "21.0.8.9.05",
+                    "newValue": "21.0.8.9.05",
+                    "newMajor": 21,
+                    "newMinor": 0,
+                    "newPatch": 8,
+                    "updateType": "patch",
+                    "isBreaking": false,
+                    "branchName": "renovate-master/alpine"
+                  }
+                ],
+                "versioning": "loose",
+                "warnings": [],
+                "registryUrl": "https://artifactory.com:17003",
+                "lookupName": "alpine/openjdk21",
+                "currentVersion": "21.0.8.9.03",
+                "isSingleVersion": true,
+                "fixedVersion": "21.0.8.9.03"
+              }
+            ],
+            "packageFile": "Dockerfile"
+          }
+        ],
+        "regex": [
+          {
+            "deps": [
+              {
+                "depName": "nss_wrapper",
+                "currentValue": "1.1.10-r0",
+                "datasource": "custom.apk_community",
+                "versioning": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<build>(\\.\\d)*-r\\d+)$",
+                "replaceString": "# renovate: datasource=custom.apk_community depName=nss_wrapper\nARG NSS_WRAPPER_VERSION=\"1.1.10-r0\"",
+                "updates": [],
+                "packageName": "nss_wrapper",
+                "warnings": [],
+                "currentVersion": "1.1.10-r0",
+                "fixedVersion": "1.1.10-r0"
+              },
+              {
+                "depName": "openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit",
+                "currentValue": "0.25.5-r2",
+                "datasource": "custom.apk_community",
+                "versioning": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<build>(\\.\\d)*-r\\d+)$",
+                "replaceString": "# renovate: datasource=custom.apk_community depName=openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit\nARG P11_KIT_VERSION=\"0.25.5-r2\"",
+                "updates": [],
+                "packageName": "openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit",
+                "warnings": [
+                  {
+                    "topic": "openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit",
+                    "message": "Failed to look up custom.apk_community package openjdk21-jdk\nARG OPENJDK21_JDK_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jmods\nARG OPENJDK21_JMODS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre\nARG OPENJDK21_JRE_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_community depName=openjdk21-jre-headless\nARG OPENJDK21_JRE_HEADLESS_VERSION=\"21.0.8_p9-r0\"\n# renovate: datasource=custom.apk_main depName=p11-kit"
+                  }
+                ]
+              }
+            ],
+            "matchStrings": [
+              "(?s)#\\s*renovate:\\s*datasource=(?<datasource>custom.apk_community)\\s+depName=(?<depName>.+?)\\s+ARG\\s+[^=]+=\\\"(?<currentValue>[\\d.]+-r\\d+)\\\""
+            ],
+            "datasourceTemplate": "custom.apk_community",
+            "versioningTemplate": "regex:^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<build>(\\.\\d)*-r\\d+)$",
+            "packageFile": "Dockerfile.21-alpine"
+          }
+        ],
+        "libYearsWithStatus": {
+          "libYears": {
+            "managers": {
+              "dockerfile": 0,
+              "maven": 1.1401058155758497
+            },
+            "total": 1.1401058155758497
+          },
+          "dependencyStatus": {
+            "outdated": 6,
+            "total": 28
+          }
+        }
+      }
+    }
+  }
+}

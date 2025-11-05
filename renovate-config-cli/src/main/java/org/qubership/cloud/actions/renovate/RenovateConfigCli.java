@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@CommandLine.Command(description = "maven effective dependencies cli")
+@CommandLine.Command(description = "renovate config cli")
 @Slf4j
 public class RenovateConfigCli implements Runnable {
 

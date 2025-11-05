@@ -23,8 +23,10 @@ public class RenovateConfigToJsConverter {
             String key = mr.group("key");
             if (key.startsWith("'") && key.endsWith("'")) {
                 return String.format("\"%s\" :", key.substring(1, key.length() - 1));
+            } else if (!key.matches("^[A-Za-z_][A-Za-z0-9_]*$")) {
+                return "\"%s\" :".formatted(key);
             } else {
-                return  key + " :";
+                return key + " :";
             }
         });
         json = codeFragmentValuePattern.matcher(json).replaceAll(mr -> mr.group("value"));

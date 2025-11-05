@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration>
+    <property name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}" />
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d %-5p %thread %c{1} - %m%n</pattern>
         </encoder>
     </appender>
-    <logger name="org.qubership.cloud.actions" level="INFO"/>
+    <logger name="org.qubership.cloud.actions" level="${LOG_LEVEL}"/>
     <root level="ERROR">
         <appender-ref ref="STDOUT"/>
     </root>

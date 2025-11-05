@@ -350,7 +350,12 @@ public class ReleaseRunner {
         try (outputStream) {
             RepositoryInfo repository = release.getRepository();
             pushChanges(config, repository, release, outputStream);
-            releaseDeploy(repository, config, release, outputStream);
+            if (config.getMavenConfig().isDeployArtifacts()) {
+                releaseDeploy(repository, config, release, outputStream);
+            } else {
+                log.info("Skipping release-deploy due to maven config: deployArtifacts = false");
+                // todo - wait for artifact to get deployed by github/gitlab workflows?
+            }
             return release;
         }
     }

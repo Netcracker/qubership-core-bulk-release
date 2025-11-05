@@ -133,7 +133,7 @@ public class RenovateConfigConverterTest {
                   - ":dependencyDashboard"
                 helmv3:
                   registryAliases:
-                    "'@custom.libraries.helm.staging'": https://artifactory.com/artifactory/custom.libraries.helm.staging
+                    "@custom.libraries.helm.staging": https://artifactory.com/artifactory/custom.libraries.helm.staging
                 packageRules:
                   - matchManagers:
                       - maven
@@ -165,7 +165,7 @@ public class RenovateConfigConverterTest {
                 "--renovateConfigOutputFile=" + renovateConfigFile,
                 "--repositoriesFile=" + repositoriesFile,
                 "--repository=https://github.com/Netcracker/qubership-core-release-test-maven-lib-3[branch=main]",
-                "--fromJson={'packageRules':[{'matchDatasources':['maven'],'registryUrls':['https://artifactory.com/pd.saas-release.mvn.group','https://artifactory.com/maven_pkg_github_com_netcracker.mvn.proxy']}]}",
+                "--fromJson={packageRules:[{'matchDatasources':['maven'],'registryUrls':['https://artifactory.com/pd.saas-release.mvn.group','https://artifactory.com/maven_pkg_github_com_netcracker.mvn.proxy']}]}",
                 "--fromJson={'packageRules':[{'matchManagers':['maven'],'matchPackageNames':['/^org.qubership.*/'],'groupName':'qubership','labels':['group:qubership']}]}}",
                 "--groupNameMapping={'quarkus': 'io.quarkus.*'}",
                 "--groupNameMapping={\"com.fasterxml.jackson\": \"com.fasterxml.jackson.*\"}",
