@@ -93,6 +93,9 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--mavenLocalRepoPath"}, description = "custom path to maven local repository")
     private String mavenLocalRepoPath = "${user.home}/.m2/repository";
 
+    @CommandLine.Option(names = {"--mavenDeployArtifacts"}, defaultValue = "true", description = "if artifacts should be deployed by maven release process or not")
+    private boolean mavenDeployArtifacts = true;
+
     @CommandLine.Option(names = {"--summaryFile"}, description = "File path to save summary to")
     private String summaryFile;
 
@@ -135,6 +138,7 @@ public class MavenBulkReleaseCli implements Runnable {
                     .password(mavenPassword)
                     .altDeploymentRepository(mavenAltDeploymentRepository)
                     .localRepositoryPath(mavenLocalRepoPath)
+                    .deployArtifacts(mavenDeployArtifacts)
                     .build();
 
             gavs = this.gavs.stream().filter(gav -> !gav.isBlank()).collect(Collectors.toSet());

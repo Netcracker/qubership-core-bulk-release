@@ -15,4 +15,6 @@ public class MavenConfig {
     String altDeploymentRepository;
     @Builder.Default
     String localRepositoryPath = "${user.home}/.m2/repository";
+    @Builder.Default
+    boolean deployArtifacts = true;
 }
