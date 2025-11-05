@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 public class RenovateXrayTest {
 
-    ObjectMapper mapper = new ObjectMapper();
+    static ObjectMapper mapper = new ObjectMapper();
 
     @Test
     public void testCli() throws Exception {
