@@ -16,6 +16,7 @@ import org.qubership.cloud.actions.renovate.model.regex.RenovateReportRegex;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -258,7 +259,9 @@ public class RenovateService {
                                         """
                                                 ⚠️Vulnerability alert
                                                 This MR fixes the following CVEs:
-                                                """ + String.join("\n", fixedCVEs)));
+                                                """.replace("\n", "<br>") + fixedCVEs.stream()
+                                                .map(cve -> new MessageFormat("([{0}](https://nvd.nist.gov/vuln/detail/{0})").format(new Object[]{cve}))
+                                                .collect(Collectors.joining("<br>"))));
                                 return rule;
                             });
 
