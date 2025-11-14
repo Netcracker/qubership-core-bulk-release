@@ -1,6 +1,6 @@
 {
   "repositories": {
-    "PROD.Platform.Cloud_Core/cleanup/cleanup-service": {
+    "Platform.Cloud_Core/cleanup/cleanup-service": {
       "problems": [],
       "branches": [
         {

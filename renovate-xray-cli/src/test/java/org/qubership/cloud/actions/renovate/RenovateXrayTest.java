@@ -126,7 +126,7 @@ public class RenovateXrayTest {
                 final String packageName = artifactVersion.getPackageName();
                 final String version = artifactVersion.getVersion();
                 String path = switch (artifactVersion.getType()) {
-                    //        "default/pd.saas.golang/git.netcracker.com/prod.platform.cloud_core/libs/go/core/v2/@v/v2.2.9.zip"
+                    //        "default/go-repository/libs/go/core/v2/@v/v2.2.9.zip"
                     case go -> MessageFormat.format("default/go-repository/{0}/@v/{1}.zip", packageName, version);
                     //        "default/central_maven_org.mvn.proxy-cache/io/undertow/undertow-core/2.3.11.Final/undertow-core-2.3.11.Final.jar"
                     case maven -> {
