@@ -253,6 +253,7 @@ public class RenovateService {
                                 rule.put("matchPackageNames", List.of(artifactVersion.getPackageName()));
                                 rule.put("allowedVersions", String.format("/^%s$/", artifactVersion.getVersion()));
                                 rule.put("matchCurrentVersion", vulnerableVersion);
+                                rule.put("groupName", "vulnerability/%s".formatted(artifactVersion.getPackageName()));
                                 rule.put("enabled", true);
                                 rule.put("addLabels", labels);
                                 rule.put("prBodyNotes", List.of(
@@ -267,5 +268,4 @@ public class RenovateService {
                 })
                 .toList();
     }
-
 }

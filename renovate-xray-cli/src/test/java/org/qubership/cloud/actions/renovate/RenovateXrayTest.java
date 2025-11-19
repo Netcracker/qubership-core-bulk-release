@@ -341,6 +341,7 @@ public class RenovateXrayTest {
                         matchPackageNames : [ "ant:ant-junit" ],
                         allowedVersions : "/^1.6.7$/",
                         matchCurrentVersion : "1.6.5",
+                        groupName : "vulnerability/ant:ant-junit",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-4444](https://nvd.nist.gov/vuln/detail/CVE-2025-4444)" ]
@@ -348,6 +349,7 @@ public class RenovateXrayTest {
                         matchPackageNames : [ "artifactory.com:17003/alpine/openjdk21" ],
                         allowedVersions : "/^21.0.8.9.05$/",
                         matchCurrentVersion : "21.0.8.9.03",
+                        groupName : "vulnerability/artifactory.com:17003/alpine/openjdk21",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-7777](https://nvd.nist.gov/vuln/detail/CVE-2025-7777)" ]
@@ -355,6 +357,7 @@ public class RenovateXrayTest {
                         matchPackageNames : [ "github.com/stretchr/testify" ],
                         allowedVersions : "/^v1.11.2$/",
                         matchCurrentVersion : "v1.10.0",
+                        groupName : "vulnerability/github.com/stretchr/testify",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-8888](https://nvd.nist.gov/vuln/detail/CVE-2025-8888)" ]
@@ -362,6 +365,7 @@ public class RenovateXrayTest {
                         matchPackageNames : [ "nss_wrapper" ],
                         allowedVersions : "/^1.1.12-r1$/",
                         matchCurrentVersion : "1.1.10-r0",
+                        groupName : "vulnerability/nss_wrapper",
                         enabled : true,
                         addLabels : [ "security" ],
                         prBodyNotes : [ "⚠️Vulnerability alert. This MR fixes the following CVEs:<br>[CVE-2025-9999](https://nvd.nist.gov/vuln/detail/CVE-2025-9999)" ]
