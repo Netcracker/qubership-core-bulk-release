@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 @Data
 public class MavenVersion implements Comparable<MavenVersion> {
 
-    static Pattern versionPattern = Pattern.compile("^(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<suffix>.+)?$");
+    static Pattern versionPattern = Pattern.compile("^v?(?<major>\\d+)(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?(?<suffix>.+)?$");
 
     private String version;
     private int major;
