@@ -31,7 +31,7 @@ public class RepositoryInfo extends RepositoryConfig {
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
         super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(),
-                repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType());
+                repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType(), repositoryConfig.getParams());
         this.baseDir = baseDir;
         try {
             Path repositoryDirPath = Paths.get(baseDir, this.getDir());

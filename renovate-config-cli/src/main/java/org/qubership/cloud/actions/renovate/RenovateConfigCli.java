@@ -82,12 +82,17 @@ public class RenovateConfigCli implements Runnable {
                     .forEach(json -> config.putAll(renovateRulesService.mergeMaps(json, config)));
 
             config.put("repositories", Stream.concat(repositories.stream(), repositoriesFromFile.stream())
-                    .map(r-> {
-                Map<String, Object> result = new LinkedHashMap<>();
-                result.put("repository", r.getDir());
-                result.put("baseBranchPatterns", List.of(r.getBranch()));
-                return result;
-            }).toList());
+                    .map(r -> {
+                        Map<String, Object> result = new LinkedHashMap<>();
+                        result.put("repository", r.getDir());
+                        result.put("baseBranchPatterns", List.of(r.getBranch()));
+                        Optional.ofNullable(r.getParams().get("branchPrefixSuffix"))
+                                .ifPresent(bp -> {
+                                    Object branchPrefix = config.getOrDefault("branchPrefix", "renovate/");
+                                    result.put("branchPrefix", branchPrefix + bp);
+                                });
+                        return result;
+                    }).toList());
 
             // group by the same groupId and version
             if (strictGavsFile != null) {

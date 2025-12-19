@@ -14,7 +14,7 @@ public class RenovateConfigConverterTest {
         repositoriesFile.toFile().deleteOnExit();
         Files.writeString(repositoriesFile, """
                 https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[branch=release/support-1.x.x]
-                https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[branch=release/support-2.x.x]
+                https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[branch=release/support-2.x.x,branchPrefixSuffix=maven-lib-2/]
                 """);
 
         Path patchGavsFile = Files.createTempFile("patchGavs", ".txt");
@@ -301,7 +301,8 @@ public class RenovateConfigConverterTest {
                     baseBranchPatterns : [ "release/support-1.x.x" ]
                   }, {
                     repository : "Netcracker/qubership-core-release-test-maven-lib-2",
-                    baseBranchPatterns : [ "release/support-2.x.x" ]
+                    baseBranchPatterns : [ "release/support-2.x.x" ],
+                    branchPrefix : "renovate-support/maven-lib-2/"
                   } ],
                   username : "renovate"
                 };""", result);

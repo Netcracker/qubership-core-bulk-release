@@ -21,9 +21,11 @@ public class RepositoryConfig {
     final String version;
     final boolean skipTests;
     final VersionIncrementType versionIncrementType;
+    final Map<String, String> params;
 
     @Builder(builderMethodName = "")
-    protected RepositoryConfig(String url, String branch, boolean skipTests, String version, VersionIncrementType versionIncrementType) {
+    protected RepositoryConfig(String url, String branch, boolean skipTests, String version,
+                               VersionIncrementType versionIncrementType, Map<String, String> params) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("URL must be specified");
         }
@@ -40,6 +42,7 @@ public class RepositoryConfig {
         this.version = version;
         this.branch = branch;
         this.versionIncrementType = versionIncrementType;
+        this.params = params;
     }
 
     public static RepositoryConfigBuilder builder(String url) {
@@ -52,7 +55,8 @@ public class RepositoryConfig {
                 .branch(repositoryConfig.getBranch())
                 .skipTests(repositoryConfig.isSkipTests())
                 .version(repositoryConfig.getVersion())
-                .versionIncrementType(repositoryConfig.getVersionIncrementType());
+                .versionIncrementType(repositoryConfig.getVersionIncrementType())
+                .params(repositoryConfig.getParams());
     }
 
     @Override
@@ -73,6 +77,7 @@ public class RepositoryConfig {
                 .filter(entry -> entry.length == 2)
                 .collect(Collectors.toMap(item -> item[0], item -> item[1]));
         RepositoryConfigBuilder builder = RepositoryConfig.builder(url);
+        builder.params(params);
         Optional.ofNullable(params.getOrDefault("branch", params.get("from"))).ifPresent(builder::branch);
         Optional.ofNullable(params.get("version")).ifPresent(builder::version);
         Optional.ofNullable(params.get("skipTests")).map(Boolean::parseBoolean).ifPresent(builder::skipTests);
