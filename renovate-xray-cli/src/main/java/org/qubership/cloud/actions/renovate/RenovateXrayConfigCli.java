@@ -109,6 +109,11 @@ public class RenovateXrayConfigCli implements Runnable {
                         Map<String, Object> result = new LinkedHashMap<>();
                         result.put("repository", r.getDir());
                         result.put("baseBranchPatterns", List.of(r.getBranch()));
+                        Optional.ofNullable(r.getParams().get("branchPrefixSuffix"))
+                                .ifPresent(bp -> {
+                                    Object branchPrefix = config.getOrDefault("branchPrefix", "renovate/");
+                                    result.put("branchPrefix", branchPrefix + bp);
+                                });
                         return result;
                     }).toList());
 
