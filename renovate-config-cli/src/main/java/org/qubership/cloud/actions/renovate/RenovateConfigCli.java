@@ -86,11 +86,16 @@ public class RenovateConfigCli implements Runnable {
                         Map<String, Object> result = new LinkedHashMap<>();
                         result.put("repository", r.getDir());
                         result.put("baseBranchPatterns", List.of(r.getBranch()));
+                        Optional.ofNullable(r.getParams().get("branchPrefix"))
+                                .ifPresent(bp -> result.put("branchPrefix", bp));
                         Optional.ofNullable(r.getParams().get("branchPrefixSuffix"))
                                 .ifPresent(bp -> {
-                                    Object branchPrefix = config.getOrDefault("branchPrefix", "renovate/");
+                                    String branchPrefix = r.getParams().getOrDefault("branchPrefix",
+                                            (String) config.getOrDefault("branchPrefix", "renovate/"));
                                     result.put("branchPrefix", branchPrefix + bp);
                                 });
+                        Optional.ofNullable(r.getParams().get("branchPrefixOld"))
+                                .ifPresent(bp -> result.put("branchPrefixOld", bp));
                         return result;
                     }).toList());
 
