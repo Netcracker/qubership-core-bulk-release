@@ -41,7 +41,7 @@ public class RenovateXrayTest {
         repositoriesFile.toFile().deleteOnExit();
         Files.writeString(repositoriesFile, """
                 https://github.com/Netcracker/qubership-core-release-test-maven-lib-1[branch=release/support-1.x.x,branchPrefix=renovate-1/,branchPrefixOld=renovate-1-old/]
-                https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[branch=release/support-2.x.x,branchPrefixSuffix=maven-lib-2/]
+                https://github.com/Netcracker/qubership-core-release-test-maven-lib-2[branch=release/support-2.x.x,branchPrefixSuffix=maven-lib-2/,addLabels=label1;label-2]
                 https://github.com/Netcracker/qubership-core-release-test-maven-lib-3[branch=release/support-3.x.x,branchPrefix=renovate-3/,branchPrefixSuffix=maven-lib-3/]
                 """);
 
@@ -385,7 +385,8 @@ public class RenovateXrayTest {
                       }, {
                         repository : "Netcracker/qubership-core-release-test-maven-lib-2",
                         baseBranchPatterns : [ "release/support-2.x.x" ],
-                        branchPrefix : "renovate-support/maven-lib-2/"
+                        branchPrefix : "renovate-support/maven-lib-2/",
+                        addLabels : [ "label1", "label-2" ]
                       }, {
                         repository : "Netcracker/qubership-core-release-test-maven-lib-3",
                         baseBranchPatterns : [ "release/support-3.x.x" ],

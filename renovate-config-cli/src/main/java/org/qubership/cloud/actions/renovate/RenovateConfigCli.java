@@ -96,6 +96,9 @@ public class RenovateConfigCli implements Runnable {
                                 });
                         Optional.ofNullable(r.getParams().get("branchPrefixOld"))
                                 .ifPresent(bp -> result.put("branchPrefixOld", bp));
+                        Optional.ofNullable(r.getParams().get("addLabels"))
+                                .ifPresent(v -> result.put("addLabels", Arrays.stream(v.split(";"))
+                                        .filter(s -> !s.isBlank()).toList()));
                         return result;
                     }).toList());
 
