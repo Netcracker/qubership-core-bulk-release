@@ -61,7 +61,9 @@ public class RepositoryConfig {
 
     @Override
     public String toString() {
-        return String.format("%s [%s]", url, branch);
+        return String.format("%s [%s]", url, params.entrySet().stream()
+                .map(entry -> "%s:%s".formatted(entry.getKey(), entry.getValue()))
+                .collect(Collectors.joining(" ")));
     }
 
     public static Function<String, String> normalizeGitUrl = url -> url.endsWith(".git") ? url.substring(0, url.length() - 4) : url;
