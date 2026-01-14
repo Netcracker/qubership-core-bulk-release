@@ -138,7 +138,7 @@ public class RenovateXrayConfigCli implements Runnable {
             List<Map> packageRules = (List<Map>) config.computeIfAbsent("packageRules", k -> new ArrayList<>());
             packageRules.addAll(securityPackageRules);
 
-            String result = RenovateConfigToJsConverter.convert(config);
+            String result = RenovateConfigConverter.toJs(config);
             if (renovateConfigOutputFile != null && !renovateConfigOutputFile.isBlank()) {
                 // write the result
                 try {

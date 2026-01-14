@@ -5,6 +5,7 @@ import org.qubership.cloud.actions.maven.model.GAV;
 import org.qubership.cloud.actions.maven.model.RepositoryConfig;
 import org.qubership.cloud.actions.maven.model.VersionIncrementType;
 import org.qubership.cloud.actions.renovate.converters.*;
+import org.qubership.cloud.actions.renovate.model.RenovateConfigOutputFormat;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
@@ -65,6 +66,9 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--renovateConfigOutputFile"}, required = true, description = "File path to save result to")
     private String renovateConfigOutputFile;
 
+    @CommandLine.Option(names = {"--renovateConfigOutputFormat"}, description = "supported formats: JS/JSON", defaultValue = "JS")
+    private RenovateConfigOutputFormat renovateConfigOutputFormat;
+
     public static void main(String... args) {
         System.exit(run(args));
     }
@@ -116,7 +120,10 @@ public class RenovateConfigCli implements Runnable {
             packageRules.addAll(renovateRulesService.gavsToRules(strictGavs, null, groupNamePatternsMap));
             packageRules.addAll(renovateRulesService.gavsToRules(patchGavs, VersionIncrementType.PATCH, groupNamePatternsMap));
 
-            String result = RenovateConfigToJsConverter.convert(config);
+            String result = switch (renovateConfigOutputFormat) {
+                case JS -> RenovateConfigConverter.toJs(config);
+                case JSON -> RenovateConfigConverter.toJson(config);
+            };
             if (renovateConfigOutputFile != null && !renovateConfigOutputFile.isBlank()) {
                 // write the result
                 try {

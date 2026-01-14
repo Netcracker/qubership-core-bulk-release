@@ -1,0 +1,135 @@
+{
+  "branchPrefix" : "renovate-support/",
+  "branchPrefixOld" : "renovate/",
+  "commitMessagePrefix" : "RENOVATE-0000",
+  "dryRun" : "full",
+  "gitAuthor" : "renovate@test.com",
+  "globalExtends" : [ ":ignoreModulesAndTests", ":dependencyDashboard" ],
+  "helmv3" : {
+    "registryAliases" : {
+      "@custom.libraries.helm.staging" : "https://artifactory.com/artifactory/custom.libraries.helm.staging"
+    }
+  },
+  "hostRules" : [ {
+    "hostType" : "maven",
+    "matchHost" : "https://repo1.maven.org/maven2/",
+    "username" : "$process.env.MAVEN_USERNAME",
+    "password" : "$process.env.MAVEN_PASSWORD"
+  } ],
+  "labels" : [ "renovate", "test" ],
+  "packageRules" : [ {
+    "matchManagers" : [ "maven" ],
+    "matchUpdateTypes" : [ "patch" ],
+    "groupName" : "Default Maven Patch",
+    "autoMerge" : true
+  }, {
+    "matchManagers" : [ "maven" ],
+    "matchUpdateTypes" : [ "minor", "major" ],
+    "groupName" : "Default Maven Minor",
+    "autoMerge" : false
+  }, {
+    "matchPackagePatterns" : [ ".*" ],
+    "allowedVersions" : "!/redhat|composite|groovyless|jboss|atlassian|preview/"
+  }, {
+    "matchDatasources" : [ "maven" ],
+    "registryUrls" : [ "https://artifactory.com/pd.saas-release.mvn.group", "https://artifactory.com/maven_pkg_github_com_netcracker.mvn.proxy" ]
+  }, {
+    "matchManagers" : [ "maven" ],
+    "matchPackageNames" : [ "/^org.qubership.*/" ],
+    "groupName" : "qubership",
+    "labels" : [ "group:qubership" ]
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.jr:jackson-jr-all", "com.fasterxml.jackson.jr:jackson-jr-annotation-support", "com.fasterxml.jackson.jr:jackson-jr-extension-javatime", "com.fasterxml.jackson.jr:jackson-jr-objects", "com.fasterxml.jackson.jr:jackson-jr-retrofit2", "com.fasterxml.jackson.jr:jackson-jr-stree" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson:jackson-bom" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4.1$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.datatype:jackson-datatype-eclipse-collections", "com.fasterxml.jackson.datatype:jackson-datatype-guava", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate4", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate5", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate5-jakarta", "com.fasterxml.jackson.datatype:jackson-datatype-hibernate6", "com.fasterxml.jackson.datatype:jackson-datatype-hppc", "com.fasterxml.jackson.datatype:jackson-datatype-jakarta-jsonp", "com.fasterxml.jackson.datatype:jackson-datatype-jaxrs", "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", "com.fasterxml.jackson.datatype:jackson-datatype-joda", "com.fasterxml.jackson.datatype:jackson-datatype-joda-money", "com.fasterxml.jackson.datatype:jackson-datatype-json-org", "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", "com.fasterxml.jackson.datatype:jackson-datatype-jsr353", "com.fasterxml.jackson.datatype:jackson-datatype-pcollections" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-cbor-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-smile-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-xml-provider", "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-yaml-provider" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.module:jackson-module-afterburner", "com.fasterxml.jackson.module:jackson-module-android-record", "com.fasterxml.jackson.module:jackson-module-blackbird", "com.fasterxml.jackson.module:jackson-module-guice", "com.fasterxml.jackson.module:jackson-module-guice7", "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations", "com.fasterxml.jackson.module:jackson-module-jaxb-annotations", "com.fasterxml.jackson.module:jackson-module-jsonSchema", "com.fasterxml.jackson.module:jackson-module-jsonSchema-jakarta", "com.fasterxml.jackson.module:jackson-module-kotlin", "com.fasterxml.jackson.module:jackson-module-mrbean", "com.fasterxml.jackson.module:jackson-module-no-ctor-deser", "com.fasterxml.jackson.module:jackson-module-osgi", "com.fasterxml.jackson.module:jackson-module-parameter-names", "com.fasterxml.jackson.module:jackson-module-paranamer", "com.fasterxml.jackson.module:jackson-module-scala_2.11", "com.fasterxml.jackson.module:jackson-module-scala_2.12", "com.fasterxml.jackson.module:jackson-module-scala_2.13", "com.fasterxml.jackson.module:jackson-module-scala_3" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.core:jackson-annotations", "com.fasterxml.jackson.core:jackson-databind" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.core:jackson-core" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4.1$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.jaxrs:jackson-jaxrs-base", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-cbor-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-smile-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-xml-provider", "com.fasterxml.jackson.jaxrs:jackson-jaxrs-yaml-provider" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "com.fasterxml.jackson.dataformat:jackson-dataformat-avro", "com.fasterxml.jackson.dataformat:jackson-dataformat-cbor", "com.fasterxml.jackson.dataformat:jackson-dataformat-csv", "com.fasterxml.jackson.dataformat:jackson-dataformat-ion", "com.fasterxml.jackson.dataformat:jackson-dataformat-properties", "com.fasterxml.jackson.dataformat:jackson-dataformat-protobuf", "com.fasterxml.jackson.dataformat:jackson-dataformat-smile", "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" ],
+    "groupName" : "com.fasterxml.jackson",
+    "allowedVersions" : "/^2.18.4$/"
+  }, {
+    "matchPackageNames" : [ "org.springframework.cloud:spring-cloud-dependencies" ],
+    "groupName" : "org.springframework.cloud",
+    "allowedVersions" : "/^2024\\.0(\\.\\d+)+$/"
+  }, {
+    "matchPackageNames" : [ "org.springframework.boot:spring-boot-dependencies", "org.springframework.boot:spring-boot-maven-plugin", "org.springframework.boot:spring-boot-parent", "org.springframework.boot:spring-boot-starter-parent" ],
+    "groupName" : "org.springframework.boot",
+    "allowedVersions" : "/^3\\.4(\\.\\d+)+$/"
+  }, {
+    "matchPackageNames" : [ "test:version-with-suffix" ],
+    "groupName" : "test",
+    "allowedVersions" : "/^1\\.0(\\.\\d+)+-Latest$/"
+  }, {
+    "matchPackageNames" : [ "io.smallrye:jandex", "io.smallrye:jandex-maven-plugin" ],
+    "groupName" : "io.smallrye",
+    "allowedVersions" : "/^3\\.2(\\.\\d+)+$/"
+  }, {
+    "matchPackageNames" : [ "io.quarkus.platform:quarkus-bom" ],
+    "groupName" : "quarkus",
+    "allowedVersions" : "/^3\\.15(\\.\\d+)+$/"
+  }, {
+    "matchPackageNames" : [ "io.quarkus.platform:quarkus-maven-plugin", "io.quarkus.platform:quarkus-operator-sdk-bom" ],
+    "groupName" : "quarkus",
+    "allowedVersions" : "/^3\\.15(\\.\\d+)+$/"
+  }, {
+    "matchPackageNames" : [ "io.quarkus:quarkus-bom", "io.quarkus:quarkus-extension-maven-plugin", "io.quarkus:quarkus-extension-processor", "io.quarkus:quarkus-maven-plugin" ],
+    "groupName" : "quarkus",
+    "allowedVersions" : "/^3\\.15(\\.\\d+)+$/"
+  }, {
+    "matchPackageNames" : [ "io.quarkus:quarkus-universe-bom" ],
+    "groupName" : "quarkus",
+    "allowedVersions" : "/^3\\.15(\\.\\d+)+$/"
+  } ],
+  "platform" : "github",
+  "platformAutomerge" : true,
+  "prCreation" : "not-pending",
+  "printConfig" : true,
+  "rebaseWhen" : "conflicted",
+  "recreateWhen" : "always",
+  "repositories" : [ {
+    "repository" : "Netcracker/qubership-core-release-test-maven-lib-4",
+    "baseBranchPatterns" : [ "main" ]
+  }, {
+    "repository" : "Netcracker/qubership-core-release-test-maven-lib-1",
+    "baseBranchPatterns" : [ "release/support-1.x.x" ],
+    "branchPrefix" : "renovate-1/",
+    "branchPrefixOld" : "renovate-1-old/"
+  }, {
+    "repository" : "Netcracker/qubership-core-release-test-maven-lib-2",
+    "baseBranchPatterns" : [ "release/support-2.x.x" ],
+    "branchPrefix" : "renovate-support/maven-lib-2/",
+    "addLabels" : [ "label1", "label-2" ]
+  }, {
+    "repository" : "Netcracker/qubership-core-release-test-maven-lib-3",
+    "baseBranchPatterns" : [ "release/support-3.x.x" ],
+    "branchPrefix" : "renovate-3/maven-lib-3/"
+  } ],
+  "username" : "renovate"
+}

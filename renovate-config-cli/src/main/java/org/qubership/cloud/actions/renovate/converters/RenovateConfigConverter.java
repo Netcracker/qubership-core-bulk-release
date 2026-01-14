@@ -3,21 +3,19 @@ package org.qubership.cloud.actions.renovate.converters;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import lombok.SneakyThrows;
 
 import java.util.Map;
 import java.util.regex.Pattern;
 
-public class RenovateConfigToJsConverter {
+public class RenovateConfigConverter {
 
     static Pattern keyPattern = Pattern.compile("\"(?<key>[^:\"]+?)\" :");
     static Pattern codeFragmentValuePattern = Pattern.compile("\"\\$(?<value>.+?)\"");
+    static ObjectMapper mapper = new ObjectMapper()
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .enable(SerializationFeature.INDENT_OUTPUT);
 
-    @SneakyThrows
-    public static String convert(Map<String, Object> config) {
-        ObjectMapper mapper = new ObjectMapper()
-                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .enable(SerializationFeature.INDENT_OUTPUT);
+    public static String toJs(Map<String, Object> config) throws Exception {
         String json = mapper.writeValueAsString(config);
         json = keyPattern.matcher(json).replaceAll(mr -> {
             String key = mr.group("key");
@@ -31,5 +29,9 @@ public class RenovateConfigToJsConverter {
         });
         json = codeFragmentValuePattern.matcher(json).replaceAll(mr -> mr.group("value"));
         return String.format("module.exports = %s;", json);
+    }
+
+    public static String toJson(Map<String, Object> config) throws Exception {
+        return mapper.writeValueAsString(config);
     }
 }
