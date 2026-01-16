@@ -69,6 +69,9 @@ public class RenovateConfigCli implements Runnable {
     @CommandLine.Option(names = {"--renovateConfigOutputFormat"}, description = "supported formats: JS/JSON", defaultValue = "JS")
     private RenovateConfigOutputFormat renovateConfigOutputFormat;
 
+    @CommandLine.Option(names = {"--addGroupName"}, description = "add groupName to each package rule", defaultValue = "true")
+    private boolean addGroupName;
+
     public static void main(String... args) {
         System.exit(run(args));
     }
@@ -117,8 +120,8 @@ public class RenovateConfigCli implements Runnable {
                     .collect(Collectors.toMap(Map.Entry::getKey, p -> Pattern.compile(p.getValue().toString())));
 
             List<Map> packageRules = (List<Map>) config.computeIfAbsent("packageRules", k -> new ArrayList<>());
-            packageRules.addAll(renovateRulesService.gavsToRules(strictGavs, null, groupNamePatternsMap));
-            packageRules.addAll(renovateRulesService.gavsToRules(patchGavs, VersionIncrementType.PATCH, groupNamePatternsMap));
+            packageRules.addAll(renovateRulesService.gavsToRules(strictGavs, null, groupNamePatternsMap, addGroupName));
+            packageRules.addAll(renovateRulesService.gavsToRules(patchGavs, VersionIncrementType.PATCH, groupNamePatternsMap, addGroupName));
 
             String result = switch (renovateConfigOutputFormat) {
                 case JS -> RenovateConfigConverter.toJs(config);

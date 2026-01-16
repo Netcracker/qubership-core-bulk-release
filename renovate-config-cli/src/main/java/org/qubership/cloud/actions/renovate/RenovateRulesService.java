@@ -12,7 +12,8 @@ import java.util.stream.Collectors;
 
 public class RenovateRulesService {
 
-    public List<? extends Map> gavsToRules(Collection<GAV> gavs, VersionIncrementType type, Map<String, Pattern> groupNamePatternsMap) {
+    public List<? extends Map> gavsToRules(Collection<GAV> gavs, VersionIncrementType type,
+                                           Map<String, Pattern> groupNamePatternsMap, boolean addGroupName) {
         return gavs.stream()
                 .sorted(Comparator.comparing(GAV::getGroupId).thenComparing(GAV::getArtifactId))
                 .collect(Collectors.toMap(GA::getGroupId, gav -> {
@@ -43,13 +44,13 @@ public class RenovateRulesService {
                                         .map(artifactId -> groupId + ":" + artifactId)
                                         .sorted()
                                         .toList());
-                                rule.put("groupName", groupName);
+                                if (addGroupName) rule.put("groupName", groupName);
                                 MavenVersion mavenVersion = new MavenVersion(version);
                                 if (type == null) {
                                     rule.put("allowedVersions", String.format("/^%s$/", mavenVersion));
                                 } else if (type == VersionIncrementType.PATCH) {
                                     String suffix = Optional.ofNullable(mavenVersion.getSuffix()).orElse("");
-                                    if (!suffix.isBlank()){
+                                    if (!suffix.isBlank()) {
                                         suffix = suffix.replaceAll("^(\\.\\d+)+", "");
                                     }
                                     rule.put("allowedVersions", String.format("/^%d\\.%d(\\.\\d+)+%s$/",
