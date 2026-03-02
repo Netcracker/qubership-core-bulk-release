@@ -12,7 +12,7 @@
     <artifactId>go-bulk-release</artifactId>
 
     <properties>
-        <jackson.version>2.19.2</jackson.version>
+        <jackson.version>2.20</jackson.version>
         <org.jgrapht.version>1.5.2</org.jgrapht.version>
     </properties>
 
@@ -47,12 +47,12 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.20</version>
+            <version>1.5.25</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit</artifactId>
-            <version>7.3.0.202506031305-r</version>
+            <version>7.4.0.202509020913-r</version>
         </dependency>
         <dependency>
             <groupId>org.jgrapht</groupId>
