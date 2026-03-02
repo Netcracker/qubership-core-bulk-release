@@ -12,7 +12,7 @@
     <artifactId>maven-bulk-release</artifactId>
 
     <properties>
-        <jackson.version>2.19.2</jackson.version>
+        <jackson.version>2.20</jackson.version>
         <org.jgrapht.version>1.5.2</org.jgrapht.version>
     </properties>
 
@@ -52,22 +52,22 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.20</version>
+            <version>1.5.25</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit</artifactId>
-            <version>7.3.0.202506031305-r</version>
+            <version>7.4.0.202509020913-r</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-model</artifactId>
-            <version>3.9.9</version>
+            <version>3.9.11</version>
         </dependency>
         <dependency>
             <groupId>org.codehaus.plexus</groupId>
             <artifactId>plexus-xml</artifactId>
-            <version>4.1.0</version>
+            <version>4.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.jgrapht</groupId>
@@ -82,13 +82,13 @@
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-artifact</artifactId>
-            <version>3.9.10</version>
+            <version>3.9.11</version>
         </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.12.2</version>
+            <version>5.14.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
