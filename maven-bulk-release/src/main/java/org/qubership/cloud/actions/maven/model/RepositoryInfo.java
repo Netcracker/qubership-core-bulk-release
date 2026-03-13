@@ -25,26 +25,28 @@ public class RepositoryInfo extends RepositoryConfig {
     public static Pattern propertyPattern = Pattern.compile("\\$\\{(.+?)}");
 
     String baseDir;
+    GAV baseModule;
     Set<GAV> modules = new HashSet<>();
     Set<GAV> moduleDependencies = new HashSet<>();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
-        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.isSkipTests(),
+        super(repositoryConfig.getUrl(), repositoryConfig.getBranch(), repositoryConfig.getPomFolder(), repositoryConfig.isSkipTests(),
                 repositoryConfig.getVersion(), repositoryConfig.getVersionIncrementType(), repositoryConfig.getParams());
         this.baseDir = baseDir;
         try {
-            Path repositoryDirPath = Paths.get(baseDir, this.getDir());
-            boolean repositoryDirExists = Files.exists(repositoryDirPath);
-            if (!repositoryDirExists || Files.list(repositoryDirPath).findAny().isEmpty()) {
-                throw new IllegalStateException(String.format("Repository directory '%s' does not exist or is empty", repositoryDirPath));
+            Path repositoryDirPath = Paths.get(baseDir, getDir());
+            Path repositoryPomPath = Paths.get(baseDir, getDir(), getPomFolder());
+            boolean repositoryDirExists = Files.exists(repositoryPomPath);
+            if (!repositoryDirExists || Files.list(repositoryPomPath).findAny().isEmpty()) {
+                throw new IllegalStateException(String.format("Repository pom directory '%s' does not exist or is empty", repositoryPomPath));
             }
             try (Git git = Git.open(repositoryDirPath.toFile())) {
                 String branch = repositoryConfig.getBranch();
                 try {
                     git.checkout().setName(branch).call();
-                } catch (RefNotFoundException e)  {
-                    git.checkout().setName("origin/" +branch).call();
+                } catch (RefNotFoundException e) {
+                    git.checkout().setName("origin/" + branch).call();
                 }
             }
             this.resolveDependencies();
@@ -53,27 +55,41 @@ public class RepositoryInfo extends RepositoryConfig {
         }
     }
 
-    public String calculateReleaseVersion(VersionIncrementType versionIncrementType) throws Exception {
-        Path releasePropsPath = Path.of(this.getBaseDir(), this.getDir(), "release.properties");
-        if (Files.exists(releasePropsPath)) {
-            String content = Files.readString(releasePropsPath);
-            if (content.contains("completedPhase=end-release")) {
-                Pattern pattern = Pattern.compile("^project.rel[^:]+:[^=]+=(?<version>.+)$");
-                // preparation was already performed, get a version from the file
-                Set<String> versions = Arrays.stream(content.split("\n"))
-                        .map(String::trim)
-                        .filter(line -> !line.isBlank() && line.startsWith("project.rel."))
-                        .map(pattern::matcher)
-                        .filter(Matcher::matches)
-                        .map(m -> m.group("version"))
-                        .collect(Collectors.toSet());
-                if (versions.size() != 1) {
-                    throw new IllegalStateException("Multiple/no release versions found for maven project: " + versions);
-                }
-                return versions.iterator().next();
-            }
-        }
-        List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
+    public record UrlAndPomFolder(String url, String pomFolder) {
+    }
+
+    public String graphEdge() {
+        return "%s_|_%s".formatted(getUrl(), getPomFolder());
+    }
+
+    public static UrlAndPomFolder fromGraphEdge(String edge) {
+        String[] split = edge.split("_\\|_");
+        String url = split[0];
+        String pomFolder = split.length > 1 ? split[1] : "";
+        return new UrlAndPomFolder(url, pomFolder);
+    }
+
+    public VersionTag calculateReleaseVersion(VersionIncrementType versionIncrementType) throws Exception {
+//        Path releasePropsPath = Path.of(getBaseDir(), getDir(), getPomFolder(), "release.properties");
+//        if (Files.exists(releasePropsPath)) {
+//            String content = Files.readString(releasePropsPath);
+//            if (content.contains("completedPhase=end-release")) {
+//                Pattern pattern = Pattern.compile("^project.rel[^:]+:[^=]+=(?<version>.+)$");
+//                // preparation was already performed, get a version from the file
+//                Set<String> versions = Arrays.stream(content.split("\n"))
+//                        .map(String::trim)
+//                        .filter(line -> !line.isBlank() && line.startsWith("project.rel."))
+//                        .map(pattern::matcher)
+//                        .filter(Matcher::matches)
+//                        .map(m -> m.group("version"))
+//                        .collect(Collectors.toSet());
+//                if (versions.size() != 1) {
+//                    throw new IllegalStateException("Multiple/no release versions found for maven project: " + versions);
+//                }
+//                return versions.iterator().next();
+//            }
+//        }
+        List<PomHolder> poms = PomHolder.parsePoms(Path.of(getBaseDir(), getDir(), getPomFolder()));
         Set<String> pomVersions = poms.stream().map(PomHolder::getVersion).collect(Collectors.toSet());
         if (pomVersions.size() != 1) {
             throw new IllegalArgumentException(String.format("pom.xml files from repository: %s have different versions: %s",
@@ -103,11 +119,16 @@ public class RepositoryInfo extends RepositoryConfig {
                 if (snapshot == null) patch++;
             }
         }
-        return String.format("%d.%d.%d", major, minor, patch);
+        String version = String.format("%d.%d.%d", major, minor, patch);
+        if (getPomFolder().isBlank() || baseModule == null) {
+            return new VersionTag(version, version);
+        } else {
+            return new VersionTag(version, "%s-%s".formatted(baseModule.getArtifactId(), version));
+        }
     }
 
     public String calculateJavaVersion() {
-        List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
+        List<PomHolder> poms = PomHolder.parsePoms(Path.of(getBaseDir(), getDir(), getPomFolder()));
         Set<String> propsToSearch = Set.of("maven.compiler.source", "maven.compiler.target", "maven.compiler.release", "java.version");
         // first search among plugins in poms
         Optional<String> versionFromPlugin = poms.stream().map(ph -> {
@@ -165,10 +186,15 @@ public class RepositoryInfo extends RepositoryConfig {
     }
 
     void resolveDependencies() {
-        List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
+        Path basePomFolderPath = Path.of(getBaseDir(), getDir(), getPomFolder());
+        List<PomHolder> poms = PomHolder.parsePoms(basePomFolderPath);
         this.modules.clear();
         this.moduleDependencies.clear();
         try {
+            if (!poms.isEmpty()) {
+                PomHolder base = PomHolder.parsePom(basePomFolderPath.resolve("pom.xml"));
+                baseModule = new GAV(base.getGroupId(), base.getArtifactId(), base.getVersion());
+            }
             for (PomHolder pomHolder : poms) {
                 GAV moduleGAV = new GAV(pomHolder.getGroupId(), pomHolder.getArtifactId(), pomHolder.getVersion());
                 this.modules.add(moduleGAV);
@@ -260,7 +286,7 @@ public class RepositoryInfo extends RepositoryConfig {
                 }
             }
         };
-        List<PomHolder> poms = PomHolder.parsePoms(Path.of(this.getBaseDir(), dir));
+        List<PomHolder> poms = PomHolder.parsePoms(Path.of(getBaseDir(), getDir(), getPomFolder()));
         poms.forEach(ph -> {
             ph.getGAVs().forEach(gav -> gavFunction.accept(ph, gav));
             ph.getProperties().forEach((propertyName, propertyValue) -> {
@@ -296,6 +322,6 @@ public class RepositoryInfo extends RepositoryConfig {
 
     @Override
     public String toString() {
-        return getUrl();
+        return "%s [pom: %s]".formatted(getUrl(), getPomFolder());
     }
 }
