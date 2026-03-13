@@ -158,7 +158,7 @@ public class ReleaseRunner {
         }).toList();
 
         if (!config.isDryRun()) {
-            Map<Integer, Map<String, Map<Integer, RepositoryInfo>>> publishDependencyGraph = new TreeMap<>();
+            Map<Integer, Map<String, List<RepositoryInfo>>> publishDependencyGraph = new TreeMap<>();
             AtomicInteger newLevel = new AtomicInteger(-1);
             AtomicReference<String> lastUrlRef = new AtomicReference<>();
             dependencyGraph.forEach((level, repos) -> repos.forEach(ri -> {
@@ -168,17 +168,14 @@ public class ReleaseRunner {
                     newLevel.incrementAndGet();
                     lastUrlRef.set(url);
                 }
-                Map<String, Map<Integer, RepositoryInfo>> urlToInfosMap = publishDependencyGraph.computeIfAbsent(newLevel.get(), k -> new TreeMap<>());
-                Map<Integer, RepositoryInfo> urlToReposMap = urlToInfosMap.computeIfAbsent(url, k -> new TreeMap<>());
-                urlToReposMap.put(level, ri); // todo - maybe re-calculate this level
+                Map<String, List<RepositoryInfo>> urlToInfosMap = publishDependencyGraph.computeIfAbsent(newLevel.get(), k -> new TreeMap<>());
+                List<RepositoryInfo> urlToRepos = urlToInfosMap.computeIfAbsent(url, k -> new ArrayList<>());
+                urlToRepos.add(ri);
             }));
 
             publishDependencyGraph.forEach((level, reposByUrlMap) ->
                     reposByUrlMap.forEach((url, reposMap) -> {
-                        List<RepositoryInfo> repos = reposMap.entrySet().stream()
-                                .sorted(Map.Entry.comparingByKey())
-                                .map(Map.Entry::getValue)
-                                .toList();
+                        List<RepositoryInfo> repos = reposMap.stream().toList();
                         log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, publishDependencyGraph.size(), repos.size(),
                                 String.join("\n", repos.stream()
                                         .map(rc -> "%s [pomFolder: '%s']".formatted(rc.getUrl(), rc.getPomFolder())).toList()));
@@ -389,7 +386,9 @@ public class ReleaseRunner {
                     .filter(t -> tags.stream().anyMatch(tag -> t.getName().equals(String.format("refs/tags/%s", tag))))
                     .toList();
             if (tagRefs.isEmpty()) {
-                throw new IllegalStateException(String.format("git tags: %s not found", tags));
+                throw new IllegalStateException("""
+                        git tags not found:
+                        %s""".formatted( String.join("\n", tags)));
             }
             String branch = git.getRepository().getFullBranch();
             RefSpec branchRef = Optional.of(branch).map(b -> new RefSpec(b + ":" + b)).get();
