@@ -286,7 +286,7 @@ public class ReleaseRunner {
         commitUpdatedDependenciesIfAny(repositoryInfo);
     }
 
-    void commitUpdatedDependenciesIfAny(RepositoryInfo repository) {
+    synchronized void commitUpdatedDependenciesIfAny(RepositoryInfo repository) {
         Path repositoryDirPath = Paths.get(repository.getBaseDir(), repository.getDir());
         try (Git git = Git.open(repositoryDirPath.toFile())) {
             List<DiffEntry> diff = git.diff().call();
@@ -376,7 +376,7 @@ public class ReleaseRunner {
         }
     }
 
-    void pushChanges(Config config, List<RepositoryRelease> releases, OutputStream outputStream) {
+    synchronized void pushChanges(Config config, List<RepositoryRelease> releases, OutputStream outputStream) {
         RepositoryInfo repositoryInfo = releases.getFirst().getRepository();
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
         Set<String> tags = releases.stream().map(RepositoryRelease::getVersionTag).map(VersionTag::tag).collect(Collectors.toSet());
