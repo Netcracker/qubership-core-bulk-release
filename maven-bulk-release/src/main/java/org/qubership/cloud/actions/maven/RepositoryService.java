@@ -55,7 +55,7 @@ public class RepositoryService {
 
     public Map<Integer, List<RepositoryInfo>> buildDependencyGraph(String baseDir,
                                                                    GitConfig gitConfig,
-                                                                   Set<RepositoryConfig> repositories,
+                                                                   Collection<RepositoryConfig> repositories,
                                                                    Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
         BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, List<RepositoryConfig>> mergeFunction =
@@ -107,35 +107,42 @@ public class RepositoryService {
             // filter repositories which are not affected by 'released from' repositories
             List<RepositoryInfo> repositoryInfos = mergedRepositoriesToReleaseFrom.isEmpty() ? repositoryInfoList : repositoryInfoList.stream()
                     .filter(ri ->
-                            mergedRepositoriesToReleaseFrom.stream().map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(ri.getUrl()) ||
+                            mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> Objects.equals(riFrom.getUrl(), ri.getUrl()) &&
+                                                                                        Objects.equals(riFrom.getPomFolder(), ri.getPomFolder())) ||
                             mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(ri).stream()
-                                    .map(RepositoryConfig::getUrl).collect(Collectors.toSet()).contains(riFrom.getUrl())))
+                                    .anyMatch(riUsedBy -> Objects.equals(riUsedBy.getUrl(), ri.getUrl()) &&
+                                                          Objects.equals(riUsedBy.getPomFolder(), ri.getPomFolder()))))
                     .toList();
 
             Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
 
-            for (RepositoryInfo repositoryInfo : repositoryInfos) {
-                graph.addVertex(repositoryInfo.getUrl());
+            for (RepositoryInfo ri : repositoryInfos) {
+                graph.addVertex(ri.graphEdge());
             }
             for (RepositoryInfo repositoryInfo : repositoryInfos) {
                 repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(repositoryInfo)
                         .stream()
-                        .filter(ri -> repositoryInfos.stream().anyMatch(riFrom -> Objects.equals(riFrom.getUrl(), ri.getUrl())))
-                        .forEach(ri -> graph.addEdge(ri.getUrl(), repositoryInfo.getUrl()));
+                        .filter(ri -> repositoryInfos.stream().anyMatch(riFrom ->
+                                Objects.equals(riFrom.getUrl(), ri.getUrl()) &&
+                                Objects.equals(riFrom.getPomFolder(), ri.getPomFolder())))
+                        .forEach(ri -> graph.addEdge(ri.graphEdge(), repositoryInfo.graphEdge()));
             }
             List<RepositoryInfo> independentRepos = repositoryInfos.stream()
-                    .filter(ri -> graph.incomingEdgesOf(ri.getUrl()).isEmpty()).toList();
+                    .filter(ri -> graph.incomingEdgesOf(ri.graphEdge()).isEmpty()).toList();
             List<RepositoryInfo> dependentRepos = repositoryInfos.stream()
-                    .filter(ri -> !graph.incomingEdgesOf(ri.getUrl()).isEmpty()).collect(Collectors.toList());
+                    .filter(ri -> !graph.incomingEdgesOf(ri.graphEdge()).isEmpty()).collect(Collectors.toList());
             Map<Integer, List<RepositoryInfo>> groupedReposMap = new TreeMap<>();
             groupedReposMap.put(0, independentRepos);
             int level = 1;
             while (!dependentRepos.isEmpty()) {
                 List<RepositoryInfo> prevLevelRepos = IntStream.range(0, level).boxed().flatMap(lvl -> groupedReposMap.get(lvl).stream()).toList();
                 List<RepositoryInfo> thisLevelRepos = dependentRepos.stream()
-                        .filter(ri -> graph.incomingEdgesOf(ri.getUrl()).stream().map(StringEdge::getSource)
-                                .allMatch(dependentRepoUrl -> prevLevelRepos.stream().map(RepositoryInfo::getUrl)
-                                        .collect(Collectors.toSet()).contains(dependentRepoUrl))).toList();
+                        .filter(ri -> graph.incomingEdgesOf(ri.graphEdge()).stream().map(StringEdge::getSource)
+                                .allMatch(dependentRepoUrl -> {
+                                    RepositoryInfo.UrlAndPomFolder urlAndPomFolder = RepositoryInfo.fromGraphEdge(dependentRepoUrl);
+                                    return prevLevelRepos.stream().anyMatch(riPrev -> Objects.equals(urlAndPomFolder.url(), riPrev.getUrl()) &&
+                                                                                      Objects.equals(urlAndPomFolder.pomFolder(), riPrev.getPomFolder()));
+                                })).toList();
                 groupedReposMap.put(level, thisLevelRepos);
                 dependentRepos.removeAll(thisLevelRepos);
                 level++;

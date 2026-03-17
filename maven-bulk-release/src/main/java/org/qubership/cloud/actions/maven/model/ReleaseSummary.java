@@ -15,18 +15,19 @@ public class ReleaseSummary {
                             ```
                             """;
                     String tagUrl = r.isPushedToGit() ?
-                            String.format("%s/tree/%s", r.getRepository().getUrl(), r.getTag()) :
+                            String.format("%s/tree/%s", r.getRepository().getUrl(), r.getVersionTag().tag()) :
                             r.getRepository().getUrl();
                     String gavs = r.getGavs().stream().map(GAV::toString).collect(Collectors.joining("\n"));
                     String urlName = r.getRepository().getUrl();
-                    urlName += String.format(" [%s]", r.getRepository().getBranch());
+                    urlName += " [branch: %s, folder: %s]"
+                            .formatted(r.getRepository().getBranch(), r.getRepository().getPomFolder());
                     String link = String.format("[%s](%s)", urlName, tagUrl);
                     return String.format(repositoryPart, link, gavs);
                 }).toList());
-        return String.format("""
+        return """
                 ### Release Summary%s
                 %s
-                """, result.isDryRun() ? " [DRY RUN]" : "", releasedRepositoriesGavs);
+                """.formatted(result.isDryRun() ? " [DRY RUN]" : "", releasedRepositoriesGavs);
     }
 
     public static String gavs(Result result) {

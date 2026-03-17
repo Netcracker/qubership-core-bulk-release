@@ -13,18 +13,22 @@ public class RepositoryInfoLinker {
     public List<RepositoryInfo> getRepositoriesUsedByThis(RepositoryInfo thisRepository) {
         return this.repositories.stream()
                 .filter(r ->
+                        !Objects.equals(r.getUrl(), thisRepository.getUrl()) ||
+                        !Objects.equals(r.getPomFolder(), thisRepository.getPomFolder()))
+                .filter(r ->
                         r.getModules().stream().map(GAV::toGA).anyMatch(module ->
                                 thisRepository.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module::equals)))
-                .filter(r -> !Objects.equals(r.getUrl(), thisRepository.getUrl()))
                 .toList();
     }
 
     public List<RepositoryInfo> getRepositoriesUsingThis(RepositoryInfo thisRepository) {
         return this.repositories.stream()
                 .filter(r ->
+                        !Objects.equals(r.getUrl(), thisRepository.getUrl()) ||
+                        !Objects.equals(r.getPomFolder(), thisRepository.getPomFolder()))
+                .filter(r ->
                         r.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module ->
                                 thisRepository.getModules().stream().map(GAV::toGA).anyMatch(module::equals)))
-                .filter(r -> !Objects.equals(r.getUrl(), thisRepository.getUrl()))
                 .toList();
     }
 

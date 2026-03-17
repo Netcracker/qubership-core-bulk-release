@@ -17,6 +17,7 @@ public class RepositoryConfig {
 
     final String url;
     final String dir;
+    final String pomFolder;
     final String branch;
     final String version;
     final boolean skipTests;
@@ -24,7 +25,7 @@ public class RepositoryConfig {
     final Map<String, String> params;
 
     @Builder(builderMethodName = "")
-    protected RepositoryConfig(String url, String branch, boolean skipTests, String version,
+    protected RepositoryConfig(String url, String branch, String pomFolder, boolean skipTests, String version,
                                VersionIncrementType versionIncrementType, Map<String, String> params) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("URL must be specified");
@@ -38,6 +39,7 @@ public class RepositoryConfig {
             throw new IllegalArgumentException(String.format("Invalid repository url: %s. Must match pattern: '%s'", url, pattern));
         }
         this.dir = matcher.group("dir");
+        this.pomFolder = pomFolder;
         this.skipTests = skipTests;
         this.version = version;
         this.branch = branch;
@@ -53,6 +55,7 @@ public class RepositoryConfig {
         return new RepositoryConfigBuilder()
                 .url(repositoryConfig.getUrl())
                 .branch(repositoryConfig.getBranch())
+                .pomFolder(repositoryConfig.getPomFolder())
                 .skipTests(repositoryConfig.isSkipTests())
                 .version(repositoryConfig.getVersion())
                 .versionIncrementType(repositoryConfig.getVersionIncrementType())
@@ -81,6 +84,7 @@ public class RepositoryConfig {
         RepositoryConfigBuilder builder = RepositoryConfig.builder(url);
         builder.params(params);
         Optional.ofNullable(params.getOrDefault("branch", params.get("from"))).ifPresent(builder::branch);
+        Optional.ofNullable(params.getOrDefault("pomFolder", "")).ifPresent(builder::pomFolder);
         Optional.ofNullable(params.get("version")).ifPresent(builder::version);
         Optional.ofNullable(params.get("skipTests")).map(Boolean::parseBoolean).ifPresent(builder::skipTests);
         Optional.ofNullable(params.get("versionIncrementType")).map(String::toUpperCase).map(VersionIncrementType::valueOf).ifPresent(builder::versionIncrementType);

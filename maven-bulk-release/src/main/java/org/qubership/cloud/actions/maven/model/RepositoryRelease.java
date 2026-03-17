@@ -7,8 +7,7 @@ import java.util.List;
 @Data
 public class RepositoryRelease {
     RepositoryInfo repository;
-    String releaseVersion;
-    String tag;
+    VersionTag versionTag;
     List<GAV> gavs;
     String javaVersion;
     boolean pushedToGit;

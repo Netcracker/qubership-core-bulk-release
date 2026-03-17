@@ -15,7 +15,7 @@ public class Config {
     final GitConfig gitConfig;
     MavenConfig mavenConfig;
     // all repositories
-    final Set<RepositoryConfig> repositories;
+    final Collection<RepositoryConfig> repositories;
     // particular repository(ies) to start release from (the rest of the tree will be calculated automatically)
     Set<RepositoryConfig> repositoriesToReleaseFrom = new LinkedHashSet<>();
     Collection<String> gavs;
@@ -31,7 +31,7 @@ public class Config {
     @Builder(builderMethodName = "")
     private Config(String baseDir,
                    GitConfig gitConfig,
-                   Set<RepositoryConfig> repositories,
+                   Collection<RepositoryConfig> repositories,
                    Set<RepositoryConfig> repositoriesToReleaseFrom,
                    Collection<String> gavs,
                    VersionIncrementType versionIncrementType,
@@ -60,7 +60,7 @@ public class Config {
     public static ConfigBuilder builder(String baseDir,
                                         GitConfig gitConfig,
                                         MavenConfig mavenConfig,
-                                        Set<RepositoryConfig> repositories) {
+                                        Collection<RepositoryConfig> repositories) {
         return new ConfigBuilder()
                 .baseDir(baseDir)
                 .gitConfig(gitConfig)

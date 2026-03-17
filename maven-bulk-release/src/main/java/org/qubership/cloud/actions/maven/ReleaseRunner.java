@@ -24,6 +24,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -62,14 +64,18 @@ public class ReleaseRunner {
                     int level = entry.getKey();
                     List<RepositoryInfo> reposInfoList = entry.getValue();
                     return String.format("Level %d/%d, repos:\n%s", level + 1, dependencyGraph.size(),
-                            String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
+                            String.join("\n", reposInfoList.stream()
+                                    .map(r -> "%s [pom:%s]".formatted(r.getUrl(), r.getPomFolder()))
+                                    .toList()));
                 }).toList()));
 
         List<RepositoryRelease> allReleases = dependencyGraph.entrySet().stream().flatMap(entry -> {
             int level = entry.getKey() + 1;
             List<RepositoryInfo> reposInfoList = entry.getValue();
             log.info("Running 'prepare' - processing level {}/{}, {} repositories:\n{}", level, dependencyGraph.size(), reposInfoList.size(),
-                    String.join("\n", reposInfoList.stream().map(RepositoryConfig::getUrl).toList()));
+                    String.join("\n", reposInfoList.stream()
+                            .map(rc -> "%s [pomFolder: '%s']".formatted(rc.getUrl(), rc.getPomFolder())).toList()));
+
             int threads = Math.min(config.getRunParallelism(), reposInfoList.size());
             try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
                 Set<GAV> gavList = dependenciesGavs.entrySet().stream()
@@ -91,7 +97,11 @@ public class ReleaseRunner {
                         .map(future -> {
                             RepositoryInfo repositoryInfo = future.getObject();
                             Path repoLogDirPath = logsFolderPath.resolve(repositoryInfo.getDir());
+                            if (!repositoryInfo.getPomFolder().isBlank()) {
+                                repoLogDirPath = repoLogDirPath.resolve(repositoryInfo.getPomFolder());
+                            }
                             Path repoLogFilePath = repoLogDirPath.resolve("prepare.log");
+                            String pomFolder = repositoryInfo.getPomFolder().isBlank() ? "" : "/" + repositoryInfo.getPomFolder();
                             try (PipedInputStream pipedInputStream = future.getPipedInputStream();
                                  BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
                                 if (!Files.exists(repoLogDirPath)) {
@@ -100,7 +110,7 @@ public class ReleaseRunner {
                                 Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8,
                                         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                                 log.info("Started 'prepare' process for repository '{}'.\nFor details see log file: {}",
-                                        repositoryInfo.getUrl(), repoLogFilePath);
+                                        repositoryInfo.getUrl() + pomFolder, repoLogFilePath);
                                 String line;
                                 int iterations = 0;
                                 while ((line = reader.readLine()) != null) {
@@ -115,7 +125,7 @@ public class ReleaseRunner {
                                 }
                                 RepositoryRelease repositoryRelease = future.getFuture().get();
                                 log.info("Finished 'prepare' process for repository '{}'.\nFor details see log file: {}",
-                                        repositoryInfo.getUrl(), repoLogFilePath);
+                                        repositoryInfo.getUrl() + pomFolder, repoLogFilePath);
                                 return repositoryRelease;
                             } catch (Exception e) {
                                 if (e instanceof InterruptedException) Thread.currentThread().interrupt();
@@ -127,7 +137,7 @@ public class ReleaseRunner {
                                     }
                                 }
                                 log.error("'prepare' process for repository '{}' has failed. Error: {}. \nFor details see log content above",
-                                        repositoryInfo.getUrl(), e.getMessage());
+                                        repositoryInfo.getUrl() + pomFolder, e.getMessage());
                                 log.info("Shutting down now executor service");
                                 executorService.shutdownNow();
                                 for (TraceableFuture<RepositoryRelease, RepositoryInfo> traceableFuture : new ArrayList<>(traceableFutures)) {
@@ -148,52 +158,69 @@ public class ReleaseRunner {
         }).toList();
 
         if (!config.isDryRun()) {
-            dependencyGraph.forEach((level, repos) -> {
-                int threads = Math.min(config.getRunParallelism(), repos.size());
-                log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, dependencyGraph.size(), threads,
-                        String.join("\n", repos.stream().map(RepositoryConfig::getUrl).toList()));
-                try (ExecutorService executorService = Executors.newFixedThreadPool(threads)) {
-                    List<TraceableFuture<RepositoryRelease, RepositoryRelease>> traceableFutures = allReleases.stream()
-                            .filter(release -> repos.stream().map(RepositoryConfig::getUrl)
-                                    .anyMatch(repo -> Objects.equals(repo, release.getRepository().getUrl())))
-                            .map(release -> {
-                                try {
-                                    PipedOutputStream out = new PipedOutputStream();
-                                    PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
-                                    Future<RepositoryRelease> future = executorService.submit(() -> performRelease(config, release, out));
-                                    return new TraceableFuture<>(future, pipedInputStream, release);
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            })
-                            .toList();
-                    traceableFutures.forEach(future -> {
-                        RepositoryRelease repositoryRelease = future.getObject();
-                        Path repoLogDirPath = logsFolderPath.resolve(repositoryRelease.getRepository().getDir());
+            Map<Integer, Map<String, List<RepositoryInfo>>> publishDependencyGraph = new TreeMap<>();
+            AtomicInteger newLevel = new AtomicInteger(-1);
+            AtomicReference<String> lastUrlRef = new AtomicReference<>();
+            dependencyGraph.forEach((level, repos) -> repos.forEach(ri -> {
+                String url = ri.getUrl();
+                String lastUrl = lastUrlRef.get();
+                if (!Objects.equals(lastUrl, url)) {
+                    newLevel.incrementAndGet();
+                    lastUrlRef.set(url);
+                }
+                Map<String, List<RepositoryInfo>> urlToInfosMap = publishDependencyGraph.computeIfAbsent(newLevel.get(), k -> new TreeMap<>());
+                List<RepositoryInfo> urlToRepos = urlToInfosMap.computeIfAbsent(url, k -> new ArrayList<>());
+                urlToRepos.add(ri);
+            }));
+
+            publishDependencyGraph.forEach((level, reposByUrlMap) ->
+                    reposByUrlMap.forEach((url, reposMap) -> {
+                        List<RepositoryInfo> repos = reposMap.stream().toList();
+                        log.info("Running 'perform' - processing level {}/{}, {} repositories:\n{}", level + 1, publishDependencyGraph.size(), repos.size(),
+                                String.join("\n", repos.stream()
+                                        .map(rc -> "%s [pomFolder: '%s']".formatted(rc.getUrl(), rc.getPomFolder())).toList()));
+                        List<RepositoryRelease> releases = allReleases.stream()
+                                .filter(release -> repos.stream()
+                                        .anyMatch(repo -> Objects.equals(repo.getUrl(), release.getRepository().getUrl()) &&
+                                                          Objects.equals(repo.getPomFolder(), release.getRepository().getPomFolder())))
+                                .toList();
+                        RepositoryInfo repositoryInfo = releases.getFirst().getRepository();
+                        Path repoLogDirPath = logsFolderPath.resolve(repositoryInfo.getDir());
                         Path repoLogFilePath = repoLogDirPath.resolve("perform.log");
-                        try (PipedInputStream pipedInputStream = future.getPipedInputStream();
+
+                        try (PipedOutputStream out = new PipedOutputStream();
+                             PipedInputStream pipedInputStream = new PipedInputStream(out, 16384);
                              BufferedReader reader = new BufferedReader(new InputStreamReader(pipedInputStream, StandardCharsets.UTF_8))) {
-                            if (!Files.exists(repoLogDirPath)) {
-                                Files.createDirectories(repoLogDirPath);
-                            }
-                            Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                            log.info("Started 'perform' process for repository '{}'.\nFor details see log file: {}",
-                                    repositoryRelease.getRepository().getUrl(), repoLogFilePath);
-                            String line;
-                            int iterations = 0;
-                            while ((line = reader.readLine()) != null) {
-                                Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-                                if (config.isLogsToConsole()) {
-                                    System.out.println(line);
-                                } else {
-                                    if (++iterations % 100 == 0) {
-                                        System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
+                            try (ExecutorService executorService = Executors.newSingleThreadExecutor()) {
+                                Future<?> future = executorService.submit(() -> {
+                                    try {
+                                        performRelease(config, releases, out);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                });
+                                if (!Files.exists(repoLogDirPath)) {
+                                    Files.createDirectories(repoLogDirPath);
+                                }
+                                Files.writeString(repoLogFilePath, "", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                                log.info("Started 'perform' process for repository '{}'.\nFor details see log file: {}",
+                                        repositoryInfo.getUrl(), repoLogFilePath);
+                                String line;
+                                int iterations = 0;
+                                while ((line = reader.readLine()) != null) {
+                                    Files.writeString(repoLogFilePath, line + "\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+                                    if (config.isLogsToConsole()) {
+                                        System.out.println(line);
+                                    } else {
+                                        if (++iterations % 100 == 0) {
+                                            System.out.printf("%d x 100 log lines forwarded%n", iterations / 100);
+                                        }
                                     }
                                 }
+                                future.get();
+                                log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
+                                        repositoryInfo.getUrl(), repoLogFilePath);
                             }
-                            future.getFuture().get();
-                            log.info("Finished 'perform' process for repository '{}'.\nFor details see log file: {}",
-                                    repositoryRelease.getRepository().getUrl(), repoLogFilePath);
                         } catch (Exception e) {
                             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
                             if (!config.isLogsToConsole()) {
@@ -204,19 +231,10 @@ public class ReleaseRunner {
                                 }
                             }
                             log.error("'perform' process for repository '{}' has failed. Error: {}.\nFor details see log content above",
-                                    repositoryRelease.getRepository().getUrl(), e.getMessage());
-                            for (TraceableFuture<RepositoryRelease, RepositoryRelease> traceableFuture : new ArrayList<>(traceableFutures)) {
-                                try {
-                                    traceableFuture.getPipedInputStream().close();
-                                } catch (IOException ioe) {
-                                    log.warn("Failed to close piped stream: {}", ioe.getMessage());
-                                }
-                            }
+                                    repositoryInfo.getUrl(), e.getMessage());
                             throw new RuntimeException(e);
                         }
-                    });
-                }
-            });
+                    }));
         }
         result.setReleases(allReleases);
         return result;
@@ -232,8 +250,8 @@ public class ReleaseRunner {
 
             VersionIncrementType versionIncrementType = Optional.ofNullable(repository.getVersionIncrementType())
                     .orElse(Optional.ofNullable(config.getVersionIncrementType()).orElse(VersionIncrementType.PATCH));
-            String releaseVersion = repository.calculateReleaseVersion(versionIncrementType);
-            return releasePrepare(repository, config, releaseVersion, javaVersion, outputStream);
+            VersionTag versionTag = repository.calculateReleaseVersion(versionIncrementType);
+            return releasePrepare(repository, config, versionTag, javaVersion, outputStream);
         }
     }
 
@@ -284,9 +302,9 @@ public class ReleaseRunner {
         }
     }
 
-    RepositoryRelease releasePrepare(RepositoryInfo repositoryInfo, Config config, String releaseVersion,
+    RepositoryRelease releasePrepare(RepositoryInfo repositoryInfo, Config config, VersionTag versionTag,
                                      String javaVersion, OutputStream outputStream) throws Exception {
-        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir());
+        Path repositoryDirPath = Paths.get(repositoryInfo.getBaseDir(), repositoryInfo.getDir(), repositoryInfo.getPomFolder());
         List<String> arguments = new ArrayList<>();
         arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
         if (repositoryInfo.isSkipTests() || config.isSkipTests()) {
@@ -294,13 +312,12 @@ public class ReleaseRunner {
         } else {
             arguments.add("-Dsurefire.rerunFailingTestsCount=1");
         }
-        String tag = releaseVersion;
         List<String> cmd = List.of("mvn", "-B", "release:prepare",
                 "-Dresume=true",
                 "-DautoVersionSubmodules=true",
-                "-DreleaseVersion=" + releaseVersion,
+                "-DreleaseVersion=" + versionTag.version(),
                 "-DpushChanges=false",
-                "-Dtag=" + tag,
+                "-Dtag=" + versionTag.tag(),
                 warpPropertyInQuotes("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath()),
                 warpPropertyInQuotes("-DtagNameFormat=@{project.version}"),
                 warpPropertyInQuotes(String.format("-Darguments=%s", String.join(" ", arguments))),
@@ -332,8 +349,7 @@ public class ReleaseRunner {
                     .map(GAV::new).toList();
             RepositoryRelease release = new RepositoryRelease();
             release.setRepository(repositoryInfo);
-            release.setReleaseVersion(releaseVersion);
-            release.setTag(tag);
+            release.setVersionTag(versionTag);
             release.setJavaVersion(javaVersion);
             release.setGavs(gavs);
             return release;
@@ -346,39 +362,42 @@ public class ReleaseRunner {
         return String.format("\"%s\"", prop);
     }
 
-    RepositoryRelease performRelease(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
+    void performRelease(Config config, List<RepositoryRelease> releases, OutputStream outputStream) throws Exception {
         try (outputStream) {
-            RepositoryInfo repository = release.getRepository();
-            pushChanges(config, repository, release, outputStream);
+            pushChanges(config, releases, outputStream);
             if (config.getMavenConfig().isDeployArtifacts()) {
-                releaseDeploy(repository, config, release, outputStream);
+                for (RepositoryRelease release : releases) {
+                    releaseDeploy(config, release, outputStream);
+                }
             } else {
                 log.info("Skipping release-deploy due to maven config: deployArtifacts = false");
                 // todo - wait for artifact to get deployed by github/gitlab workflows?
             }
-            return release;
         }
     }
 
-    void pushChanges(Config config, RepositoryInfo repositoryInfo, RepositoryRelease release, OutputStream outputStream) {
+    void pushChanges(Config config, List<RepositoryRelease> releases, OutputStream outputStream) {
+        RepositoryInfo repositoryInfo = releases.getFirst().getRepository();
         Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
-        String releaseVersion = release.getReleaseVersion();
+        Set<String> tags = releases.stream().map(RepositoryRelease::getVersionTag).map(VersionTag::tag).collect(Collectors.toSet());
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
         try (Git git = Git.open(repositoryDirPath.toFile())) {
-            Optional<Ref> tagOpt = git.tagList().call().stream()
-                    .filter(t -> t.getName().equals(String.format("refs/tags/%s", releaseVersion)))
-                    .findFirst();
-            if (tagOpt.isEmpty()) {
-                throw new IllegalStateException(String.format("git tag: %s not found", releaseVersion));
+            List<Ref> tagRefs = git.tagList().call().stream()
+                    .filter(t -> tags.stream().anyMatch(tag -> t.getName().equals(String.format("refs/tags/%s", tag))))
+                    .toList();
+            if (tagRefs.isEmpty()) {
+                throw new IllegalStateException("""
+                        git tags not found:
+                        %s""".formatted( String.join("\n", tags)));
             }
             String branch = git.getRepository().getFullBranch();
             RefSpec branchRef = Optional.of(branch).map(b -> new RefSpec(b + ":" + b)).get();
-            RefSpec tagRefSpec = Optional.of(tagOpt.get().getName()).map(t -> new RefSpec(t + ":" + t)).get();
+            List<RefSpec> tagRefSpecs = tagRefs.stream().map(Ref::getName).map(t -> new RefSpec(t + ":" + t)).toList();
 
             Iterable<PushResult> pushResults = git.push()
                     .setProgressMonitor(new TextProgressMonitor(printWriter))
                     .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
-                    .setRefSpecs(branchRef, tagRefSpec)
+                    .setRefSpecs(Stream.concat(Stream.of(branchRef), tagRefSpecs.stream()).toList())
                     .call();
 
             List<PushResult> results = StreamSupport.stream(pushResults.spliterator(), false).toList();
@@ -386,7 +405,10 @@ public class ReleaseRunner {
             if (!failedUpdates.isEmpty()) {
                 throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
             }
-            printWriter.println(String.format("Pushed to git: tag: %s", releaseVersion));
+            printWriter.println("""
+                    Pushed to git: branch: %s
+                    tags:
+                    %s""".formatted(branch, String.join("\n", tags)));
         } catch (Exception e) {
             if (e instanceof RuntimeException) throw (RuntimeException) e;
             throw new RuntimeException(e);
@@ -394,14 +416,14 @@ public class ReleaseRunner {
             // do not close because we want
             printWriter.flush();
         }
-        release.setPushedToGit(true);
+        releases.forEach(release -> release.setPushedToGit(true));
     }
 
-    void releaseDeploy(RepositoryInfo repositoryInfo, Config config,
-                       RepositoryRelease release, OutputStream outputStream) throws Exception {
+    void releaseDeploy(Config config, RepositoryRelease release, OutputStream outputStream) throws Exception {
+        RepositoryInfo repositoryInfo = release.getRepository();
         PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream, UTF_8));
         try {
-            Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir());
+            Path repositoryDirPath = Paths.get(config.getBaseDir(), repositoryInfo.getDir(), repositoryInfo.getPomFolder());
             List<String> arguments = new ArrayList<>();
             arguments.add("-DskipTests");
             arguments.add("-Dmaven.repo.local=" + config.getMavenConfig().getLocalRepositoryPath());
@@ -444,7 +466,7 @@ public class ReleaseRunner {
         Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
         List<RepositoryInfo> repositoryInfoList = dependencyGraph.values().stream().flatMap(Collection::stream).toList();
         for (RepositoryInfo repositoryInfo : repositoryInfoList) {
-            graph.addVertex(repositoryInfo.getUrl());
+            graph.addVertex(repositoryInfo.graphEdge());
         }
         RepositoryInfoLinker linker = new RepositoryInfoLinker(repositoryInfoList);
         for (RepositoryInfo repositoryInfo : repositoryInfoList) {
@@ -452,17 +474,17 @@ public class ReleaseRunner {
                     .stream()
                     .filter(ri -> dependencyGraph.values().stream()
                             .flatMap(Collection::stream).anyMatch(ri2 -> Objects.equals(ri2.getUrl(), ri.getUrl())))
-                    .forEach(ri -> graph.addEdge(ri.getUrl(), repositoryInfo.getUrl()));
+                    .forEach(ri -> graph.addEdge(ri.graphEdge(), repositoryInfo.graphEdge()));
         }
         Function<String, String> vertexIdProvider = vertex -> {
             int level = dependencyGraph.entrySet().stream()
-                    .filter(e -> e.getValue().stream().anyMatch(ri -> Objects.equals(ri.getUrl(), vertex)))
+                    .filter(e -> e.getValue().stream().anyMatch(ri -> Objects.equals(ri.graphEdge(), vertex)))
                     .mapToInt(Map.Entry::getKey).findFirst()
                     .orElseThrow(() -> new IllegalStateException(String.format("Failed to find level for vertex: %s", vertex)));
             List<RepositoryInfo> repositoryInfos = dependencyGraph.get(level);
             int index = IntStream.range(0, repositoryInfos.size())
                     .boxed()
-                    .filter(i -> repositoryInfos.get(i).getUrl().equals(vertex))
+                    .filter(i -> repositoryInfos.get(i).graphEdge().equals(vertex))
                     .mapToInt(i -> i)
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException(String.format("Failed to find index for vertex: %s", vertex)));
