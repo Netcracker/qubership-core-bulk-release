@@ -77,7 +77,7 @@ public class RepositoryConfig {
             throw new IllegalArgumentException(String.format("Invalid repository config [%s], must match pattern: %s",
                     repositoryConfig, pattern));
         String url = matcher.group("url");
-        Map<String, String> params = Arrays.stream(Optional.ofNullable(matcher.group("params")).orElse("").split(";"))
+        Map<String, String> params = Arrays.stream(Optional.ofNullable(matcher.group("params")).orElse("").split(","))
                 .map(entry -> entry.split("="))
                 .filter(entry -> entry.length == 2)
                 .collect(Collectors.toMap(item -> item[0], item -> item[1]));

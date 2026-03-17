@@ -8,10 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @CommandLine.Command(description = "maven bulk release cli")
@@ -39,12 +36,18 @@ public class MavenBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--baseDir"}, required = true, description = "base directory to write result to")
     private String baseDir;
 
-    @CommandLine.Option(names = {"--repositories"}, required = true, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--repository"},
             description = "comma seperated list of git urls to all repositories which depend on each other and can be bulk released",
             converter = RepositoryConfigConverter.class)
-    private Set<RepositoryConfig> repositories;
+    private List<RepositoryConfig> repositories = new ArrayList<>();
 
-    @CommandLine.Option(names = {"--repositoriesToReleaseFrom"}, split = "\\s*,\\s*",
+    @CommandLine.Option(names = {"--repositoriesFile"}, split = ",", description = """
+            File with new-line seperated repositories in format: '{url}[branch={branch}]' to be used for building 'repositories' and their
+            fields of the renovate config""",
+            converter = RepositoriesFileConfigConverter.class)
+    private List<RepositoryConfig> repositoriesFromFile = new ArrayList<>();
+
+    @CommandLine.Option(names = {"--repositoryToReleaseFrom"},
             description = "comma seperated list of git urls which were changed and need to be released. Repositories which use them directly or indirectly will be released as well",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositoriesToReleaseFrom = Set.of();
@@ -118,10 +121,12 @@ public class MavenBulkReleaseCli implements Runnable {
     @Override
     public void run() {
         try {
+            repositories.addAll(repositoriesFromFile);
+
             if (repositories.stream()
                     .filter(Objects::nonNull)
                     .toList().isEmpty()) {
-                throw new IllegalArgumentException("--repositories property cannot be empty");
+                throw new IllegalArgumentException("repositories cannot be empty");
             }
 
             GitConfig gitConfig = GitConfig.builder()

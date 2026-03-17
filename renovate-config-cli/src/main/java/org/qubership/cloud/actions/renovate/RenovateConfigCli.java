@@ -54,7 +54,7 @@ public class RenovateConfigCli implements Runnable {
 
     @CommandLine.Option(names = {"--repositoriesFile"}, split = ",", description = """
             File with new-line seperated repositories in format: '{url}[branch={branch}]' to be used for building 'repositories' and their
-            'baseBranchPatterns' fields of the renovate config. Use multiple params to specify more than 1 repository""",
+            'baseBranchPatterns' fields of the renovate config""",
             converter = RepositoriesFileConfigConverter.class)
     private List<RepositoryConfig> repositoriesFromFile = new ArrayList<>();
 

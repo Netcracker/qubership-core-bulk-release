@@ -55,7 +55,7 @@ public class RepositoryService {
 
     public Map<Integer, List<RepositoryInfo>> buildDependencyGraph(String baseDir,
                                                                    GitConfig gitConfig,
-                                                                   Set<RepositoryConfig> repositories,
+                                                                   Collection<RepositoryConfig> repositories,
                                                                    Set<RepositoryConfig> repositoriesToReleaseFrom) {
         log.info("Building dependency graph");
         BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, List<RepositoryConfig>> mergeFunction =
