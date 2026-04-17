@@ -63,7 +63,7 @@ public class RepositoryService {
                         .map(repositoryToReleaseFrom -> repos2.stream()
                                 .filter(repository ->
                                         Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()) &&
-                                        Objects.equals(repository.getPomFolder(), repositoryToReleaseFrom.getPomFolder()))
+                                                Objects.equals(repository.getPomFolder(), repositoryToReleaseFrom.getPomFolder()))
                                 .findFirst()
                                 .map(repository ->
                                         RepositoryConfig.builder(repository.getUrl())
@@ -108,13 +108,18 @@ public class RepositoryService {
             RepositoryInfoLinker repositoryInfoLinker = new RepositoryInfoLinker(repositoryInfoList);
 
             // filter repositories which are not affected by 'released from' repositories
-            List<RepositoryInfo> repositoryInfos = mergedRepositoriesToReleaseFrom.isEmpty() ? repositoryInfoList : repositoryInfoList.stream()
+            List<RepositoryInfo> repositoryInfos = mergedRepositoriesToReleaseFrom.isEmpty() ? repositoryInfoList :
+                    repositoryInfoList.stream()
                     .filter(ri ->
-                            mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> Objects.equals(riFrom.getUrl(), ri.getUrl()) &&
-                                                                                        Objects.equals(riFrom.getPomFolder(), ri.getPomFolder())) ||
-                            mergedRepositoriesToReleaseFrom.stream().anyMatch(riFrom -> repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(ri).stream()
-                                    .anyMatch(riUsedBy -> Objects.equals(riUsedBy.getUrl(), ri.getUrl()) &&
-                                                          Objects.equals(riUsedBy.getPomFolder(), ri.getPomFolder()))))
+                            // accept from repositories
+                            mergedRepositoriesToReleaseFrom.stream()
+                            .anyMatch(riFrom -> Objects.equals(riFrom.getUrl(), ri.getUrl()) &&
+                                    Objects.equals(riFrom.getPomFolder(), ri.getPomFolder())) ||
+                            // accept repositories which use one of from repositories
+                                    mergedRepositoriesToReleaseFrom.stream()
+                                    .anyMatch(riFrom -> repositoryInfoLinker.getRepositoriesUsedByThisFlatSet(ri).stream()
+                                                        .anyMatch(riUsedBy -> Objects.equals(riUsedBy.getUrl(), riFrom.getUrl()) &&
+                                                                Objects.equals(riUsedBy.getPomFolder(), riFrom.getPomFolder()))))
                     .toList();
 
             Graph<String, StringEdge> graph = new SimpleDirectedGraph<>(StringEdge.class);
@@ -127,7 +132,7 @@ public class RepositoryService {
                         .stream()
                         .filter(ri -> repositoryInfos.stream().anyMatch(riFrom ->
                                 Objects.equals(riFrom.getUrl(), ri.getUrl()) &&
-                                Objects.equals(riFrom.getPomFolder(), ri.getPomFolder())))
+                                        Objects.equals(riFrom.getPomFolder(), ri.getPomFolder())))
                         .forEach(ri -> graph.addEdge(ri.graphEdge(), repositoryInfo.graphEdge()));
             }
             List<RepositoryInfo> independentRepos = repositoryInfos.stream()
@@ -144,7 +149,7 @@ public class RepositoryService {
                                 .allMatch(dependentRepoUrl -> {
                                     RepositoryInfo.UrlAndPomFolder urlAndPomFolder = RepositoryInfo.fromGraphEdge(dependentRepoUrl);
                                     return prevLevelRepos.stream().anyMatch(riPrev -> Objects.equals(urlAndPomFolder.url(), riPrev.getUrl()) &&
-                                                                                      Objects.equals(urlAndPomFolder.pomFolder(), riPrev.getPomFolder()));
+                                            Objects.equals(urlAndPomFolder.pomFolder(), riPrev.getPomFolder()));
                                 })).toList();
                 groupedReposMap.put(level, thisLevelRepos);
                 dependentRepos.removeAll(thisLevelRepos);
@@ -308,7 +313,7 @@ public class RepositoryService {
                                 .filter(gavFrom -> skipValidationForGAPatterns.stream().noneMatch(p -> p.matcher(gavFrom.toString()).matches()))
                                 .map(gavFrom -> {
                                     if (!MavenVersion.isValid(gav.getVersion()) ||
-                                        !MavenVersion.isValid(gavFrom.getVersion())) {
+                                            !MavenVersion.isValid(gavFrom.getVersion())) {
                                         return Optional.<RepositoryInfo>empty();
                                     }
                                     MavenVersion gavVersion = new MavenVersion(gav.getVersion());
@@ -317,11 +322,11 @@ public class RepositoryService {
                                         case MAJOR -> Objects.equals(gavVersion.getMajor(), gavFromVersion.getMajor());
                                         case MINOR ->
                                                 Objects.equals(gavVersion.getMajor(), gavFromVersion.getMajor()) &&
-                                                Objects.equals(gavVersion.getMinor(), gavFromVersion.getMinor());
+                                                        Objects.equals(gavVersion.getMinor(), gavFromVersion.getMinor());
                                         case PATCH ->
                                                 Objects.equals(gavVersion.getMajor(), gavFromVersion.getMajor()) &&
-                                                Objects.equals(gavVersion.getMinor(), gavFromVersion.getMinor()) &&
-                                                Objects.equals(gavVersion.getPatch(), gavFromVersion.getPatch());
+                                                        Objects.equals(gavVersion.getMinor(), gavFromVersion.getMinor()) &&
+                                                        Objects.equals(gavVersion.getPatch(), gavFromVersion.getPatch());
                                     };
                                     if (gav.toGA().equals(gavFrom.toGA()) && !valid) {
                                         return Optional.of(ri);
@@ -671,7 +676,7 @@ public class RepositoryService {
                                     if (patchNumber < lastPatch) {
                                         if (extraBranchSuffix == null) {
                                             throw new IllegalStateException(String.format("Repository [%s] demands version [%s] which is lower than last tag [%s] but extraBranchSuffix is empty " +
-                                                                                          "which means that last tag must match demanded version",
+                                                            "which means that last tag must match demanded version",
                                                     versionedRepository.getUrl(), version, lastTag));
                                         }
                                         // the requested version is lower than the last tag
