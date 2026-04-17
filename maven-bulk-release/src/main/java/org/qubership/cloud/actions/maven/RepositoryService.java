@@ -781,7 +781,8 @@ public class RepositoryService {
                         "-DdevelopmentVersion=" + targetVersion.toString())
                 .collect(Collectors.toList());
 
-        log.info("Repository: {}\nCmd: '{}' started", repositoryInfo.getUrl(), String.join(" ", cmd));
+        log.info("Repository: {}, folder: {}\nCmd: '{}' started",
+                repositoryInfo.getUrl(), repositoryInfo.getPomFolder(), String.join(" ", cmd));
 
         ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(repositoryDirPath.toFile());
         // maven envs
@@ -793,8 +794,8 @@ public class RepositoryService {
         process.getInputStream().transferTo(outputStream);
         process.getErrorStream().transferTo(outputStream);
         process.waitFor();
-        log.info("Repository: {}\nCmd: '{}' ended with code: {}",
-                repositoryInfo.getUrl(), String.join(" ", cmd), process.exitValue());
+        log.info("Repository: {}, folder: {}\nCmd: '{}' ended with code: {}",
+                repositoryInfo.getUrl(), repositoryInfo.getPomFolder(), String.join(" ", cmd), process.exitValue());
         if (process.exitValue() != 0) {
             throw new RuntimeException("Failed to execute cmd");
         }
