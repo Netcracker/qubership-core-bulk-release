@@ -48,7 +48,7 @@ public class MavenBulkReleaseCli implements Runnable {
     private List<RepositoryConfig> repositoriesFromFile = new ArrayList<>();
 
     @CommandLine.Option(names = {"--repositoryToReleaseFrom"},
-            description = "comma seperated list of git urls which were changed and need to be released. Repositories which use them directly or indirectly will be released as well",
+            description = "git url which was changed and need to be released. Repositories which use it directly or indirectly will be released as well",
             converter = RepositoryConfigConverter.class)
     private Set<RepositoryConfig> repositoriesToReleaseFrom = Set.of();
 

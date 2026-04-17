@@ -66,6 +66,7 @@ public class RepositoryService {
                                 .map(repository ->
                                         RepositoryConfig.builder(repository.getUrl())
                                                 .branch(Optional.ofNullable(repository.getBranch()).orElse(repositoryToReleaseFrom.getBranch()))
+                                                .pomFolder(Optional.ofNullable(repository.getPomFolder()).orElse(repositoryToReleaseFrom.getPomFolder()))
                                                 .version(Optional.ofNullable(repository.getVersion()).orElse(repositoryToReleaseFrom.getVersion()))
                                                 .versionIncrementType(Optional.ofNullable(repository.getVersionIncrementType()).orElse(repositoryToReleaseFrom.getVersionIncrementType()))
                                                 .skipTests(repository.isSkipTests() || repositoryToReleaseFrom.isSkipTests())
