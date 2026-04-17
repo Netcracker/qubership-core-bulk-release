@@ -64,7 +64,8 @@ public class RepositoryConfig {
 
     @Override
     public String toString() {
-        return String.format("%s [%s]", url, params.entrySet().stream()
+        return String.format("%s [%s]", url, params == null ? "" :
+                params.entrySet().stream()
                 .map(entry -> "%s:%s".formatted(entry.getKey(), entry.getValue()))
                 .collect(Collectors.joining(" ")));
     }

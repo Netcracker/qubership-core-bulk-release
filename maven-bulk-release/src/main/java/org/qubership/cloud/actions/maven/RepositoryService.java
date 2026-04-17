@@ -61,7 +61,9 @@ public class RepositoryService {
         BiFunction<Collection<RepositoryConfig>, Collection<RepositoryConfig>, List<RepositoryConfig>> mergeFunction =
                 (repos1, repos2) -> repos1.stream()
                         .map(repositoryToReleaseFrom -> repos2.stream()
-                                .filter(repository -> Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()))
+                                .filter(repository ->
+                                        Objects.equals(repository.getUrl(), repositoryToReleaseFrom.getUrl()) &&
+                                        Objects.equals(repository.getPomFolder(), repositoryToReleaseFrom.getPomFolder()))
                                 .findFirst()
                                 .map(repository ->
                                         RepositoryConfig.builder(repository.getUrl())
