@@ -18,6 +18,11 @@ public class ReleaseVersion {
         return currentVersion.getMajor() != newVersion.getMajor();
     }
 
+    public boolean isPatchOnlyUpdate() {
+        return currentVersion.getMajor() == newVersion.getMajor()
+                && currentVersion.getMinor() == newVersion.getMinor();
+    }
+
     public int getNewMajorVersion() {
         return newVersion.getMajor();
     }

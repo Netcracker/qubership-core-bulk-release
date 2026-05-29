@@ -70,6 +70,9 @@ public class GoBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--skipGoProxy"}, arity = "0", defaultValue = "false", description = "skip publish modules to go proxy")
     private boolean skipGoProxy;
 
+    @CommandLine.Option(names = {"--branch"}, defaultValue = "", description = "branch to check out all repositories from; when set, only patch version bumps are allowed")
+    private String branch;
+
     public static void main(String... args) {
         CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
         int exitCode = commandLine.execute(args);
@@ -96,6 +99,8 @@ public class GoBulkReleaseCli implements Runnable {
             throw new IllegalArgumentException("--repositories property cannot be empty");
         }
 
+        String normalizedBranch = (branch == null || branch.isBlank()) ? null : branch.strip();
+
         GitConfig gitConfig = GitConfig.builder()
                 .url(gitURL)
                 .username(gitUsername)
@@ -107,7 +112,6 @@ public class GoBulkReleaseCli implements Runnable {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-
         return Config.builder(baseDir, goProxyDir, gitConfig, repositories)
                 .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
                 .skipTests(skipTests)
@@ -117,6 +121,7 @@ public class GoBulkReleaseCli implements Runnable {
                 .resultOutputFile(resultOutputFile)
                 .dependencyGraphFile(dependencyGraphFile)
                 .gavsResultFile(gavsResultFile)
+                .branch(normalizedBranch)
                 .build();
     }
 }

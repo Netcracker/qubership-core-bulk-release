@@ -105,7 +105,7 @@ public class ReleaseRunner {
         ReleaseVersion releaseVersion = resolveReleaseVersion(repository);
         log.info("Release version: {}", releaseVersion);
 
-        if (releaseVersion.isMajorUpdate()) {
+        if (releaseVersion.isMajorUpdate() && config.getBranch() == null) {
             updateMajorVersion(repository, releaseVersion);
         }
 
@@ -135,7 +135,15 @@ public class ReleaseRunner {
     ReleaseVersion resolveReleaseVersion(RepositoryInfo repository) {
         log.info("--- CALCULATE RELEASE VERSION {} ---", repository.getUrl());
 
-        return semanticReleaseService.resolveReleaseVersion(repository);
+        ReleaseVersion releaseVersion = semanticReleaseService.resolveReleaseVersion(repository);
+
+        if (config.getBranch() != null && !releaseVersion.isPatchOnlyUpdate()) {
+            throw new ReleaseTerminationException(
+                    "Branch release requires a patch-only version bump, but semantic-release calculated %s → %s for repository %s. The branch contains feat: or BREAKING CHANGE commits."
+                            .formatted(releaseVersion.getCurrentVersion(), releaseVersion.getNewVersion(), repository.getUrl()));
+        }
+
+        return releaseVersion;
     }
 
     void updateMajorVersion(RepositoryInfo repository, ReleaseVersion releaseVersion) {

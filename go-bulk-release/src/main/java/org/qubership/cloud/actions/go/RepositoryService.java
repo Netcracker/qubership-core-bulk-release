@@ -23,9 +23,11 @@ import java.util.stream.IntStream;
 @Slf4j
 public class RepositoryService {
     private final GitService gitService;
+    private final String branch;
 
     public RepositoryService(Config config) {
         this.gitService = new GitService(config.getGitConfig());
+        this.branch = config.getBranch();
     }
 
     public List<RepositoryInfo> checkout(String baseDir,
@@ -35,9 +37,12 @@ public class RepositoryService {
         return ParallelExecutor.forEachIn(mergedRepositories)
                 .inParallelOn(4)
                 .execute(rc -> {
-                    Path repository = Paths.get(baseDir, rc.getDir());
-                    gitService.clone(repository, rc);
-                    return new RepositoryInfo(rc, baseDir);
+                    RepositoryConfig effectiveConfig = branch != null
+                            ? RepositoryConfig.builder(rc).branch(branch).build()
+                            : rc;
+                    Path repository = Paths.get(baseDir, effectiveConfig.getDir());
+                    gitService.clone(repository, effectiveConfig);
+                    return new RepositoryInfo(effectiveConfig, baseDir);
                 });
     }
 
