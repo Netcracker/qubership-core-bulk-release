@@ -27,6 +27,8 @@ public class Config {
     boolean runSequentially;
     boolean skipGoProxy;
     String branch;
+    boolean ltsRelease;
+    String ltsBranchName;
 
     @Builder(builderMethodName = "")
     private Config(String baseDir,
@@ -43,7 +45,9 @@ public class Config {
                    boolean dryRun,
                    boolean runSequentially,
                    boolean skipGoProxy,
-                   String branch) {
+                   String branch,
+                   boolean ltsRelease,
+                   String ltsBranchName) {
         this.baseDir = baseDir;
         this.goProxyDir = goProxyDir;
         this.gitConfig = gitConfig;
@@ -59,6 +63,8 @@ public class Config {
         this.runSequentially = runSequentially;
         this.skipGoProxy = skipGoProxy;
         this.branch = branch;
+        this.ltsRelease = ltsRelease;
+        this.ltsBranchName = ltsBranchName;
     }
 
     public static ConfigBuilder builder(String baseDir,

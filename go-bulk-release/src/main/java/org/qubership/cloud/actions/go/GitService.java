@@ -144,6 +144,18 @@ public class GitService {
         log.info("Pushed to git: repo: {}", repository.getAbsoluteFile());
     }
 
+    public void pushBranch(File repository, String branchName) {
+        try (Git git = Git.open(repository)) {
+            git.push()
+                    .setCredentialsProvider(config.getCredentialsProvider())
+                    .setRefSpecs(new org.eclipse.jgit.transport.RefSpec(branchName + ":" + branchName))
+                    .call();
+        } catch (Exception e) {
+            throw new UnexpectedException(e);
+        }
+        log.info("Pushed branch '{}' to git: repo: {}", branchName, repository.getAbsoluteFile());
+    }
+
     private List<String> getDiff(Git git, DiffEntry.ChangeType changeType) throws GitAPIException {
         List<DiffEntry> diff = git.diff().call();
         return diff.stream().filter(d -> d.getChangeType() == changeType).map(DiffEntry::getNewPath).toList();

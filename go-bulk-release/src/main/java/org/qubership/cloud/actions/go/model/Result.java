@@ -13,4 +13,6 @@ public class Result {
     List<RepositoryRelease> releases;
     Map<Integer, List<RepositoryInfo>> dependencyGraph;
     boolean dryRun;
+    boolean ltsRelease;
+    String ltsBranchName;
 }

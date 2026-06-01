@@ -14,6 +14,7 @@ import org.qubership.cloud.actions.go.util.CommandExecutionException;
 import org.qubership.cloud.actions.go.util.CommandRunner;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
+import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -53,6 +54,10 @@ public class ReleaseRunner {
 
         if (!config.isDryRun()) {
             performRelease(config, dependencyGraph, preparedReleases);
+
+            if (config.isLtsRelease()) {
+                performLtsSteps(preparedReleases);
+            }
         }
 
         return getResult(config, dependencyGraph, preparedReleases);
@@ -248,12 +253,79 @@ public class ReleaseRunner {
         semanticReleaseService.release(repository);
     }
 
+    void performLtsSteps(List<RepositoryRelease> allReleases) {
+        log.info("=== Running 'LTS STEPS' for {} repositories ===", allReleases.size());
+        ParallelExecutor.forEachIn(allReleases)
+                .inParallelOn(allReleases.size())
+                .execute(release -> {
+                    performLtsStepsForRepository(release);
+                    return release;
+                });
+        log.info("=== 'LTS STEPS' completed ===");
+    }
+
+    void performLtsStepsForRepository(RepositoryRelease release) {
+        File repoDir = release.getRepository().getRepositoryDirFile();
+        String ltsBranchName = config.getLtsBranchName();
+        log.info("--- LTS STEPS {} ---", release.getRepository().getUrl());
+
+        String originalBranch = getCurrentBranch(repoDir);
+
+        createLtsBranch(release, ltsBranchName, originalBranch);
+        makeTechnicalCommit(release, originalBranch);
+
+        log.info("--- LTS STEPS DONE FOR {} ---", release.getRepository().getUrl());
+    }
+
+    void createLtsBranch(RepositoryRelease release, String ltsBranchName, String originalBranch) {
+        File repoDir = release.getRepository().getRepositoryDirFile();
+        log.info("--- CREATE LTS BRANCH '{}' for {} ---", ltsBranchName, release.getRepository().getUrl());
+        try {
+            CommandRunner.exec(repoDir, "git", "checkout", "-b", ltsBranchName);
+        } catch (CommandExecutionException e) {
+            throw new ReleaseTerminationException(
+                    "Failed to create LTS branch '%s' in repository %s. The branch may already exist."
+                            .formatted(ltsBranchName, release.getRepository().getUrl()), e);
+        }
+        gitService.pushBranch(repoDir, ltsBranchName);
+        try {
+            CommandRunner.exec(repoDir, "git", "checkout", originalBranch);
+        } catch (CommandExecutionException e) {
+            throw new ReleaseTerminationException(
+                    "Failed to switch back to branch '%s' in repository %s."
+                            .formatted(originalBranch, release.getRepository().getUrl()), e);
+        }
+    }
+
+    void makeTechnicalCommit(RepositoryRelease release, String originalBranch) {
+        File repoDir = release.getRepository().getRepositoryDirFile();
+        log.info("--- TECHNICAL COMMIT IN '{}' for {} ---", originalBranch, release.getRepository().getUrl());
+        try {
+            CommandRunner.exec(repoDir, "git", "commit", "--allow-empty", "-m", "feat: technical commit for bump minor version");
+        } catch (CommandExecutionException e) {
+            throw new ReleaseTerminationException(
+                    "Failed to create technical commit in repository %s.".formatted(release.getRepository().getUrl()), e);
+        }
+        gitService.pushBranch(repoDir, originalBranch);
+    }
+
+    String getCurrentBranch(File repoDir) {
+        try {
+            return CommandRunner.execWithResult(repoDir, "git", "symbolic-ref", "--short", "HEAD")
+                    .stream().findFirst().map(String::strip).orElse("main");
+        } catch (CommandExecutionException e) {
+            return "main";
+        }
+    }
+
     Result getResult(Config config, DependencyGraph dependencyGraph, List<RepositoryRelease> allReleases) {
         Result result = new Result();
         result.setDependencyGraph(dependencyGraph);
         result.setDependenciesDot(dependencyGraph.generateDotFile());
         result.setDryRun(config.isDryRun());
         result.setReleases(allReleases);
+        result.setLtsRelease(config.isLtsRelease() && !config.isDryRun());
+        result.setLtsBranchName(config.getLtsBranchName());
         return result;
     }
 
