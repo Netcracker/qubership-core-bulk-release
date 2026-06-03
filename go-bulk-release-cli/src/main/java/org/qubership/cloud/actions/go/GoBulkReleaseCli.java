@@ -99,9 +99,7 @@ public class GoBulkReleaseCli implements Runnable {
     }
 
     private Config prepareConfig() {
-        if (repositories.stream()
-                .filter(Objects::nonNull)
-                .toList().isEmpty()) {
+        if (repositories.stream().noneMatch(Objects::nonNull)) {
             throw new IllegalArgumentException("--repositories property cannot be empty");
         }
 
@@ -109,7 +107,7 @@ public class GoBulkReleaseCli implements Runnable {
         String normalizedLtsBranchName = (ltsBranchName == null || ltsBranchName.isBlank()) ? null : ltsBranchName.strip();
 
         if (ltsRelease) {
-            if (!repositoriesToReleaseFrom.stream().filter(Objects::nonNull).toList().isEmpty()) {
+            if (repositoriesToReleaseFrom.stream().anyMatch(Objects::nonNull)) {
                 throw new IllegalArgumentException("--ltsRelease cannot be combined with --repositoriesToReleaseFrom: LTS release must include all repositories");
             }
             if (normalizedBranch != null) {

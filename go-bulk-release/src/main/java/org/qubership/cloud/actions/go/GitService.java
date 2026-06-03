@@ -154,7 +154,7 @@ public class GitService {
         try (Git git = Git.open(repository)) {
             Iterable<PushResult> results = git.push()
                     .setCredentialsProvider(config.getCredentialsProvider())
-                    .setRefSpecs(new RefSpec(branchName + ":" + branchName))
+                    .setRefSpecs(new RefSpec("refs/heads/" + branchName + ":refs/heads/" + branchName))
                     .call();
             checkPushResults(results, repository.getAbsolutePath());
         } catch (UnexpectedException e) {
@@ -166,8 +166,10 @@ public class GitService {
     }
 
     private void checkPushResults(Iterable<PushResult> results, String repositoryPath) {
+        boolean anyUpdateChecked = false;
         for (PushResult result : results) {
             for (RemoteRefUpdate update : result.getRemoteUpdates()) {
+                anyUpdateChecked = true;
                 RemoteRefUpdate.Status status = update.getStatus();
                 if (status != RemoteRefUpdate.Status.OK && status != RemoteRefUpdate.Status.UP_TO_DATE) {
                     throw new UnexpectedException(
@@ -175,6 +177,11 @@ public class GitService {
                                     .formatted(repositoryPath, status, update.getMessage()));
                 }
             }
+        }
+        if (!anyUpdateChecked) {
+            throw new UnexpectedException(
+                    "Push to repository '%s' produced no ref updates — remote may have rejected the connection."
+                            .formatted(repositoryPath));
         }
     }
 

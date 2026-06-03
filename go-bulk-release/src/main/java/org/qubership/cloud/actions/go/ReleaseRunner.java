@@ -268,14 +268,13 @@ public class ReleaseRunner {
     void performLtsStepsForRepository(RepositoryRelease release) {
         log.info("--- LTS STEPS {} ---", release.getRepository().getUrl());
 
-        String ltsBranchName = config.getLtsBranchName();
-        createLtsBranch(release, ltsBranchName, DEFAULT_BRANCH);
-        makeTechnicalCommit(release, DEFAULT_BRANCH);
+        createLtsBranch(release, config.getLtsBranchName());
+        makeTechnicalCommit(release);
 
         log.info("--- LTS STEPS DONE FOR {} ---", release.getRepository().getUrl());
     }
 
-    void createLtsBranch(RepositoryRelease release, String ltsBranchName, String originalBranch) {
+    void createLtsBranch(RepositoryRelease release, String ltsBranchName) {
         File repoDir = release.getRepository().getRepositoryDirFile();
         log.info("--- CREATE LTS BRANCH '{}' for {} ---", ltsBranchName, release.getRepository().getUrl());
         try {
@@ -287,24 +286,24 @@ public class ReleaseRunner {
         }
         gitService.pushBranch(repoDir, ltsBranchName);
         try {
-            CommandRunner.exec(repoDir, "git", "checkout", originalBranch);
+            CommandRunner.exec(repoDir, "git", "checkout", DEFAULT_BRANCH);
         } catch (CommandExecutionException e) {
             throw new ReleaseTerminationException(
                     "Failed to switch back to branch '%s' in repository %s."
-                            .formatted(originalBranch, release.getRepository().getUrl()), e);
+                            .formatted(DEFAULT_BRANCH, release.getRepository().getUrl()), e);
         }
     }
 
-    void makeTechnicalCommit(RepositoryRelease release, String originalBranch) {
+    void makeTechnicalCommit(RepositoryRelease release) {
         File repoDir = release.getRepository().getRepositoryDirFile();
-        log.info("--- TECHNICAL COMMIT IN '{}' for {} ---", originalBranch, release.getRepository().getUrl());
+        log.info("--- TECHNICAL COMMIT IN '{}' for {} ---", DEFAULT_BRANCH, release.getRepository().getUrl());
         try {
             CommandRunner.exec(repoDir, "git", "commit", "--allow-empty", "-m", "feat: technical commit for bump minor version");
         } catch (CommandExecutionException e) {
             throw new ReleaseTerminationException(
                     "Failed to create technical commit in repository %s.".formatted(release.getRepository().getUrl()), e);
         }
-        gitService.pushBranch(repoDir, originalBranch);
+        gitService.pushBranch(repoDir, DEFAULT_BRANCH);
     }
 
     Result getResult(Config config, DependencyGraph dependencyGraph, List<RepositoryRelease> allReleases) {
