@@ -257,7 +257,7 @@ public class ReleaseRunner {
     void performLtsSteps(List<RepositoryRelease> allReleases) {
         log.info("=== Running 'LTS STEPS' for {} repositories ===", allReleases.size());
         ParallelExecutor.forEachIn(allReleases)
-                .inParallelOn(allReleases.size())
+                .inParallelOn(1)
                 .execute(release -> {
                     performLtsStepsForRepository(release);
                     return release;

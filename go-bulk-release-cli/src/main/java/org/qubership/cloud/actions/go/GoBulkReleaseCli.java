@@ -118,7 +118,7 @@ public class GoBulkReleaseCli implements Runnable {
             if (normalizedLtsBranchName == null) {
                 throw new IllegalArgumentException("--ltsBranchName is required when --ltsRelease is set");
             }
-            if (!normalizedLtsBranchName.matches("lts/\\d{2}\\.\\d+")) {
+            if (!normalizedLtsBranchName.matches("lts/\\d{2}\\.\\d")) {
                 throw new IllegalArgumentException("--ltsBranchName must match pattern 'lts/YY.N' (e.g. lts/26.2), got: " + normalizedLtsBranchName);
             }
         }
