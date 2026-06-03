@@ -30,7 +30,7 @@ public class GoProxyService {
                 String[][] commands = {
                         {"go", "env", "-w", goproxy},
                         {"go", "env", "-w", "GONOPROXY="},
-                        {"go", "env", "-w", "GONOSUMDB=*"},
+                        {"go", "env", "-w", "GONOSUMDB=github.com/netcracker/*"},
                         {"go", "env", "-w", "GOPRIVATE="}
                 };
                 for (String[] cmd : commands) {

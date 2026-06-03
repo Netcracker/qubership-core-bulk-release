@@ -6,6 +6,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.TagOpt;
 import org.qubership.cloud.actions.go.model.GitConfig;
 import org.qubership.cloud.actions.go.model.UnexpectedException;
@@ -148,7 +149,7 @@ public class GitService {
         try (Git git = Git.open(repository)) {
             git.push()
                     .setCredentialsProvider(config.getCredentialsProvider())
-                    .setRefSpecs(new org.eclipse.jgit.transport.RefSpec(branchName + ":" + branchName))
+                    .setRefSpecs(new RefSpec(branchName + ":" + branchName))
                     .call();
         } catch (Exception e) {
             throw new UnexpectedException(e);
