@@ -21,6 +21,7 @@ import java.util.function.Predicate;
 @Slf4j
 public class ReleaseRunner {
     private static final YAMLMapper YAML_MAPPER = new YAMLMapper();
+    private static final String DEFAULT_BRANCH = "main";
 
     private final Config config;
     private final GitService gitService;
@@ -265,14 +266,11 @@ public class ReleaseRunner {
     }
 
     void performLtsStepsForRepository(RepositoryRelease release) {
-        File repoDir = release.getRepository().getRepositoryDirFile();
-        String ltsBranchName = config.getLtsBranchName();
         log.info("--- LTS STEPS {} ---", release.getRepository().getUrl());
 
-        String originalBranch = getCurrentBranch(repoDir);
-
-        createLtsBranch(release, ltsBranchName, originalBranch);
-        makeTechnicalCommit(release, originalBranch);
+        String ltsBranchName = config.getLtsBranchName();
+        createLtsBranch(release, ltsBranchName, DEFAULT_BRANCH);
+        makeTechnicalCommit(release, DEFAULT_BRANCH);
 
         log.info("--- LTS STEPS DONE FOR {} ---", release.getRepository().getUrl());
     }
@@ -307,15 +305,6 @@ public class ReleaseRunner {
                     "Failed to create technical commit in repository %s.".formatted(release.getRepository().getUrl()), e);
         }
         gitService.pushBranch(repoDir, originalBranch);
-    }
-
-    String getCurrentBranch(File repoDir) {
-        try {
-            return CommandRunner.execWithResult(repoDir, "git", "symbolic-ref", "--short", "HEAD")
-                    .stream().findFirst().map(String::strip).orElse("main");
-        } catch (CommandExecutionException e) {
-            return "main";
-        }
     }
 
     Result getResult(Config config, DependencyGraph dependencyGraph, List<RepositoryRelease> allReleases) {
