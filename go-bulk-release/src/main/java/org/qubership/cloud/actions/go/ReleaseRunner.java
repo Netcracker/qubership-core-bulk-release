@@ -14,12 +14,14 @@ import org.qubership.cloud.actions.go.util.CommandExecutionException;
 import org.qubership.cloud.actions.go.util.CommandRunner;
 import org.qubership.cloud.actions.go.util.ParallelExecutor;
 
+import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
 
 @Slf4j
 public class ReleaseRunner {
     private static final YAMLMapper YAML_MAPPER = new YAMLMapper();
+    private static final String DEFAULT_BRANCH = "main";
 
     private final Config config;
     private final GitService gitService;
@@ -53,6 +55,10 @@ public class ReleaseRunner {
 
         if (!config.isDryRun()) {
             performRelease(config, dependencyGraph, preparedReleases);
+
+            if (config.isLtsRelease()) {
+                performLtsSteps(preparedReleases);
+            }
         }
 
         return getResult(config, dependencyGraph, preparedReleases);
@@ -105,7 +111,7 @@ public class ReleaseRunner {
         ReleaseVersion releaseVersion = resolveReleaseVersion(repository);
         log.info("Release version: {}", releaseVersion);
 
-        if (releaseVersion.isMajorUpdate()) {
+        if (releaseVersion.isMajorUpdate() && config.getBranch() == null) {
             updateMajorVersion(repository, releaseVersion);
         }
 
@@ -135,7 +141,15 @@ public class ReleaseRunner {
     ReleaseVersion resolveReleaseVersion(RepositoryInfo repository) {
         log.info("--- CALCULATE RELEASE VERSION {} ---", repository.getUrl());
 
-        return semanticReleaseService.resolveReleaseVersion(repository);
+        ReleaseVersion releaseVersion = semanticReleaseService.resolveReleaseVersion(repository);
+
+        if (config.getBranch() != null && !releaseVersion.isPatchOnlyUpdate()) {
+            throw new ReleaseTerminationException(
+                    "Branch release requires a patch-only version bump, but semantic-release calculated %s → %s for repository %s. The branch contains feat: or BREAKING CHANGE commits."
+                            .formatted(releaseVersion.getCurrentVersion(), releaseVersion.getNewVersion(), repository.getUrl()));
+        }
+
+        return releaseVersion;
     }
 
     void updateMajorVersion(RepositoryInfo repository, ReleaseVersion releaseVersion) {
@@ -240,12 +254,66 @@ public class ReleaseRunner {
         semanticReleaseService.release(repository);
     }
 
+    void performLtsSteps(List<RepositoryRelease> allReleases) {
+        log.info("=== Running 'LTS STEPS' for {} repositories ===", allReleases.size());
+        ParallelExecutor.forEachIn(allReleases)
+                .inParallelOn(1)
+                .execute(release -> {
+                    performLtsStepsForRepository(release);
+                    return release;
+                });
+        log.info("=== 'LTS STEPS' completed ===");
+    }
+
+    void performLtsStepsForRepository(RepositoryRelease release) {
+        log.info("--- LTS STEPS {} ---", release.getRepository().getUrl());
+
+        createLtsBranch(release, config.getLtsBranchName());
+        makeTechnicalCommit(release);
+
+        log.info("--- LTS STEPS DONE FOR {} ---", release.getRepository().getUrl());
+    }
+
+    void createLtsBranch(RepositoryRelease release, String ltsBranchName) {
+        File repoDir = release.getRepository().getRepositoryDirFile();
+        log.info("--- CREATE LTS BRANCH '{}' for {} ---", ltsBranchName, release.getRepository().getUrl());
+        try {
+            CommandRunner.exec(repoDir, "git", "checkout", "-b", ltsBranchName);
+        } catch (CommandExecutionException e) {
+            throw new ReleaseTerminationException(
+                    "Failed to create LTS branch '%s' in repository %s. The branch may already exist."
+                            .formatted(ltsBranchName, release.getRepository().getUrl()), e);
+        }
+        gitService.pushBranch(repoDir, ltsBranchName);
+        try {
+            CommandRunner.exec(repoDir, "git", "checkout", DEFAULT_BRANCH);
+        } catch (CommandExecutionException e) {
+            throw new ReleaseTerminationException(
+                    "Failed to switch back to branch '%s' in repository %s."
+                            .formatted(DEFAULT_BRANCH, release.getRepository().getUrl()), e);
+        }
+    }
+
+    void makeTechnicalCommit(RepositoryRelease release) {
+        File repoDir = release.getRepository().getRepositoryDirFile();
+        log.info("--- TECHNICAL COMMIT IN '{}' for {} ---", DEFAULT_BRANCH, release.getRepository().getUrl());
+        try {
+            CommandRunner.exec(repoDir, "git", "commit", "--allow-empty", "-m", "feat: technical commit for bump minor version");
+        } catch (CommandExecutionException e) {
+            throw new ReleaseTerminationException(
+                    "Failed to create technical commit in repository %s.".formatted(release.getRepository().getUrl()), e);
+        }
+        gitService.pushBranch(repoDir, DEFAULT_BRANCH);
+    }
+
     Result getResult(Config config, DependencyGraph dependencyGraph, List<RepositoryRelease> allReleases) {
         Result result = new Result();
         result.setDependencyGraph(dependencyGraph);
         result.setDependenciesDot(dependencyGraph.generateDotFile());
         result.setDryRun(config.isDryRun());
         result.setReleases(allReleases);
+        result.setLtsRelease(config.isLtsRelease() && !config.isDryRun());
+        result.setLtsBranchName(config.getLtsBranchName());
         return result;
     }
 

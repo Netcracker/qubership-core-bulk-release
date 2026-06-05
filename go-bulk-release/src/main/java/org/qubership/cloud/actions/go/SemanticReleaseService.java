@@ -57,6 +57,7 @@ public class SemanticReleaseService {
             String[] command = {"semantic-release", "--allow-no-changes", "--no-ci", "--force-bump-patch-version",
                     "--provider", "github",
                     "--provider-opt", "slug=" + repository.getDir(),
+                    "--provider-opt", "github_use_compare_commits=true",
                     "--ci-condition", "default",
                     "--changelog-generator-opt", "format_commit_template=" + CHANGELOG_FORMAT_TEMPLATE};
             CommandRunner.exec(repository.getRepositoryDirFile(), command);

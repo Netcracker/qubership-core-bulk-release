@@ -70,6 +70,15 @@ public class GoBulkReleaseCli implements Runnable {
     @CommandLine.Option(names = {"--skipGoProxy"}, arity = "0", defaultValue = "false", description = "skip publish modules to go proxy")
     private boolean skipGoProxy;
 
+    @CommandLine.Option(names = {"--branch"}, defaultValue = "", description = "branch to check out all repositories from; when set, only patch version bumps are allowed")
+    private String branch;
+
+    @CommandLine.Option(names = {"--ltsRelease"}, arity = "0", defaultValue = "false", description = "enable LTS release mode: create LTS branches and add technical commit to main after release")
+    private boolean ltsRelease;
+
+    @CommandLine.Option(names = {"--ltsBranchName"}, defaultValue = "", description = "LTS branch name to create, e.g. lts/26.2 (required when --ltsRelease is set)")
+    private String ltsBranchName;
+
     public static void main(String... args) {
         CommandLine commandLine = new CommandLine(new GoBulkReleaseCli());
         int exitCode = commandLine.execute(args);
@@ -90,10 +99,26 @@ public class GoBulkReleaseCli implements Runnable {
     }
 
     private Config prepareConfig() {
-        if (repositories.stream()
-                .filter(Objects::nonNull)
-                .toList().isEmpty()) {
+        if (repositories.stream().noneMatch(Objects::nonNull)) {
             throw new IllegalArgumentException("--repositories property cannot be empty");
+        }
+
+        String normalizedBranch = (branch == null || branch.isBlank()) ? null : branch.strip();
+        String normalizedLtsBranchName = (ltsBranchName == null || ltsBranchName.isBlank()) ? null : ltsBranchName.strip();
+
+        if (ltsRelease) {
+            if (repositoriesToReleaseFrom.stream().anyMatch(Objects::nonNull)) {
+                throw new IllegalArgumentException("--ltsRelease cannot be combined with --repositoriesToReleaseFrom: LTS release must include all repositories");
+            }
+            if (normalizedBranch != null) {
+                throw new IllegalArgumentException("--ltsRelease cannot be combined with --branch: LTS release must run from the default branch");
+            }
+            if (normalizedLtsBranchName == null) {
+                throw new IllegalArgumentException("--ltsBranchName is required when --ltsRelease is set");
+            }
+            if (!normalizedLtsBranchName.matches("lts/\\d{2}\\.\\d")) {
+                throw new IllegalArgumentException("--ltsBranchName must match pattern 'lts/YY.N' (e.g. lts/26.2), got: " + normalizedLtsBranchName);
+            }
         }
 
         GitConfig gitConfig = GitConfig.builder()
@@ -107,7 +132,6 @@ public class GoBulkReleaseCli implements Runnable {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-
         return Config.builder(baseDir, goProxyDir, gitConfig, repositories)
                 .repositoriesToReleaseFrom(repositoriesToReleaseFrom)
                 .skipTests(skipTests)
@@ -117,6 +141,9 @@ public class GoBulkReleaseCli implements Runnable {
                 .resultOutputFile(resultOutputFile)
                 .dependencyGraphFile(dependencyGraphFile)
                 .gavsResultFile(gavsResultFile)
+                .branch(normalizedBranch)
+                .ltsRelease(ltsRelease)
+                .ltsBranchName(normalizedLtsBranchName)
                 .build();
     }
 }

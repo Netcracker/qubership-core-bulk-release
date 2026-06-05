@@ -6,6 +6,9 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.TagOpt;
 import org.qubership.cloud.actions.go.model.GitConfig;
 import org.qubership.cloud.actions.go.model.UnexpectedException;
@@ -133,15 +136,53 @@ public class GitService {
 
     public void pushChanges(File repository) {
         try (Git git = Git.open(repository)) {
-            git.push()
+            Iterable<PushResult> results = git.push()
                     .setCredentialsProvider(config.getCredentialsProvider())
                     .setPushAll()
                     .setPushTags()
                     .call();
+            checkPushResults(results, repository.getAbsolutePath());
+        } catch (UnexpectedException e) {
+            throw e;
         } catch (Exception e) {
             throw new UnexpectedException(e);
         }
         log.info("Pushed to git: repo: {}", repository.getAbsoluteFile());
+    }
+
+    public void pushBranch(File repository, String branchName) {
+        try (Git git = Git.open(repository)) {
+            Iterable<PushResult> results = git.push()
+                    .setCredentialsProvider(config.getCredentialsProvider())
+                    .setRefSpecs(new RefSpec("refs/heads/" + branchName + ":refs/heads/" + branchName))
+                    .call();
+            checkPushResults(results, repository.getAbsolutePath());
+        } catch (UnexpectedException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new UnexpectedException(e);
+        }
+        log.info("Pushed branch '{}' to git: repo: {}", branchName, repository.getAbsoluteFile());
+    }
+
+    private void checkPushResults(Iterable<PushResult> results, String repositoryPath) {
+        boolean anyUpdateChecked = false;
+        for (PushResult result : results) {
+            for (RemoteRefUpdate update : result.getRemoteUpdates()) {
+                anyUpdateChecked = true;
+                RemoteRefUpdate.Status status = update.getStatus();
+                if (status != RemoteRefUpdate.Status.OK && status != RemoteRefUpdate.Status.UP_TO_DATE) {
+                    throw new UnexpectedException(
+                            "Push to repository '%s' was rejected by remote. Status: %s, message: %s"
+                                    .formatted(repositoryPath, status, update.getMessage()));
+                }
+            }
+        }
+        if (!anyUpdateChecked) {
+            throw new UnexpectedException(
+                    "Push to repository '%s' produced no ref updates — remote may have rejected the connection."
+                            .formatted(repositoryPath));
+        }
     }
 
     private List<String> getDiff(Git git, DiffEntry.ChangeType changeType) throws GitAPIException {

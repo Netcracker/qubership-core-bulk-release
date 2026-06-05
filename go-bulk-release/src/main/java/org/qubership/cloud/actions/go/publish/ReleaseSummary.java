@@ -34,10 +34,11 @@ public class ReleaseSummary {
                     return String.format(REPOSITORY_PART_BLOCK, link, gavs);
                 }).toList());
         String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MM.dd.yyyy HH:mm"));
+        String ltsSummary = result.isLtsRelease() ? buildLtsSummary(result) : "";
         return String.format("""
                 ### Release Summary%s (%s)
-                %s
-                """, result.isDryRun()? " [DRY RUN]" : "", time, releasedRepositoriesGavs);
+                %s%s
+                """, result.isDryRun()? " [DRY RUN]" : "", time, releasedRepositoriesGavs, ltsSummary);
     }
 
     public static String gavs(Result result) {
@@ -46,6 +47,24 @@ public class ReleaseSummary {
 
     public static String dependencyGraphDOT(Result result) {
         return result.getDependenciesDot();
+    }
+
+    private static String buildLtsSummary(Result result) {
+        String rows = result.getReleases().stream()
+                .map(r -> String.format("| %s | %s | %s |",
+                        r.getRepository().getUrl(),
+                        result.getLtsBranchName(),
+                        r.getTag()))
+                .collect(Collectors.joining("\n"));
+        return String.format("""
+
+                ### LTS Steps
+                | Repository | LTS Branch | Created From |
+                |---|---|---|
+                %s
+
+                Technical commits added to the default branch of all repositories listed above.
+                """, rows);
     }
 
     private ReleaseSummary() {}
