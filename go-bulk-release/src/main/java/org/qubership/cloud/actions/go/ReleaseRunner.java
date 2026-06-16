@@ -217,9 +217,25 @@ public class ReleaseRunner {
         log.info("--- PUBLISH TO GO PROXY {} ---", repository.getUrl());
 
         for (GoModule goModule: repository.getGoModFiles()) {
+            if (!isPublishableModulePath(goModule.moduleName())) {
+                log.info("Skip publishing module '{}' to GOPROXY: module path is not domain-qualified (internal-only module)", goModule.moduleName());
+                continue;
+            }
             log.debug("Publish to GOPROXY module {}", goModule.getModuleDir());
             goProxyService.publishToLocalGoProxy(goModule.getModuleDir().getAbsolutePath(), releaseVersion.getNewVersion().getValue(), config.getGoProxyDir());
         }
+    }
+
+    // A module can be published to (and consumed from) a Go proxy only if its module path is domain-qualified,
+    // i.e. the first path element contains a dot (e.g. github.com/...). Internal-only modules with a bare first
+    // element (e.g. trace-service/...) are not resolvable via a proxy and break go-pack, so they are skipped.
+    static boolean isPublishableModulePath(String moduleName) {
+        if (moduleName == null || moduleName.isEmpty()) {
+            return false;
+        }
+        int slash = moduleName.indexOf('/');
+        String firstElement = slash < 0 ? moduleName : moduleName.substring(0, slash);
+        return firstElement.contains(".");
     }
 
     void cleanupLocalCopy(RepositoryInfo repository) {
