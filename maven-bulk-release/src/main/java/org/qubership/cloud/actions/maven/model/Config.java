@@ -23,6 +23,7 @@ public class Config {
     Map<String, String> javaVersionToJavaHomeEnv;
     boolean skipTests;
     boolean dryRun;
+    boolean switchInterModuleDepsToSnapshot;
     boolean logsToConsole;
     int runParallelism;
     @JsonIgnore
@@ -39,6 +40,7 @@ public class Config {
                    MavenConfig mavenConfig,
                    boolean skipTests,
                    boolean dryRun,
+                   boolean switchInterModuleDepsToSnapshot,
                    boolean logsToConsole,
                    int runParallelism,
                    OutputStream summaryOutputStream) {
@@ -51,6 +53,7 @@ public class Config {
         this.repositoriesToReleaseFrom = repositoriesToReleaseFrom;
         this.skipTests = skipTests;
         this.dryRun = dryRun;
+        this.switchInterModuleDepsToSnapshot = switchInterModuleDepsToSnapshot;
         this.logsToConsole = logsToConsole;
         this.runParallelism = runParallelism <= 0 ? 1 : runParallelism;
         this.versionIncrementType = versionIncrementType;

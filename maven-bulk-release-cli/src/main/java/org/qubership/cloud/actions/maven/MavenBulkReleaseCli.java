@@ -75,6 +75,10 @@ public class MavenBulkReleaseCli implements Runnable {
             """)
     private boolean dryRun;
 
+    @CommandLine.Option(names = {"--switchInterModuleDepsToSnapshot"}, arity = "0", defaultValue = "false",
+            description = "after a full release from main, rewrite all inter-module dependencies in main back to the current SNAPSHOT versions so trunk keeps developing against SNAPSHOTs")
+    private boolean switchInterModuleDepsToSnapshot;
+
     @CommandLine.Option(names = {"--mavenAltDeploymentRepository"},
             description = "altDeploymentRepository to pass to release:perform mvn command to override deploymentRepository to deploy artifacts to")
     private String mavenAltDeploymentRepository;
@@ -159,6 +163,7 @@ public class MavenBulkReleaseCli implements Runnable {
                     .gavs(gavs)
                     .skipTests(skipTests)
                     .dryRun(dryRun)
+                    .switchInterModuleDepsToSnapshot(switchInterModuleDepsToSnapshot)
                     .runParallelism(runParallelism)
                     .logsToConsole(logsToConsole)
                     .build();
