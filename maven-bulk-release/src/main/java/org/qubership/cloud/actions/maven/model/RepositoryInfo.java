@@ -3,7 +3,6 @@ package org.qubership.cloud.actions.maven.model;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.apache.maven.model.*;
-import org.apache.maven.model.building.*;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
