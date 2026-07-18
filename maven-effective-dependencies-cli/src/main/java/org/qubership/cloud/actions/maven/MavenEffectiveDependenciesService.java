@@ -58,10 +58,6 @@ public class MavenEffectiveDependenciesService {
         Set<GA> bothFrameworksGAs = Stream.of(type1GAVs.keySet(), type2GAVs.keySet())
                 .flatMap(Set::stream).collect(Collectors.toSet());
 
-        Set<GA> netcrackerGAs = graph.values().stream().flatMap(List::stream)
-                .flatMap(r -> r.getModules().stream())
-                .collect(Collectors.toSet());
-
         // collect all dependencies GAVs for all repositories
         Map<GA, Set<String>> repositoriesGAVs = graph.values().stream()
                 .flatMap(List::stream)
@@ -224,7 +220,7 @@ public class MavenEffectiveDependenciesService {
         List<PomHolder> poms = PomHolder.parsePoms(pomDir);
         List<PomHolder> effectivePoms = poms.stream().map(pom -> {
             try {
-                return effectivePom(pom, config);
+                return RepositoryInfo.effectivePom(pom);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -325,26 +321,6 @@ public class MavenEffectiveDependenciesService {
         String[] artifactPath = artifactPathList.toArray(new String[0]);
         Path path = Path.of(mavenLocalRepoPath, artifactPath);
         return path;
-    }
-
-    PomHolder effectivePom(PomHolder pom, MavenConfig mavenConfig) throws Exception {
-        Path parentPath = pom.getPath().getParent();
-        Path effectivePomPath = Path.of(parentPath.toString(), "effective-pom.xml");
-        List<String> cmd = List.of("mvn", "-B", "-f", pom.getPath().getFileName().toString(), "help:effective-pom",
-                "-Doutput=" + effectivePomPath,
-                wrapPropertyInQuotes("-Dmaven.repo.local=" + mavenConfig.getLocalRepositoryPath())
-        );
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(parentPath.toFile());
-        log.info("Dir: {}\nCmd: '{}' started", pom.getPath(), String.join(" ", cmd));
-        processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        process.getInputStream().transferTo(System.out);
-        process.waitFor();
-        log.info("Dir: {}\nCmd: '{}' ended with code: {}", pom.getPath(), String.join(" ", cmd), process.exitValue());
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Failed to execute cmd");
-        }
-        return PomHolder.parsePom(effectivePomPath);
     }
 
     interface LoadDependency {

@@ -3,6 +3,7 @@ package org.qubership.cloud.actions.maven.model;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.apache.maven.model.*;
+import org.apache.maven.model.building.*;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
@@ -13,7 +14,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -236,12 +239,26 @@ public class RepositoryInfo extends RepositoryConfig {
                             return Stream.concat(gavStreamBuilder.build(), pluginDepGAVs);
                         })
                         .toList();
-                // todo need to get dependencies from management section from effective-pom.xml because those dependencies do not contain versions in plain pom.xml
+                // need to get dependencies from management section from effective-pom.xml because those dependencies do not contain versions in plain pom.xml
+                AtomicReference<PomHolder> effectivePomCache = new AtomicReference<>();
+                Supplier<PomHolder> effectivePom = () -> {
+                    if (effectivePomCache.get() == null) {
+                        effectivePomCache.set(effectivePom(pomHolder));
+                    }
+                    return effectivePomCache.get();
+                };
                 List<GAV> allDependenciesNodes = Stream.concat(dependenciesNodes.stream(), pluginsDependenciesNodes.stream()).toList();
                 for (GAV dependency : allDependenciesNodes) {
                     String groupId = pomHolder.autoResolvePropReference(dependency.getGroupId());
                     String artifactId = pomHolder.autoResolvePropReference(dependency.getArtifactId());
                     String version = pomHolder.autoResolvePropReference(dependency.getVersion());
+                    if (version == null) {
+                        version = effectivePom.get().getModel().getDependencies().stream()
+                                .filter(d -> Objects.equals(groupId, d.getGroupId()) && Objects.equals(artifactId, d.getArtifactId()))
+                                .findFirst()
+                                .map(Dependency::getVersion)
+                                .orElse(null);
+                    }
                     if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
                         GAV dependencyGAV = new GAV(groupId, artifactId, version);
                         this.moduleDependencies.add(dependencyGAV);
@@ -251,6 +268,27 @@ public class RepositoryInfo extends RepositoryConfig {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static PomHolder effectivePom(PomHolder pom) {
+        try {
+            Path parentPath = pom.getPath().getParent();
+            Path effectivePomPath = Path.of(parentPath.toString(), "effective-pom.xml");
+            List<String> cmd = List.of("mvn", "-B", "-N", "-f", pom.getPath().getFileName().toString(), "help:effective-pom",
+                    "-Doutput=" + effectivePomPath
+            );
+            ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(parentPath.toFile());
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            process.getInputStream().transferTo(System.out);
+            process.waitFor();
+            if (process.exitValue() != 0) {
+                throw new RuntimeException("Failed to execute cmd: %s".formatted(String.join(" ", cmd)));
+            }
+            return PomHolder.parsePom(effectivePomPath);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to resolve effective-pom for: %s".formatted(pom.getPath().toString()), e);
         }
     }
 
@@ -269,9 +307,9 @@ public class RepositoryInfo extends RepositoryConfig {
                     // exclude our's own modules
                     .filter(dep -> this.getModules().stream()
                             .noneMatch(ga -> Objects.equals(ga.getGroupId(), dep.getGroupId()) &&
-                                             Objects.equals(ga.getArtifactId(), dep.getArtifactId())))
+                                    Objects.equals(ga.getArtifactId(), dep.getArtifactId())))
                     .filter(dep -> dependencyGA.getGroupId().matches(dep.getGroupId()) &&
-                                   dependencyGA.getArtifactId().matches(dep.getArtifactId()))
+                            dependencyGA.getArtifactId().matches(dep.getArtifactId()))
                     .findFirst().orElse(null);
             if (version != null && newGav != null) {
                 newGav = new GAV(dependencyGA.getGroupId(), dependencyGA.getArtifactId(), newGav.getVersion());

@@ -44,7 +44,7 @@ public class PomHolder {
             Model model = new MavenXpp3Reader().read(new StringReader(pom));
             this.setModel(model);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to parse pom: %s".formatted(path.toString()), e);
         }
     }
 
