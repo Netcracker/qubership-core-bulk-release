@@ -193,7 +193,7 @@ public class RepositoryInfo extends RepositoryConfig {
         this.modules.clear();
         this.moduleDependencies.clear();
         try {
-            if (!poms.isEmpty()) {
+            if (Files.exists(basePomFolderPath.resolve("pom.xml"))) {
                 PomHolder base = PomHolder.parsePom(basePomFolderPath.resolve("pom.xml"));
                 baseModule = new GAV(base.getGroupId(), base.getArtifactId(), base.getVersion());
             }
