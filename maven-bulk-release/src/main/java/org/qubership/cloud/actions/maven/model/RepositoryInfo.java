@@ -226,14 +226,15 @@ public class RepositoryInfo extends RepositoryConfig {
                             Object configuration = p.getConfiguration();
                             if (configuration instanceof Xpp3Dom configurationDom) {
                                 Optional.ofNullable(configurationDom.getChild("annotationProcessorPaths"))
-                                        .map(annPaths -> annPaths.getChild("path")).ifPresent(annPaths -> {
-                                            String groupId = Optional.ofNullable(annPaths.getChild("groupId")).map(Xpp3Dom::getValue).orElse(null);
-                                            String artifactId = Optional.ofNullable(annPaths.getChild("artifactId")).map(Xpp3Dom::getValue).orElse(null);
-                                            String version = Optional.ofNullable(annPaths.getChild("version")).map(Xpp3Dom::getValue).orElse(null);
+                                        .map(annPaths -> annPaths.getChildren("path"))
+                                        .map(List::of).ifPresent(annPaths -> annPaths.forEach(annPath -> {
+                                            String groupId = Optional.ofNullable(annPath.getChild("groupId")).map(Xpp3Dom::getValue).orElse(null);
+                                            String artifactId = Optional.ofNullable(annPath.getChild("artifactId")).map(Xpp3Dom::getValue).orElse(null);
+                                            String version = Optional.ofNullable(annPath.getChild("version")).map(Xpp3Dom::getValue).orElse(null);
                                             if (groupId != null && artifactId != null && version != null) {
                                                 gavStreamBuilder.add(new GAV(groupId, artifactId, version));
                                             }
-                                        });
+                                        }));
                             }
                             return Stream.concat(gavStreamBuilder.build(), pluginDepGAVs);
                         })
