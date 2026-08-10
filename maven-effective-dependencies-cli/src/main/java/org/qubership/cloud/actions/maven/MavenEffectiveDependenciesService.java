@@ -161,7 +161,6 @@ public class MavenEffectiveDependenciesService {
                 })) {
                     artifactConsumer.getModules().add(moduleArtifactConsumer(moduleGA, graph));
                 }
-
             });
             if (!artifactConsumer.getModules().isEmpty()) {
                 consumers.add(artifactConsumer);
@@ -169,10 +168,9 @@ public class MavenEffectiveDependenciesService {
             return consumers.stream();
         }).toList();
 
-// return only first level consumers
-//        if (artifactConsumers.isEmpty()) {
-//            return consumers(gav, level + 1, graph);
-//        }
+        if (artifactConsumers.isEmpty()) {
+            return consumers(gav, level + 1, graph);
+        }
         return artifactConsumers;
     }
 
@@ -197,7 +195,8 @@ public class MavenEffectiveDependenciesService {
 
     ModuleArtifactConsumer moduleArtifactConsumer(GA ga, Map<Integer, List<RepositoryInfo>> graph) {
         ModuleArtifactConsumer moduleArtifactConsumer = new ModuleArtifactConsumer(ga.getGroupId(), ga.getArtifactId());
-        moduleArtifactConsumer.setConsumers(consumers(ga, graph));
+        // return only first level consumers
+//        moduleArtifactConsumer.setConsumers(consumers(ga, graph));
         return moduleArtifactConsumer;
     }
 

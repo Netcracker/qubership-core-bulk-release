@@ -2,6 +2,7 @@ package org.qubership.cloud.actions.maven.model;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.model.*;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.jgit.api.Git;
@@ -13,6 +14,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -21,6 +24,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Getter
 @EqualsAndHashCode(callSuper = true)
 public class RepositoryInfo extends RepositoryConfig {
@@ -202,69 +206,76 @@ public class RepositoryInfo extends RepositoryConfig {
                 this.modules.add(moduleGAV);
                 this.perModuleDependencies.put(moduleGAV.toGA(), new HashSet<>());
             }
-            for (PomHolder pomHolder : poms) {
-                Model project = pomHolder.getModel();
-                GA projectGA = new GA(pomHolder.getGroupId(), pomHolder.getArtifactId());
-                Parent parent = project.getParent();
-                if (parent != null && !Objects.equals(parent.getGroupId(), pomHolder.getGroupId())) {
-                    GAV parentGAV = new GAV(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
-                    this.moduleDependencies.add(parentGAV);
-                    this.perModuleDependencies.get(projectGA).add(parentGAV);
-                }
-                List<GAV> dependenciesNodes = Stream.concat(
-                                Optional.ofNullable(project.getDependencies()).orElse(List.of()).stream(),
-                                Optional.ofNullable(project.getDependencyManagement()).map(DependencyManagement::getDependencies).orElse(List.of()).stream())
-                        .map(d -> new GAV(d.getGroupId(), d.getArtifactId(), d.getVersion()))
-                        .toList();
-                List<GAV> pluginsDependenciesNodes = Stream.concat(
-                                Optional.ofNullable(project.getBuild()).map(Build::getPluginManagement).map(PluginContainer::getPlugins).orElse(List.of()).stream(),
-                                Optional.ofNullable(project.getBuild()).map(Build::getPlugins).orElse(List.of()).stream())
-                        .flatMap(p -> {
-                            Stream.Builder<GAV> gavStreamBuilder = Stream.builder();
-                            gavStreamBuilder.add(new GAV(p.getGroupId(), p.getArtifactId(), p.getVersion()));
-                            Stream<GAV> pluginDepGAVs = p.getDependencies().stream().map(dep -> new GAV(dep.getGroupId(), dep.getArtifactId(), dep.getVersion()));
-                            Object configuration = p.getConfiguration();
-                            if (configuration instanceof Xpp3Dom configurationDom) {
-                                Optional.ofNullable(configurationDom.getChild("annotationProcessorPaths"))
-                                        .map(annPaths -> annPaths.getChildren("path"))
-                                        .map(List::of).ifPresent(annPaths -> annPaths.forEach(annPath -> {
-                                            String groupId = Optional.ofNullable(annPath.getChild("groupId")).map(Xpp3Dom::getValue).orElse(null);
-                                            String artifactId = Optional.ofNullable(annPath.getChild("artifactId")).map(Xpp3Dom::getValue).orElse(null);
-                                            String version = Optional.ofNullable(annPath.getChild("version")).map(Xpp3Dom::getValue).orElse(null);
-                                            if (groupId != null && artifactId != null && version != null) {
-                                                gavStreamBuilder.add(new GAV(groupId, artifactId, version));
-                                            }
-                                        }));
-                            }
-                            return Stream.concat(gavStreamBuilder.build(), pluginDepGAVs);
-                        })
-                        .toList();
-                // need to get dependencies from management section from effective-pom.xml because those dependencies do not contain versions in plain pom.xml
-                AtomicReference<PomHolder> effectivePomCache = new AtomicReference<>();
-                Supplier<PomHolder> effectivePom = () -> {
-                    if (effectivePomCache.get() == null) {
-                        effectivePomCache.set(effectivePom(pomHolder));
+            try (ForkJoinPool pool = new ForkJoinPool(8)) {
+                AtomicInteger counter = new AtomicInteger();
+                pool.submit(() -> poms.stream().parallel().forEach(pomHolder -> {
+                    Model project = pomHolder.getModel();
+                    GA projectGA = new GA(pomHolder.getGroupId(), pomHolder.getArtifactId());
+                    Parent parent = project.getParent();
+                    if (parent != null && !Objects.equals(parent.getGroupId(), pomHolder.getGroupId())) {
+                        GAV parentGAV = new GAV(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
+                        this.moduleDependencies.add(parentGAV);
+                        this.perModuleDependencies.get(projectGA).add(parentGAV);
                     }
-                    return effectivePomCache.get();
-                };
-                List<GAV> allDependenciesNodes = Stream.concat(dependenciesNodes.stream(), pluginsDependenciesNodes.stream()).toList();
-                for (GAV dependency : allDependenciesNodes) {
-                    String groupId = pomHolder.autoResolvePropReference(dependency.getGroupId());
-                    String artifactId = pomHolder.autoResolvePropReference(dependency.getArtifactId());
-                    String version = pomHolder.autoResolvePropReference(dependency.getVersion());
-                    if (version == null) {
-                        version = effectivePom.get().getModel().getDependencies().stream()
-                                .filter(d -> Objects.equals(groupId, d.getGroupId()) && Objects.equals(artifactId, d.getArtifactId()))
-                                .findFirst()
-                                .map(Dependency::getVersion)
-                                .orElse(null);
+                    List<GAV> dependenciesNodes = Stream.concat(
+                                    Optional.ofNullable(project.getDependencies()).orElse(List.of()).stream(),
+                                    Optional.ofNullable(project.getDependencyManagement()).map(DependencyManagement::getDependencies).orElse(List.of()).stream())
+                            .map(d -> new GAV(d.getGroupId(), d.getArtifactId(), d.getVersion()))
+                            .toList();
+                    List<GAV> pluginsDependenciesNodes = Stream.concat(
+                                    Optional.ofNullable(project.getBuild()).map(Build::getPluginManagement).map(PluginContainer::getPlugins).orElse(List.of()).stream(),
+                                    Optional.ofNullable(project.getBuild()).map(Build::getPlugins).orElse(List.of()).stream())
+                            .flatMap(p -> {
+                                Stream.Builder<GAV> gavStreamBuilder = Stream.builder();
+                                gavStreamBuilder.add(new GAV(p.getGroupId(), p.getArtifactId(), p.getVersion()));
+                                Stream<GAV> pluginDepGAVs = p.getDependencies().stream().map(dep -> new GAV(dep.getGroupId(), dep.getArtifactId(), dep.getVersion()));
+                                Object configuration = p.getConfiguration();
+                                if (configuration instanceof Xpp3Dom configurationDom) {
+                                    Optional.ofNullable(configurationDom.getChild("annotationProcessorPaths"))
+                                            .map(annPaths -> annPaths.getChildren("path"))
+                                            .map(List::of).ifPresent(annPaths -> annPaths.forEach(annPath -> {
+                                                String groupId = Optional.ofNullable(annPath.getChild("groupId")).map(Xpp3Dom::getValue).orElse(null);
+                                                String artifactId = Optional.ofNullable(annPath.getChild("artifactId")).map(Xpp3Dom::getValue).orElse(null);
+                                                String version = Optional.ofNullable(annPath.getChild("version")).map(Xpp3Dom::getValue).orElse(null);
+                                                if (groupId != null && artifactId != null && version != null) {
+                                                    gavStreamBuilder.add(new GAV(groupId, artifactId, version));
+                                                }
+                                            }));
+                                }
+                                return Stream.concat(gavStreamBuilder.build(), pluginDepGAVs);
+                            })
+                            .toList();
+                    // need to get dependencies from management section from effective-pom.xml because those dependencies do not contain versions in plain pom.xml
+                    AtomicReference<PomHolder> effectivePomCache = new AtomicReference<>();
+                    Supplier<PomHolder> effectivePom = () -> {
+                        if (effectivePomCache.get() == null) {
+                            effectivePomCache.set(effectivePom(pomHolder));
+                        }
+                        return effectivePomCache.get();
+                    };
+                    List<GAV> allDependenciesNodes = Stream.concat(dependenciesNodes.stream(), pluginsDependenciesNodes.stream()).toList();
+
+                    for (GAV dependency : allDependenciesNodes) {
+                        String groupId = pomHolder.autoResolvePropReference(dependency.getGroupId());
+                        String artifactId = pomHolder.autoResolvePropReference(dependency.getArtifactId());
+                        String version = pomHolder.autoResolvePropReference(dependency.getVersion());
+                        if (version == null) {
+                            version = effectivePom.get().getModel().getDependencies().stream()
+                                    .filter(d -> Objects.equals(groupId, d.getGroupId()) && Objects.equals(artifactId, d.getArtifactId()))
+                                    .findFirst()
+                                    .map(Dependency::getVersion)
+                                    .orElse(null);
+                        }
+                        if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
+                            GAV dependencyGAV = new GAV(groupId, artifactId, version);
+                            this.moduleDependencies.add(dependencyGAV);
+                            this.perModuleDependencies.get(projectGA).add(dependencyGAV);
+                        }
                     }
-                    if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
-                        GAV dependencyGAV = new GAV(groupId, artifactId, version);
-                        this.moduleDependencies.add(dependencyGAV);
-                        this.perModuleDependencies.get(projectGA).add(dependencyGAV);
+                    synchronized (counter) {
+                        log.info("Processed {}/{} [{}] poms", counter.incrementAndGet(), poms.size(), this.getUrl());
                     }
-                }
+                }));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
