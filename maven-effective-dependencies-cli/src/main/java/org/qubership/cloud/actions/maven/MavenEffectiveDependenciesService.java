@@ -168,9 +168,11 @@ public class MavenEffectiveDependenciesService {
             }
             return consumers.stream();
         }).toList();
-        if (artifactConsumers.isEmpty()) {
-            return consumers(gav, level + 1, graph);
-        }
+
+// return only first level consumers
+//        if (artifactConsumers.isEmpty()) {
+//            return consumers(gav, level + 1, graph);
+//        }
         return artifactConsumers;
     }
 
