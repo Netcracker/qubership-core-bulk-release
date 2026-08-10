@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -16,7 +17,7 @@ public class XrayArtifactSummaryIssue {
     String issue_type;
     Severity severity;
     String provider;
-    List<XrayArtifactSummaryCVE> cves;
+    List<XrayArtifactSummaryCVE> cves = new ArrayList<>();
     String created;
     List<String> impact_path;
 }
