@@ -248,8 +248,15 @@ public class PomHolder {
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    List<String> pathList = Arrays.asList(file.toString().split("/"));
-                    if (pathList.contains("pom.xml") && !pathList.contains("target")) {
+                    boolean isPom = file.getFileName() != null && "pom.xml".equals(file.getFileName().toString());
+                    boolean underTarget = false;
+                    for (Path part : file) {
+                        if ("target".equals(part.toString())) {
+                            underTarget = true;
+                            break;
+                        }
+                    }
+                    if (isPom && !underTarget) {
                         poms.add(parsePom(file));
                     }
                     return FileVisitResult.CONTINUE;

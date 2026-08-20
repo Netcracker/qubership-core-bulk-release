@@ -40,6 +40,7 @@ public class ReleaseRunner {
 
     public Result release(Config config) throws Exception {
         Result result = new Result();
+        assertPartialReleaseAllowed(config);
         log.info("Config: {}", yamlMapper.writeValueAsString(config));
         // set up git creds if necessary
         GitService gitService = new GitService(config.getGitConfig());
@@ -158,6 +159,7 @@ public class ReleaseRunner {
         }).toList();
 
         if (!config.isDryRun()) {
+            switchInterModuleDepsToSnapshot(config, allReleases);
             Map<Integer, Map<String, List<RepositoryInfo>>> publishDependencyGraph = new TreeMap<>();
             AtomicInteger newLevel = new AtomicInteger(-1);
             AtomicReference<String> lastUrlRef = new AtomicReference<>();
@@ -240,6 +242,48 @@ public class ReleaseRunner {
         return result;
     }
 
+    static final String MAIN_BRANCH = "main";
+
+    static String resolveReleaseBranch(Config config) {
+        return config.getRepositories().stream()
+                .filter(Objects::nonNull)
+                .map(RepositoryConfig::getBranch)
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+    }
+
+    boolean shouldSwitchInterModuleDepsToSnapshot(Config config, String branch) {
+        return config.isSwitchInterModuleDepsToSnapshot()
+               && MAIN_BRANCH.equals(branch)
+               && !config.isDryRun();
+    }
+
+    void switchInterModuleDepsToSnapshot(Config config, List<RepositoryRelease> allReleases) {
+        if (!shouldSwitchInterModuleDepsToSnapshot(config, resolveReleaseBranch(config))) {
+            return;
+        }
+        Set<GAV> snapshotGavs = allReleases.stream()
+                .flatMap(r -> r.getDevGavs().stream())
+                .collect(Collectors.toSet());
+        Map<String, List<RepositoryInfo>> reposByUrl = allReleases.stream()
+                .map(RepositoryRelease::getRepository)
+                .collect(Collectors.groupingBy(RepositoryInfo::getUrl, LinkedHashMap::new, Collectors.toList()));
+        reposByUrl.forEach((url, repos) -> {
+            repos.forEach(ri -> ri.updateDepVersions(snapshotGavs));
+            commitUpdatedDependenciesIfAny(repos.getFirst(), "switch inter-module deps to SNAPSHOT after release");
+        });
+    }
+
+    void assertPartialReleaseAllowed(Config config) {
+        boolean partial = !config.getRepositoriesToReleaseFrom().isEmpty();
+        if (config.isSwitchInterModuleDepsToSnapshot()
+            && MAIN_BRANCH.equals(resolveReleaseBranch(config))
+            && partial) {
+            throw new IllegalStateException(
+                    "partial release is not allowed from main, only from LTS branch");
+        }
+    }
+
     RepositoryRelease releasePrepare(Config config, RepositoryInfo repository, Collection<GAV> dependencies, OutputStream outputStream) throws Exception {
         try (outputStream) {
             updateDependencies(repository, dependencies);
@@ -287,15 +331,18 @@ public class ReleaseRunner {
     }
 
     synchronized void commitUpdatedDependenciesIfAny(RepositoryInfo repository) {
+        commitUpdatedDependenciesIfAny(repository, "updating dependencies before release");
+    }
+
+    synchronized void commitUpdatedDependenciesIfAny(RepositoryInfo repository, String message) {
         Path repositoryDirPath = Paths.get(repository.getBaseDir(), repository.getDir());
         try (Git git = Git.open(repositoryDirPath.toFile())) {
             List<DiffEntry> diff = git.diff().call();
             List<String> modifiedFiles = diff.stream().filter(d -> d.getChangeType() == DiffEntry.ChangeType.MODIFY).map(DiffEntry::getNewPath).toList();
             if (!modifiedFiles.isEmpty()) {
                 git.add().setUpdate(true).call();
-                String msg = "updating dependencies before release";
-                git.commit().setMessage(msg).call();
-                log.info("Commited '{}', changed files:\n{}", msg, String.join("\n", modifiedFiles));
+                git.commit().setMessage(message).call();
+                log.info("Commited '{}', changed files:\n{}", message, String.join("\n", modifiedFiles));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -341,9 +388,16 @@ public class ReleaseRunner {
             if (process.exitValue() != 0) {
                 throw new RuntimeException("Failed to execute cmd");
             }
-            List<GAV> gavs = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines()
+            List<String> releasePropertiesLines = Files.readString(Paths.get(repositoryDirPath.toString(), "release.properties")).lines().toList();
+            List<GAV> gavs = releasePropertiesLines.stream()
                     .filter(l -> l.startsWith("project.rel."))
                     .map(l -> l.replace("project.rel.", "")
+                            .replace("\\", "")
+                            .replace("=", ":"))
+                    .map(GAV::new).toList();
+            List<GAV> devGavs = releasePropertiesLines.stream()
+                    .filter(l -> l.startsWith("project.dev."))
+                    .map(l -> l.replace("project.dev.", "")
                             .replace("\\", "")
                             .replace("=", ":"))
                     .map(GAV::new).toList();
@@ -352,6 +406,7 @@ public class ReleaseRunner {
             release.setVersionTag(versionTag);
             release.setJavaVersion(javaVersion);
             release.setGavs(gavs);
+            release.setDevGavs(devGavs);
             return release;
         } finally {
             printWriter.flush();
