@@ -19,6 +19,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -212,7 +213,7 @@ public class RepositoryInfo extends RepositoryConfig {
             }
             try (ForkJoinPool pool = new ForkJoinPool(8)) {
                 AtomicInteger counter = new AtomicInteger();
-                pool.submit(() -> poms.stream().parallel().forEach(pomHolder -> {
+                Consumer<PomHolder> resolvePomDependencies = pomHolder -> {
                     Model project = pomHolder.getModel();
                     GA projectGA = new GA(pomHolder.getGroupId(), pomHolder.getArtifactId());
                     Parent parent = project.getParent();
@@ -284,7 +285,14 @@ public class RepositoryInfo extends RepositoryConfig {
                     synchronized (counter) {
                         log.info("Processed {}/{} [{}] poms", counter.incrementAndGet(), poms.size(), this.getUrl());
                     }
-                }));
+                };
+                pool.submit(() -> poms.stream().parallel().forEach(pom -> {
+                    try {
+                        resolvePomDependencies.accept(pom);
+                    } catch (RuntimeException e) {
+                        throw new RuntimeException("Failed to resolve dependencies of pom: %s".formatted(pom.getPath()), e);
+                    }
+                })).join();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
