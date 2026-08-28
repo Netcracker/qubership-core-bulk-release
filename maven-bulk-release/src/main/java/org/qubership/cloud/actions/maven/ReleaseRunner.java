@@ -159,7 +159,6 @@ public class ReleaseRunner {
         }).toList();
 
         if (!config.isDryRun()) {
-            switchInterModuleDepsToSnapshot(config, allReleases);
             Map<Integer, Map<String, List<RepositoryInfo>>> publishDependencyGraph = new TreeMap<>();
             AtomicInteger newLevel = new AtomicInteger(-1);
             AtomicReference<String> lastUrlRef = new AtomicReference<>();
@@ -237,6 +236,8 @@ public class ReleaseRunner {
                             throw new RuntimeException(e);
                         }
                     }));
+            switchInterModuleDepsToSnapshot(config, allReleases)
+                    .forEach(repository -> pushBranch(config, repository));
         }
         result.setReleases(allReleases);
         return result;
@@ -258,9 +259,9 @@ public class ReleaseRunner {
                && !config.isDryRun();
     }
 
-    void switchInterModuleDepsToSnapshot(Config config, List<RepositoryRelease> allReleases) {
+    List<RepositoryInfo> switchInterModuleDepsToSnapshot(Config config, List<RepositoryRelease> allReleases) {
         if (!shouldSwitchInterModuleDepsToSnapshot(config, resolveReleaseBranch(config))) {
-            return;
+            return List.of();
         }
         Set<GAV> snapshotGavs = allReleases.stream()
                 .flatMap(r -> r.getDevGavs().stream())
@@ -268,10 +269,14 @@ public class ReleaseRunner {
         Map<String, List<RepositoryInfo>> reposByUrl = allReleases.stream()
                 .map(RepositoryRelease::getRepository)
                 .collect(Collectors.groupingBy(RepositoryInfo::getUrl, LinkedHashMap::new, Collectors.toList()));
+        List<RepositoryInfo> switchedRepositories = new ArrayList<>();
         reposByUrl.forEach((url, repos) -> {
             repos.forEach(ri -> ri.rewriteDepVersions(snapshotGavs));
-            commitUpdatedDependenciesIfAny(repos.getFirst(), "switch inter-module deps to SNAPSHOT after release");
+            RepositoryInfo repository = repos.getFirst();
+            commitUpdatedDependenciesIfAny(repository, "switch inter-module deps to SNAPSHOT after release");
+            switchedRepositories.add(repository);
         });
+        return switchedRepositories;
     }
 
     void assertPartialReleaseAllowed(Config config) {
@@ -428,6 +433,29 @@ public class ReleaseRunner {
                 log.info("Skipping release-deploy due to maven config: deployArtifacts = false");
                 // todo - wait for artifact to get deployed by github/gitlab workflows?
             }
+        }
+    }
+
+    synchronized void pushBranch(Config config, RepositoryInfo repository) {
+        Path repositoryDirPath = Paths.get(repository.getBaseDir(), repository.getDir());
+        try (Git git = Git.open(repositoryDirPath.toFile())) {
+            String branch = git.getRepository().getFullBranch();
+            Iterable<PushResult> pushResults = git.push()
+                    .setCredentialsProvider(config.getGitConfig().getCredentialsProvider())
+                    .setRefSpecs(new RefSpec(branch + ":" + branch))
+                    .call();
+            List<RemoteRefUpdate> failedUpdates = StreamSupport.stream(pushResults.spliterator(), false)
+                    .flatMap(r -> r.getRemoteUpdates().stream())
+                    .filter(r -> r.getStatus() != RemoteRefUpdate.Status.OK &&
+                                 r.getStatus() != RemoteRefUpdate.Status.UP_TO_DATE)
+                    .toList();
+            if (!failedUpdates.isEmpty()) {
+                throw new IllegalStateException("Failed to push: " + failedUpdates.stream().map(RemoteRefUpdate::toString).collect(Collectors.joining("\n")));
+            }
+            log.info("Pushed to git: branch: {}", branch);
+        } catch (Exception e) {
+            if (e instanceof RuntimeException runtimeException) throw runtimeException;
+            throw new RuntimeException(e);
         }
     }
 
