@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,9 +34,9 @@ public class RepositoryInfo extends RepositoryConfig {
     String baseDir;
     GAV baseModule;
     Set<GAV> modules = new HashSet<>();
-    Set<GAV> moduleDependencies = new HashSet<>();
+    Set<GAV> moduleDependencies = ConcurrentHashMap.newKeySet();
     @EqualsAndHashCode.Exclude
-    Set<GAV> declaredModuleDependencies = new HashSet<>();
+    Set<GAV> declaredModuleDependencies = ConcurrentHashMap.newKeySet();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
@@ -207,7 +208,7 @@ public class RepositoryInfo extends RepositoryConfig {
             for (PomHolder pomHolder : poms) {
                 GAV moduleGAV = new GAV(pomHolder.getGroupId(), pomHolder.getArtifactId(), pomHolder.getVersion());
                 this.modules.add(moduleGAV);
-                this.perModuleDependencies.put(moduleGAV.toGA(), new HashSet<>());
+                this.perModuleDependencies.put(moduleGAV.toGA(), ConcurrentHashMap.newKeySet());
             }
             try (ForkJoinPool pool = new ForkJoinPool(8)) {
                 AtomicInteger counter = new AtomicInteger();
