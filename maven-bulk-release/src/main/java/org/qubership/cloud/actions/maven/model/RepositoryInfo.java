@@ -34,6 +34,8 @@ public class RepositoryInfo extends RepositoryConfig {
     GAV baseModule;
     Set<GAV> modules = new HashSet<>();
     Set<GAV> moduleDependencies = new HashSet<>();
+    @EqualsAndHashCode.Exclude
+    Set<GAV> declaredModuleDependencies = new HashSet<>();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
@@ -196,6 +198,7 @@ public class RepositoryInfo extends RepositoryConfig {
         List<PomHolder> poms = PomHolder.parsePoms(basePomFolderPath);
         this.modules.clear();
         this.moduleDependencies.clear();
+        this.declaredModuleDependencies.clear();
         try {
             if (Files.exists(basePomFolderPath.resolve("pom.xml"))) {
                 PomHolder base = PomHolder.parsePom(basePomFolderPath.resolve("pom.xml"));
@@ -215,6 +218,7 @@ public class RepositoryInfo extends RepositoryConfig {
                     if (parent != null && !Objects.equals(parent.getGroupId(), pomHolder.getGroupId())) {
                         GAV parentGAV = new GAV(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
                         this.moduleDependencies.add(parentGAV);
+                        this.declaredModuleDependencies.add(parentGAV);
                         this.perModuleDependencies.get(projectGA).add(parentGAV);
                     }
                     List<GAV> dependenciesNodes = Stream.concat(
@@ -259,6 +263,7 @@ public class RepositoryInfo extends RepositoryConfig {
                         String groupId = pomHolder.autoResolvePropReference(dependency.getGroupId());
                         String artifactId = pomHolder.autoResolvePropReference(dependency.getArtifactId());
                         String version = pomHolder.autoResolvePropReference(dependency.getVersion());
+                        boolean versionDeclaredInPom = version != null;
                         if (version == null) {
                             version = effectivePom.get().getModel().getDependencies().stream()
                                     .filter(d -> Objects.equals(groupId, d.getGroupId()) && Objects.equals(artifactId, d.getArtifactId()))
@@ -269,6 +274,9 @@ public class RepositoryInfo extends RepositoryConfig {
                         if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
                             GAV dependencyGAV = new GAV(groupId, artifactId, version);
                             this.moduleDependencies.add(dependencyGAV);
+                            if (versionDeclaredInPom) {
+                                this.declaredModuleDependencies.add(dependencyGAV);
+                            }
                             this.perModuleDependencies.get(projectGA).add(dependencyGAV);
                         }
                     }
