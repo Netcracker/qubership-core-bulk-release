@@ -269,7 +269,7 @@ public class ReleaseRunner {
                 .map(RepositoryRelease::getRepository)
                 .collect(Collectors.groupingBy(RepositoryInfo::getUrl, LinkedHashMap::new, Collectors.toList()));
         reposByUrl.forEach((url, repos) -> {
-            repos.forEach(ri -> ri.updateDepVersions(snapshotGavs));
+            repos.forEach(ri -> ri.rewriteDepVersions(snapshotGavs));
             commitUpdatedDependenciesIfAny(repos.getFirst(), "switch inter-module deps to SNAPSHOT after release");
         });
     }

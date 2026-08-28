@@ -321,6 +321,11 @@ public class RepositoryInfo extends RepositoryConfig {
     }
 
     public void updateDepVersions(Collection<GAV> dependencies) {
+        rewriteDepVersions(dependencies);
+        this.resolveDependencies();
+    }
+
+    public void rewriteDepVersions(Collection<GAV> dependencies) {
         Map<String, List<GAV>> propertiesToDependencies = new HashMap<>();
         Map<String, Set<PomHolder>> propertiesToPoms = new HashMap<>();
         BiConsumer<PomHolder, GAV> gavFunction = (holder, gav) -> {
@@ -383,7 +388,6 @@ public class RepositoryInfo extends RepositoryConfig {
                 throw new RuntimeException(e);
             }
         });
-        this.resolveDependencies();
     }
 
     @Override
