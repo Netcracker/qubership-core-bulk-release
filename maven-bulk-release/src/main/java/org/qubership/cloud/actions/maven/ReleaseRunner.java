@@ -302,7 +302,7 @@ public class ReleaseRunner {
     void updateDependencies(RepositoryInfo repositoryInfo, Collection<GAV> dependencies) {
         repositoryInfo.updateDepVersions(dependencies);
         // check all versions were updated
-        Set<GAV> updatedModuleDependencies = repositoryInfo.getModuleDependencies();
+        Set<GAV> updatedModuleDependencies = repositoryInfo.getDeclaredModuleDependencies();
         List<String> missedDependencies = updatedModuleDependencies.stream()
                 .map(gav -> {
                     Optional<GAV> foundGav = dependencies.stream()
