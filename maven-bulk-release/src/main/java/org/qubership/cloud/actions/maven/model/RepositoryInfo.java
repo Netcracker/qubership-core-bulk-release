@@ -288,27 +288,6 @@ public class RepositoryInfo extends RepositoryConfig {
         }
     }
 
-    public static PomHolder effectivePom(PomHolder pom) {
-        try {
-            Path parentPath = pom.getPath().getParent();
-            Path effectivePomPath = Path.of(parentPath.toString(), "effective-pom.xml");
-            List<String> cmd = List.of("mvn", "-B", "-N", "-f", pom.getPath().getFileName().toString(), "help:effective-pom",
-                    "-Doutput=" + effectivePomPath
-            );
-            ProcessBuilder processBuilder = new ProcessBuilder(cmd).directory(parentPath.toFile());
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            process.getInputStream().transferTo(System.out);
-            process.waitFor();
-            if (process.exitValue() != 0) {
-                throw new RuntimeException("Failed to execute cmd: %s".formatted(String.join(" ", cmd)));
-            }
-            return PomHolder.parsePom(effectivePomPath);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to resolve effective-pom for: %s".formatted(pom.getPath().toString()), e);
-        }
-    }
-
     public void updateDepVersions(Collection<GAV> dependencies) {
         rewriteDepVersions(dependencies);
         this.resolveDependencies();
