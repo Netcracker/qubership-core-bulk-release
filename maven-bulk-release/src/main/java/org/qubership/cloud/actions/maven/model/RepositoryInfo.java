@@ -33,9 +33,8 @@ public class RepositoryInfo extends RepositoryConfig {
     String baseDir;
     GAV baseModule;
     Set<GAV> modules = new HashSet<>();
+    // every version here comes from the repository poms, so updateDepVersions can rewrite all of them
     Set<GAV> moduleDependencies = ConcurrentHashMap.newKeySet();
-    @EqualsAndHashCode.Exclude
-    Set<GAV> declaredModuleDependencies = ConcurrentHashMap.newKeySet();
     // dependency graph is built on GA alone, so it also holds dependencies whose version comes from a BOM
     @EqualsAndHashCode.Exclude
     Set<GA> moduleDependencyGAs = ConcurrentHashMap.newKeySet();
@@ -201,7 +200,6 @@ public class RepositoryInfo extends RepositoryConfig {
         List<PomHolder> poms = PomHolder.parsePoms(basePomFolderPath);
         this.modules.clear();
         this.moduleDependencies.clear();
-        this.declaredModuleDependencies.clear();
         this.moduleDependencyGAs.clear();
         try {
             if (Files.exists(basePomFolderPath.resolve("pom.xml"))) {
@@ -222,7 +220,6 @@ public class RepositoryInfo extends RepositoryConfig {
                     if (parent != null && !Objects.equals(parent.getGroupId(), pomHolder.getGroupId())) {
                         GAV parentGAV = new GAV(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
                         this.moduleDependencies.add(parentGAV);
-                        this.declaredModuleDependencies.add(parentGAV);
                         this.perModuleDependencies.get(projectGA).add(parentGAV);
                         addModuleDependencyGA(parent.getGroupId(), parent.getArtifactId());
                     }
@@ -265,7 +262,6 @@ public class RepositoryInfo extends RepositoryConfig {
                         if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
                             GAV dependencyGAV = new GAV(groupId, artifactId, version);
                             this.moduleDependencies.add(dependencyGAV);
-                            this.declaredModuleDependencies.add(dependencyGAV);
                             this.perModuleDependencies.get(projectGA).add(dependencyGAV);
                         }
                     }
