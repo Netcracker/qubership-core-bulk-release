@@ -17,10 +17,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -38,6 +36,9 @@ public class RepositoryInfo extends RepositoryConfig {
     Set<GAV> moduleDependencies = ConcurrentHashMap.newKeySet();
     @EqualsAndHashCode.Exclude
     Set<GAV> declaredModuleDependencies = ConcurrentHashMap.newKeySet();
+    // dependency graph is built on GA alone, so it also holds dependencies whose version comes from a BOM
+    @EqualsAndHashCode.Exclude
+    Set<GA> moduleDependencyGAs = ConcurrentHashMap.newKeySet();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
 
     public RepositoryInfo(RepositoryConfig repositoryConfig, String baseDir) {
@@ -201,6 +202,7 @@ public class RepositoryInfo extends RepositoryConfig {
         this.modules.clear();
         this.moduleDependencies.clear();
         this.declaredModuleDependencies.clear();
+        this.moduleDependencyGAs.clear();
         try {
             if (Files.exists(basePomFolderPath.resolve("pom.xml"))) {
                 PomHolder base = PomHolder.parsePom(basePomFolderPath.resolve("pom.xml"));
@@ -222,6 +224,7 @@ public class RepositoryInfo extends RepositoryConfig {
                         this.moduleDependencies.add(parentGAV);
                         this.declaredModuleDependencies.add(parentGAV);
                         this.perModuleDependencies.get(projectGA).add(parentGAV);
+                        addModuleDependencyGA(parent.getGroupId(), parent.getArtifactId());
                     }
                     List<GAV> dependenciesNodes = Stream.concat(
                                     Optional.ofNullable(project.getDependencies()).orElse(List.of()).stream(),
@@ -251,34 +254,18 @@ public class RepositoryInfo extends RepositoryConfig {
                                 return Stream.concat(gavStreamBuilder.build(), pluginDepGAVs);
                             })
                             .toList();
-                    // need to get dependencies from management section from effective-pom.xml because those dependencies do not contain versions in plain pom.xml
-                    AtomicReference<PomHolder> effectivePomCache = new AtomicReference<>();
-                    Supplier<PomHolder> effectivePom = () -> {
-                        if (effectivePomCache.get() == null) {
-                            effectivePomCache.set(effectivePom(pomHolder));
-                        }
-                        return effectivePomCache.get();
-                    };
                     List<GAV> allDependenciesNodes = Stream.concat(dependenciesNodes.stream(), pluginsDependenciesNodes.stream()).toList();
 
                     for (GAV dependency : allDependenciesNodes) {
                         String groupId = pomHolder.autoResolvePropReference(dependency.getGroupId());
                         String artifactId = pomHolder.autoResolvePropReference(dependency.getArtifactId());
                         String version = pomHolder.autoResolvePropReference(dependency.getVersion());
-                        boolean versionDeclaredInPom = version != null;
-                        if (version == null) {
-                            version = effectivePom.get().getModel().getDependencies().stream()
-                                    .filter(d -> Objects.equals(groupId, d.getGroupId()) && Objects.equals(artifactId, d.getArtifactId()))
-                                    .findFirst()
-                                    .map(Dependency::getVersion)
-                                    .orElse(null);
-                        }
+                        // a dependency whose version comes from a BOM still forms an edge in the graph
+                        addModuleDependencyGA(groupId, artifactId);
                         if (Stream.of(groupId, artifactId, version).allMatch(Objects::nonNull)) {
                             GAV dependencyGAV = new GAV(groupId, artifactId, version);
                             this.moduleDependencies.add(dependencyGAV);
-                            if (versionDeclaredInPom) {
-                                this.declaredModuleDependencies.add(dependencyGAV);
-                            }
+                            this.declaredModuleDependencies.add(dependencyGAV);
                             this.perModuleDependencies.get(projectGA).add(dependencyGAV);
                         }
                     }
@@ -296,6 +283,12 @@ public class RepositoryInfo extends RepositoryConfig {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    void addModuleDependencyGA(String groupId, String artifactId) {
+        if (groupId != null && artifactId != null) {
+            this.moduleDependencyGAs.add(new GA(groupId, artifactId));
         }
     }
 

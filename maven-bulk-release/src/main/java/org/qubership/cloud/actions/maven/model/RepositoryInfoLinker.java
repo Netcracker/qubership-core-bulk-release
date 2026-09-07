@@ -17,7 +17,7 @@ public class RepositoryInfoLinker {
                         !Objects.equals(r.getPomFolder(), thisRepository.getPomFolder()))
                 .filter(r ->
                         r.getModules().stream().map(GAV::toGA).anyMatch(module ->
-                                thisRepository.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module::equals)))
+                                thisRepository.getModuleDependencyGAs().contains(module)))
                 .toList();
     }
 
@@ -27,8 +27,8 @@ public class RepositoryInfoLinker {
                         !Objects.equals(r.getUrl(), thisRepository.getUrl()) ||
                         !Objects.equals(r.getPomFolder(), thisRepository.getPomFolder()))
                 .filter(r ->
-                        r.getModuleDependencies().stream().map(GAV::toGA).anyMatch(module ->
-                                thisRepository.getModules().stream().map(GAV::toGA).anyMatch(module::equals)))
+                        thisRepository.getModules().stream().map(GAV::toGA).anyMatch(module ->
+                                r.getModuleDependencyGAs().contains(module)))
                 .toList();
     }
 
