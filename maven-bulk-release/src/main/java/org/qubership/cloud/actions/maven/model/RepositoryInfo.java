@@ -33,9 +33,7 @@ public class RepositoryInfo extends RepositoryConfig {
     String baseDir;
     GAV baseModule;
     Set<GAV> modules = new HashSet<>();
-    // every version here comes from the repository poms, so updateDepVersions can rewrite all of them
     Set<GAV> moduleDependencies = ConcurrentHashMap.newKeySet();
-    // dependency graph is built on GA alone, so it also holds dependencies whose version comes from a BOM
     @EqualsAndHashCode.Exclude
     Set<GA> moduleDependencyGAs = ConcurrentHashMap.newKeySet();
     Map<GA, Set<GAV>> perModuleDependencies = new HashMap<>();
