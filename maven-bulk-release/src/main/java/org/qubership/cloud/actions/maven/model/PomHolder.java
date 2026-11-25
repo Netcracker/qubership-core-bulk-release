@@ -231,6 +231,20 @@ public class PomHolder {
         return gavs;
     }
 
+    /**
+     * Directories {@link #parsePoms(Path)} does not descend into: build output and sources, where a {@code pom.xml} is a
+     * copy, a test fixture or a template, never a reactor module. The scanned directory itself is never skipped.
+     */
+    private static final Set<String> NON_MODULE_DIRECTORIES = Set.of("target", "src");
+
+    private static boolean isNonModuleDirectory(Path dir, Path repositoryDir) {
+        return !dir.equals(repositoryDir) && NON_MODULE_DIRECTORIES.contains(dir.getFileName().toString());
+    }
+
+    private static boolean isPom(Path file) {
+        return file.getFileName() != null && "pom.xml".equals(file.getFileName().toString());
+    }
+
     public static PomHolder parsePom(Path pomPath) throws IOException {
         String content = Files.readString(pomPath);
         return new PomHolder(content, pomPath);
@@ -243,20 +257,15 @@ public class PomHolder {
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    if (isNonModuleDirectory(dir, repositoryDir)) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    boolean isPom = file.getFileName() != null && "pom.xml".equals(file.getFileName().toString());
-                    boolean underTarget = false;
-                    for (Path part : file) {
-                        if ("target".equals(part.toString())) {
-                            underTarget = true;
-                            break;
-                        }
-                    }
-                    if (isPom && !underTarget) {
+                    if (isPom(file)) {
                         poms.add(parsePom(file));
                     }
                     return FileVisitResult.CONTINUE;

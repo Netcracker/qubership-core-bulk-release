@@ -2,12 +2,58 @@ package org.qubership.cloud.actions.maven.model;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PomHolderTest {
+
+    @Test
+    void parsePomsSkipsPomsUnderSrcAndTarget(@TempDir Path root) throws IOException {
+        writePom(root.resolve("pom.xml"), "plugins", "1.3.0-SNAPSHOT");
+        writePom(root.resolve("httproutes-generator-maven-plugin/pom.xml"), "httproutes-generator-maven-plugin", "1.3.0-SNAPSHOT");
+        writePom(root.resolve("httproutes-generator-maven-plugin/src/it/reactor-aggregator/pom.xml"), "reactor-aggregator-it", "1.0-SNAPSHOT");
+        writePom(root.resolve("httproutes-generator-maven-plugin/src/it/reactor-aggregator/api/pom.xml"), "api", "1.0-SNAPSHOT");
+        writePom(root.resolve("httproutes-generator-maven-plugin/src/test/resources/unit/pom.xml"), "harness-fixture", "1.0-SNAPSHOT");
+        writePom(root.resolve("httproutes-generator-maven-plugin/target/pom.xml"), "generated", "9.9.9");
+        writePom(root.resolve("docs/it/pom.xml"), "docs-it", "1.3.0-SNAPSHOT");
+        writePom(root.resolve("target-platform/pom.xml"), "target-platform", "1.3.0-SNAPSHOT");
+
+        Set<String> artifactIds = PomHolder.parsePoms(root).stream()
+                .map(PomHolder::getArtifactId)
+                .collect(Collectors.toSet());
+        Assertions.assertEquals(Set.of("plugins", "httproutes-generator-maven-plugin", "docs-it", "target-platform"), artifactIds);
+    }
+
+    @Test
+    void parsePomsIgnoresSrcAndTargetAtAndAboveTheScannedDirectory(@TempDir Path tmp) throws IOException {
+        Path root = tmp.resolve("target/src");
+        writePom(root.resolve("pom.xml"), "parent", "1.3.0-SNAPSHOT");
+        writePom(root.resolve("module/pom.xml"), "module", "1.3.0-SNAPSHOT");
+
+        Set<String> artifactIds = PomHolder.parsePoms(root).stream()
+                .map(PomHolder::getArtifactId)
+                .collect(Collectors.toSet());
+        Assertions.assertEquals(Set.of("parent", "module"), artifactIds);
+    }
+
+    private static void writePom(Path path, String artifactId, String version) throws IOException {
+        Files.createDirectories(path.getParent());
+        Files.writeString(path, """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project>
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>%s</artifactId>
+                    <version>%s</version>
+                </project>
+                """.formatted(artifactId, version));
+    }
 
     @Test
     void testGAVPatterns() {
